@@ -1,0 +1,783 @@
+#if defined(PTI_IMPL) && !defined(PTI_API_IMPL)
+#define PTI_API_IMPL
+#endif
+#ifndef PTI_INCLUDED
+/*
+    pti.h -- docs
+*/
+#define PTI_INCLUDED (1)
+
+// >>includes
+#include <stdbool.h>
+#include <stdint.h>
+#include <string.h>
+
+#define _pti_kilobytes(n) (1024 * (n))
+#define _pti_megabytes(n) (1024 * _pti_kilobytes(n))
+#define _pti_gigabytes(n) (1024 * _pti_megabytes(n))
+#define _pti_align_to(value, N) ((value + (N - 1)) & ~(N - 1))
+
+#define _pti_min(x, y) ((x) < (y) ? (x) : (y))
+#define _pti_max(x, y) ((x) > (y) ? (x) : (y))
+#define _pti_clamp(x, a, b) (_pti_max(a, _pti_min(x, b)))
+#define _pti_abs(n) ((n < 0) ? (-n) : (n))
+#define _pti_appr(val, tar, delta)                   \
+	(val = (val > (tar) ? _pti_max(tar, val - delta) \
+						: _pti_min(tar, val + delta)))
+#define _pti_sign(x) ((x) > 0 ? 1 : ((x) < 0 ? -1 : 0))
+#define _pti_swap(a, b) (((a) ^= (b)), ((b) ^= (a)), ((a) ^= (b)))
+
+#define PTI_FRAMERATE 30
+#define PTI_DELTA (1.0f / PTI_FRAMERATE)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+enum {
+	PTI_SCALE2X = (1 << 0),
+	PTI_SCALE3X = (1 << 1),
+	PTI_SCALE4X = (1 << 2),
+	PTI_HIDECURSOR = (1 << 3),
+	PTI_FPS30 = (1 << 4),
+	PTI_FPS60 = (1 << 5),
+	PTI_FPS144 = (1 << 6),
+	PTI_FPSINF = (1 << 7),
+};
+
+typedef enum pti_button {
+	PTI_LEFT,
+	PTI_RIGHT,
+	PTI_UP,
+	PTI_DOWN,
+	PTI_A,
+	PTI_B,
+
+	PTI_DBG,
+
+	// always last.
+	PTI_BUTTON_COUNT
+} pti_button;
+
+typedef struct pti_window {
+	const char *name;
+	int width;
+	int height;
+	int flags;
+} pti_window;
+
+typedef struct pti_tileset_t {
+	int width;
+	int height;
+	int tiles;
+	void *pixels;
+} pti_tileset_t;
+
+typedef struct pti_tilemap_t {
+	int width;
+	int height;
+	void *tiles;
+} pti_tilemap_t;
+
+typedef struct pti_bitmap {
+	int width;
+	int height;
+	void *user_data;
+} pti_bitmap;
+
+typedef struct pti_desc {
+	void (*init_cb)(void);
+	void (*frame_cb)(void);
+	void (*cleanup_cb)(void);
+
+	int memory_size;
+	pti_window window;
+	pti_bitmap spritesheet;
+	pti_bitmap font_atlas;
+	pti_bitmap map;
+} pti_desc;
+
+/* user-provided functions */
+extern pti_desc pti_main(int argc, char *argv[]);
+
+/* public functions */
+extern void pti_init(const pti_desc *desc);
+
+/* api functions */
+
+extern void *_pti_alloc(const unsigned int size);
+
+extern unsigned char pti_peek(const unsigned int offset,
+							  const unsigned int index);
+extern unsigned short int pti_peek2(const unsigned int offset,
+									const unsigned int index);
+extern unsigned int pti_peek4(const unsigned int offset,
+							  const unsigned int index);
+
+extern void pti_poke(const unsigned int offset, const unsigned int index,
+					 const unsigned char value);
+extern void pti_poke2(const unsigned int offset, const unsigned int index,
+					  const unsigned short int value);
+extern void pti_poke4(const unsigned int offset, const unsigned int index,
+					  const unsigned int value);
+
+//>> input api
+extern bool pti_down(pti_button btn);
+extern bool pti_pressed(pti_button btn);
+extern bool pti_released(pti_button btn);
+
+//>> map api
+extern unsigned int pti_mget(const pti_tilemap_t *tilemap, int x, int y);
+extern void pti_mset(pti_tilemap_t *tilemap, int x, int y, int value);
+extern short pti_fget(const pti_tilemap_t *tilemap, int x, int y);
+
+extern unsigned short int pti_prand(void);
+
+extern void pti_camera(int x, int y);
+extern void pti_get_camera(int *x, int *y);
+
+extern void pti_cls(const unsigned int color);
+extern void pti_colorkey(const unsigned int color);
+extern void pti_dither(const unsigned short int bstr);
+extern void pti_clip(const int x0, const int y0, const int x1, const int y1);
+extern void pti_pset(const int x, const int y, unsigned long int color);
+extern void pti_line(int x0, int y0, int x1, int y1, unsigned long int color);
+extern void pti_rect(int x, int y, int w, int h, unsigned long int color);
+extern void pti_rectf(int x0, int y0, int x1, int y1, unsigned long int color);
+extern void pti_sspr(int n, int x, int y, int w, int h, bool flip_x,
+					 bool flip_y);
+
+extern void pti_plot(void *pixels, int n, int x, int y, int w, int h,
+					 bool flip_x, bool flip_y);
+extern void pti_print(const char *text, int x, int y);
+extern void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset,
+					int x, int y);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
+
+#endif// PTI_INCLUDED
+
+#ifdef PTI_API_IMPL
+#define PTI_API_IMPL_INCLUDED (1)
+
+// >>implementation
+
+#ifndef _PTI_PRIVATE
+#if defined(__GNUC__) || defined(__clang__)
+#define _PTI_PRIVATE __attribute__((unused)) static
+#else
+#define _PTI_PRIVATE static
+#endif
+#endif
+#ifndef _PTI_UNUSED
+#define _PTI_UNUSED(x) (void) (x)
+#endif
+
+#if !defined(PTI_ASSERT)
+#include <assert.h>
+#define PTI_ASSERT(c) assert(c)
+#endif
+
+#if defined(_WIN32)
+#include <memoryapi.h>
+#else
+#include <sys/mman.h>
+#endif
+
+// TODO: random access memory
+//     : gfx state:
+//     : tileset: [...]
+//     : tilemap: [...]
+
+// TODO: read-only memory
+//     : header: [ tilemap: { width, height, tiles, ptr }]
+//     : header: [ tileset: { width, height, pixels, ptr }]
+//     : header: [ sprites: { width, height, pixels, ptr }]
+//     : chunk: tilemap
+//     : chunk: tileset
+//     : chunk: sprites
+
+// >>memory
+
+typedef struct {
+	unsigned char *begin;
+	unsigned char *end;
+	unsigned char *it;
+	unsigned char *cap;
+} _pti_memory_t;
+
+typedef struct {
+	unsigned char btn_state[PTI_BUTTON_COUNT];
+} _pti_input_t;
+
+typedef struct {
+	unsigned char reg[4];
+} _pti_random_t;
+
+// typedef struct pti_clip_t pti_clip_t;
+// typedef struct pti_camera_t pti_camera_t;
+
+// struct pti_clip_t {
+//   int x0, y0;
+//   int x1, y1;
+// };
+
+// struct pti_camera_t {
+//   int x, y;
+// };
+
+// typedef struct {
+//   pti_clip_t clip;
+//   pti_camera_t cam;
+//   uint16_t dither;
+//   uint32_t color_key;
+// } _pti_gfx_t;
+// static _pti_gfx_t _gfx_state;
+
+typedef struct {
+	int clip_x0;
+	int clip_y0;
+	int clip_x1;
+	int clip_y1;
+	float cam_x;
+	float cam_y;
+	unsigned short int bstr;
+	unsigned int color_key;
+	// unsigned int *spritesheet;
+	// unsigned int *font_atlas;
+	// unsigned int *map;
+	unsigned int *vram;
+
+	/* userdefined */
+} _pti_graphics_t;
+
+typedef struct {
+	pti_desc desc;
+	_pti_memory_t memory;
+	_pti_input_t input;
+	_pti_graphics_t graphics;
+	_pti_random_t random;
+} _pti_t;
+static _pti_t _pti;
+
+_PTI_PRIVATE void *_pti_virtual_reserve(void *ptr, const unsigned int size) {
+#if defined(_WIN32)
+	/* Reserves a range of the process's virtual offsetess space without
+     * allocating any actual physical storage in memory or in the paging file on
+     * disk. */
+	/* Disables all access to the committed region of pages. An attempt to read
+     * from, write to, or execute the committed region results in an access
+     * violation. */
+	ptr = VirtualAlloc(ptr, size, MEM_RESERVE, PAGE_NOACCESS);
+	PTI_ASSERT(ptr);
+#else
+	/* Create a private copy-on-write mapping. */
+	/* The mapping is not backed by any file; */
+	/* its contents are initialized to zero. */
+	unsigned short int flags = (MAP_PRIVATE | MAP_ANON);
+	ptr = mmap((void *) ptr, size, PROT_NONE, flags, -1, 0);
+	PTI_ASSERT(ptr != MAP_FAILED);
+	msync(ptr, size, (MS_SYNC | MS_INVALIDATE));
+#endif
+	return ptr;
+}
+
+_PTI_PRIVATE void *_pti_virtual_commit(void *ptr, const unsigned int size) {
+#if defined(_WIN32)
+	/* Enables read-only or read/write access to the committed region of pages.
+     */
+	ptr = VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
+	PTI_ASSERT(ptr);
+#else
+	unsigned short int flags = (MAP_FIXED | MAP_SHARED | MAP_ANON);
+	ptr = mmap(ptr, size, (PROT_READ | PROT_WRITE), flags, -1, 0);
+	PTI_ASSERT(ptr != MAP_FAILED);
+	/* Requests an update and waits for it to complete. */
+	/* Asks to invalidate other mappings of the same file (so
+       that they can be updated with the fresh values just
+       written).
+    */
+	msync(ptr, size, (MS_SYNC | MS_INVALIDATE));
+#endif
+	return ptr;
+}
+
+_PTI_PRIVATE void *_pti_virtual_decommit(void *ptr, const unsigned int size) {
+#if defined(_WIN32)
+	VirtualFree(ptr, size, LMEM_DECOMMIT);
+#else
+	unsigned short int flags = (MAP_FIXED | MAP_SHARED | MAP_ANON);
+	mmap(ptr, size, PROT_NONE, flags, -1, 0);
+	msync(ptr, size, (MS_SYNC | MS_INVALIDATE));
+#endif
+	return ptr;
+}
+
+_PTI_PRIVATE inline void *_pti_virtual_alloc(void *ptr, const unsigned int size) {
+	return _pti_virtual_commit(_pti_virtual_reserve(ptr, size), size);
+}
+
+_PTI_PRIVATE void _pti_virtual_free(void *ptr, const unsigned int size) {
+#if defined(_WIN32)
+	_PTI_UNUSED(size);
+	VirtualFree((void *) ptr, 0, LMEM_RELEASE);
+#else
+	/* Requests an update and waits for it to complete. */
+	msync(ptr, size, MS_SYNC);
+	munmap(ptr, size);
+#endif
+}
+
+// _PTI_PRIVATE void *_pti_alloc(_pti_memory_t *bank, const unsigned int size) {
+void *_pti_alloc(const unsigned int size) {
+	void *ptr;
+	_pti_memory_t *bank = &_pti.memory;
+	if ((bank->end - bank->it) < size) {
+		PTI_ASSERT((bank->cap - bank->it) >= size);
+		unsigned int additional_size = size - (unsigned int) (bank->end - bank->it);
+		additional_size = _pti_min((bank->cap - bank->it), _pti_align_to(additional_size, 4096));
+		ptr = _pti_virtual_commit(bank->end, additional_size);
+		bank->end += additional_size;
+	}
+	ptr = bank->it;
+	bank->it += size;
+	return ptr;
+}
+
+_PTI_PRIVATE void _pti_free(_pti_memory_t *bank) {
+	_pti_virtual_free(bank, (unsigned int) (bank->cap - bank->begin));
+	memset(bank, 0, sizeof(_pti_memory_t));
+}
+
+// >>input
+enum {
+	_PTI_KEY_STATE = (1 << 0),
+	_PTI_KEY_PRESSED = (1 << 1),
+	_PTI_KEY_RELEASED = (1 << 2),
+};
+
+_PTI_PRIVATE inline bool _pti_check_input_flag(unsigned int idx, int flag) {
+	return _pti.input.btn_state[idx] & flag ? true : false;
+}
+
+bool pti_down(pti_button btn) {
+	return _pti_check_input_flag(btn, _PTI_KEY_STATE);
+}
+
+bool pti_pressed(pti_button btn) {
+	return _pti_check_input_flag(btn, _PTI_KEY_PRESSED);
+}
+
+bool pti_released(pti_button btn) {
+	return _pti_check_input_flag(btn, _PTI_KEY_RELEASED);
+}
+
+// >>graphics
+
+// >>random
+
+// >>internals
+_PTI_PRIVATE void _pti_scale_size_by_flags(int *w, int *h, int flags) {
+	if (flags & PTI_SCALE2X) {
+		*w *= 2;
+		*h *= 2;
+	} else if (flags & PTI_SCALE3X) {
+		*w *= 3;
+		*h *= 3;
+	} else if (flags & PTI_SCALE4X) {
+		*w *= 4;
+		*h *= 4;
+	}
+}
+
+_PTI_PRIVATE void _pti_memory_init(const pti_desc *desc) {
+	const size_t size = desc->memory_size;
+
+	/* allocate memory */
+	void *ptr = _pti_virtual_reserve(NULL, size);
+
+	_pti_memory_t *memory = &_pti.memory;
+	memory->begin = ptr;
+	memory->it = ptr;
+	memory->end = ptr;
+	memory->cap = ptr + size;
+}
+
+// #define _PTI_ALLOCATE_BITMAP(loc, bitmap)                                      \
+//   _pti.graphics.vram = _pti_alloc(&_pti.memory, bitmap.width * bitmap.height * \
+//                                                     sizeof(unsigned int));
+
+//   _PTI_ALLOCATE_BITMAP(_pti.graphics.vram, desc->window);
+//   _PTI_ALLOCATE_BITMAP(_pti.graphics.spritesheet, desc->spritesheet);
+//   _PTI_ALLOCATE_BITMAP(_pti.graphics.font_atlas, desc->font_atlas);
+
+_PTI_PRIVATE void _pti_graphics_init(const pti_desc *desc) {
+
+	/* allocate window buffer */
+	int window_width = desc->window.width;
+	int window_height = desc->window.height;
+	const size_t window_size =
+			window_width * window_height * sizeof(unsigned int);
+	_pti.graphics.vram = _pti_alloc(window_size);
+
+	//   /* allocate spritesheet buffer */
+	//   int spritesheet_width = desc->spritesheet.width;
+	//   int spritesheet_height = desc->spritesheet.height;
+	//   const size_t spriteheet_size =
+	//       spritesheet_width * spritesheet_height * sizeof(unsigned int);
+	//   _pti.graphics.spritesheet = _pti_alloc(spriteheet_size);
+
+	//   /* allocate font_atlas buffer */
+	//   int fontatlas_width = desc->font_atlas.width;
+	//   int fontatlas_height = desc->font_atlas.height;
+	//   const size_t fontatlas_size =
+	//       fontatlas_width * fontatlas_height * sizeof(unsigned int);
+	//   _pti.graphics.font_atlas = _pti_alloc(fontatlas_size);
+
+	//   /* allocate map buffer */
+	//   int map_width = desc->map.width;
+	//   int map_height = desc->map.height;
+	//   const size_t map_size = map_width * map_height * sizeof(unsigned int);
+	//   _pti.graphics.map = _pti_alloc(map_size);
+}
+
+_PTI_PRIVATE void _pti_random_init(const pti_desc *desc) {
+	for (int i = 0; i < 4; ++i) {
+		_pti.random.reg[i] = 0x0;
+	}
+}
+
+// >>public
+void pti_init(const pti_desc *desc) {
+	/* cache description */
+	_pti.desc = *desc;
+
+	/* allocate memory */
+	_pti_memory_init(desc);
+	_pti_graphics_init(desc);
+	_pti_random_init(desc);
+}
+
+// >>api
+
+unsigned char
+pti_peek(const unsigned int offset, const unsigned int index) {
+	const void *dst = (void *) _pti.memory.begin;
+	return *(unsigned char *) (dst + offset + index);
+}
+
+unsigned short int
+pti_peek2(const unsigned int offset, const unsigned int index) {
+	const unsigned char b0 = pti_peek(offset, index + 0);
+	const unsigned char b1 = pti_peek(offset, index + 1);
+
+	/* combine 16-bit value */
+	return (unsigned short int) ((b0 << 8) | (b1 << 0));
+}
+
+unsigned int
+pti_peek4(const unsigned int offset, const unsigned int index) {
+	const unsigned char b0 = pti_peek(offset, index + 0);
+	const unsigned char b1 = pti_peek(offset, index + 1);
+	const unsigned char b2 = pti_peek(offset, index + 2);
+	const unsigned char b3 = pti_peek(offset, index + 3);
+
+	/* combine 32-bit value */
+	return (unsigned int) ((b0 << 24) | (b1 << 16) | (b2 << 8) | (b3 << 0));
+}
+
+void pti_poke(const unsigned int offset, const unsigned int index,
+			  const unsigned char value) {
+	const void *dst = (void *) _pti.memory.begin;
+	*(unsigned char *) (dst + offset + index) = value;
+}
+
+void pti_poke2(const unsigned int offset, const unsigned int index,
+			   const unsigned short int value) {
+	pti_poke(offset, index + 0, (unsigned char) (value >> 0));
+	pti_poke(offset, index + 1, (unsigned char) (value >> 8));
+}
+
+void pti_poke4(const unsigned int offset, const unsigned int index,
+			   const unsigned int value) {
+	pti_poke(offset, index + 0, (unsigned char) (value >> 0));
+	pti_poke(offset, index + 1, (unsigned char) (value >> 8));
+	pti_poke(offset, index + 2, (unsigned char) (value >> 16));
+	pti_poke(offset, index + 3, (unsigned char) (value >> 24));
+}
+
+_PTI_PRIVATE void _pti_random_tick(int i) {
+	unsigned char *reg = &_pti.random.reg[0];
+	*(reg + 0) = 5 * *(reg + 0) + 1;
+	*(reg + 1) = ((*(reg + 1) & 0x80) == (*(reg + 1) & 0x10))
+						 ? 2 * *(reg + 1) + 1
+						 : 2 * *(reg + 1);
+	*(reg + (2 + i)) = (*(reg + 0) ^ *(reg + 1));
+}
+
+unsigned short int pti_prand(void) {
+	for (int i = 1; i >= 0; --i) {
+		_pti_random_tick(i);
+	}
+	unsigned char *reg = &_pti.random.reg[0];
+	return ((unsigned short int) *(reg + 2) << 0x8) | *(reg + 3);
+}
+
+unsigned int pti_mget(const pti_tilemap_t *tilemap, int x, int y) {
+	return *((int *) tilemap->tiles + x + y * tilemap->width);
+}
+
+void pti_mset(pti_tilemap_t *tilemap, int x, int y, int value) {
+	*((int *) tilemap->tiles + x + y * tilemap->width) = value;
+}
+
+short pti_fget(const pti_tilemap_t *tilemap, int x, int y) {
+	return (short) pti_mget(tilemap, x, y);
+}
+
+_PTI_PRIVATE inline bool _pti_get_dither_bit(const int x, const int y) {
+	const unsigned char i = 0xf - ((x & 0x3) + 0x4 * (y & 0x3));
+	return ((_pti.graphics.bstr & (1 << i)) >> i) != 0;
+}
+
+_PTI_PRIVATE inline void _pti_transform(int *x, int *y) {
+	*x -= _pti.graphics.cam_x;
+	*y -= _pti.graphics.cam_y;
+}
+
+_PTI_PRIVATE void _pti_set_pixel(int x, int y, unsigned long int c) {
+	const int clip_x0 = _pti.graphics.clip_x0;
+	const int clip_y0 = _pti.graphics.clip_y0;
+	const int clip_x1 = _pti.graphics.clip_x1;
+	const int clip_y1 = _pti.graphics.clip_y1;
+
+	if (x < clip_x0 || x >= clip_x1 || y < clip_y0 || y >= clip_y1) {
+		return;
+	}
+
+	unsigned int *vram = _pti.graphics.vram;
+	const int screen_width = _pti.desc.window.width;
+	*(vram + (x + y * screen_width)) = _pti_get_dither_bit(x, y)
+											   ? (c >> 32) & 0xffffffff
+											   : (c >> 0) & 0xffffffff;
+}
+
+void pti_camera(int x, int y) {
+	_pti.graphics.cam_x = x;
+	_pti.graphics.cam_y = y;
+}
+
+void pti_get_camera(int *x, int *y) {
+	if (x) {
+		*x = _pti.graphics.cam_x;
+	}
+	if (y) {
+		*y = _pti.graphics.cam_y;
+	}
+}
+
+void pti_cls(const unsigned int color) {
+	const int width = _pti.desc.window.width;
+	const int height = _pti.desc.window.height;
+	const size_t size = width * height * sizeof(unsigned int);
+	memset(_pti.graphics.vram, color, size);
+}
+
+void pti_colorkey(const unsigned int color) {
+	_pti.graphics.color_key = color;
+}
+
+void pti_dither(const unsigned short int bstr) {
+	_pti.graphics.bstr = bstr;
+}
+
+void pti_clip(const int x0, const int y0, const int x1, const int y1) {
+	_pti.graphics.clip_x0 = x0;
+	_pti.graphics.clip_y0 = y0;
+	_pti.graphics.clip_x1 = x1;
+	_pti.graphics.clip_y1 = y1;
+}
+
+void pti_pset(const int x, const int y, unsigned long int color) {
+	_pti_set_pixel(x, y, color);
+}
+
+void pti_line(int x0, int y0, int x1, int y1, unsigned long int c) {
+	bool steep = false;
+	if (_pti_abs(x1 - x0) < _pti_abs(y1 - y0)) {
+		_pti_swap(x0, y0);
+		_pti_swap(x1, y1);
+		steep = true;
+	}
+
+	if (x0 > x1) {
+		_pti_swap(x0, x1);
+		_pti_swap(y0, y1);
+	}
+
+	int dx = x1 - x0;
+	int dy = y1 - y0;
+	int de = 2 * _pti_abs(dy);
+	int err = 0;
+	int y = y0;
+
+	for (int x = x0; x <= x1; x++) {
+		if (steep) {
+			_pti_set_pixel(y, x, c);
+		} else {
+			_pti_set_pixel(x, y, c);
+		}
+		err += de;
+		if (err > dx) {
+			y += y1 > y0 ? 1 : -1;
+			err -= dx * 2;
+		}
+	}
+}
+
+void pti_rect(int x, int y, int w, int h, unsigned long int color) {
+	int px, py, l, t, r, b;
+
+	_pti_transform(&x, &y);
+
+	l = _pti_max(_pti.graphics.clip_x0, x);
+	t = _pti_max(_pti.graphics.clip_y0, y);
+	r = _pti_min(_pti.graphics.clip_x1, x + w);
+	b = _pti_min(_pti.graphics.clip_y1, y + h);
+
+	for (py = t; py < b; py++) {
+		for (px = l; px < r; px++) {
+			_pti_set_pixel(px, py, color);
+		}
+	}
+}
+
+void pti_rectf(int x0, int y0, int x1, int y1, unsigned long int color) {
+	if (x0 > x1) {
+		_pti_swap(x0, x1);
+	}
+	if (y0 > y1) {
+		_pti_swap(y0, y1);
+	}
+
+	for (int y = y0; y <= y1; y++) {
+		for (int x = x0; x <= x1; x++) {
+			_pti_set_pixel(x, y, color);
+		}
+	}
+}
+
+void pti_plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x,
+			  bool flip_y) {
+	// adjust camera:
+	_pti_transform(&x, &y);
+
+	int src_x = 0;
+	int src_y = 0;
+	int dst_x1 = x;
+	int dst_y1 = y;
+	int dst_x2 = x + w - 1;
+	int dst_y2 = y + h - 1;
+	int src_x1 = src_x;
+	int src_y1 = src_y;
+
+	// clip:
+	const int clip_x0 = _pti.graphics.clip_x0;
+	const int clip_y0 = _pti.graphics.clip_y0;
+	const int clip_x1 = _pti.graphics.clip_x1;
+	const int clip_y1 = _pti.graphics.clip_y1;
+
+	if (dst_x1 >= clip_x1 || dst_x2 < clip_x0) {
+		return;
+	}
+	if (dst_y1 >= clip_y1 || dst_y2 < clip_y0) {
+		return;
+	}
+
+	if (dst_x1 < clip_x0) {
+		src_x1 -= dst_x1;
+		dst_x1 = clip_x0;
+	}
+	if (dst_y1 < clip_y0) {
+		src_y1 -= dst_y1;
+		dst_y1 = clip_y0;
+	}
+	if (dst_x2 >= clip_x1) {
+		dst_x2 = clip_x1 - 1;
+	}
+	if (dst_y2 >= clip_y1) {
+		dst_y2 = clip_y1 - 1;
+	}
+
+	const int ix = flip_x ? -1 : 1;
+	const int iy = flip_y ? -1 : 1;
+
+	if (flip_x) {
+		src_x1 += w - 1;
+	}
+	if (flip_y) {
+		src_y1 += h - 1;
+	}
+
+	const size_t size = w * h * sizeof(int);
+	unsigned int *src = pixels + size * n;
+	unsigned int *dst = _pti.graphics.vram;
+
+	const int dst_width = _pti.desc.window.width;
+	const int src_width = w;
+
+	int clipped_width = dst_x2 - dst_x1 + 1;
+	int dst_next_row = dst_width - clipped_width;
+	int src_next_row = (flip_x && flip_y)   ? (src_width - clipped_width)
+					   : (flip_x || flip_y) ? (src_width + clipped_width)
+											: (src_width - clipped_width);
+
+	unsigned int *dst_pixel = dst + dst_y1 * dst_width + dst_x1;
+	unsigned int *src_pixel = src + src_y1 * src_width + src_x1;
+	unsigned int color_key = _pti.graphics.color_key;
+	for (int dst_y = dst_y1; dst_y <= dst_y2; dst_y++) {
+		for (int i = 0; i < clipped_width; i++) {
+			unsigned int src_color = *src_pixel;
+			unsigned int dst_color = *dst_pixel;
+			*dst_pixel = src_color != color_key ? src_color : dst_color;
+			src_pixel += ix;
+			dst_pixel++;
+		}
+		dst_pixel += dst_next_row;
+		src_pixel += src_next_row * iy;
+	}
+}
+
+/** celx  : The column location of the map cell in the upper left corner of the
+ * region to draw, where 0 is the leftmost column. */
+/** cely  : The row location of the map cell in the upper left corner of the
+ * region to draw, where 0 is the topmost row. */
+/** sx    : The x coordinate of the screen to place the upper left corner. */
+/** sy    : The y coordinate of the screen to place the upper left corner. */
+/** celw  : The number of map cells wide in the region to draw. */
+/** celh  : The number of map cells tall in the region to draw. */
+void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x,
+			 int y) {
+	const int tile_w = tileset->width;
+	const int tile_h = tileset->height;
+	int i, j, t;
+	for (j = 0; j < tilemap->height; j++) {
+		for (i = 0; i < tilemap->width; i++) {
+			t = *((int *) tilemap->tiles + i + j * tilemap->width);
+			if (t == 0) {
+				continue;
+			}
+			// FIXME: no magic numbers; 8 (or 16) is the grid_size in aseprite
+			pti_plot(tileset->pixels, t, x + (i * tile_h), y + (j * tile_w),
+					 tile_h, tile_w, false, false);
+		}
+	}
+}
+
+// NOTE: get font stuff from mac backup.
+// FIXME: get font stuff from mac backup.
+// TODO: get font stuff from mac backup.
+
+#endif// PTI_API_IMPL
