@@ -43,15 +43,23 @@ enum {
 };
 
 static struct {
-	sg_pass_action pass_action;
-	sg_pipeline pip;
-	sg_bindings bind;
-
 	struct {
 		unsigned int tick;              // the central game tick, this drives the whole game
 		unsigned long int laptime_store;// helper variable to measure frame duration
 		int tick_accum;                 // helper variable to decouple ticks from frame rate
 	} timing;
+
+	sg_pass_action pass_action;
+	struct {
+		sg_image render_target;
+	} offscreen;
+
+	struct {
+		sg_buffer quad_vbuf;
+		sg_pipeline pip;
+		sg_sampler sampler;
+	} display;
+
 } state;
 
 static void sokol_init_gfx(void) {
@@ -66,38 +74,10 @@ static void sokol_init_gfx(void) {
 			.logger.func = slog_func,
 	});
 
-	/* a vertex buffer */
-	const float vertices[] = {
-			/* positions */ /* texture coord */
-			-1.0f,
-			1.0f,
-			0.0f,
-			0.0f, /* top-left */
-			1.0f,
-			1.0f,
-			1.0f,
-			0.0f, /* top-right */
-			1.0f,
-			-1.0f,
-			1.0f,
-			1.0f, /* bottom-right */
-			-1.0f,
-			-1.0f,
-			0.0f,
-			1.0f, /* bottom-left */
-	};
-	state.bind.vertex_buffers[0] = sg_make_buffer(&(sg_buffer_desc){
-			.data = SG_RANGE(vertices),
-			.label = "quad-vertices",
-	});
-
-	/* an index buffer with 2 triangles */
-	const uint16_t indices[] = {0, 1, 2, 0, 2, 3};
-	state.bind.index_buffer = sg_make_buffer(&(sg_buffer_desc){
-			.type = SG_BUFFERTYPE_INDEXBUFFER,
-			.data = SG_RANGE(indices),
-			.label = "quad-indices",
-	});
+	// create a simple quad vertex buffer for rendering the offscreen render target to the display
+	float quad_verts[] = {0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f};
+	state.display.quad_vbuf = sg_make_buffer(&(sg_buffer_desc){
+			.data = SG_RANGE(quad_verts)});
 
 	const char *display_vs_src = 0;
 	const char *display_fs_src = 0;
@@ -120,7 +100,7 @@ static void sokol_init_gfx(void) {
 							 "  frag_color = texel;\n"
 							 "}\n";
 			break;
-		case SG_BACKEND_GLES2:
+		case SG_BACKEND_GLES3:
 			display_vs_src =
 					"attribute vec4 pos;\n"
 					"varying vec2 uv;\n"
@@ -143,50 +123,43 @@ static void sokol_init_gfx(void) {
 			break;
 	}
 
-	/* create shader */
-	sg_shader shader = sg_make_shader(&(sg_shader_desc){
-			.fs.images =
-					{
-							[0] = {.name = "tex", .image_type = SG_IMAGETYPE_2D},
-					},
-			.vs.source = display_vs_src,
-			.fs.source = display_fs_src,
-	});
+	state.display.pip = sg_make_pipeline(&(sg_pipeline_desc){
+			.shader = sg_make_shader(&(sg_shader_desc){
+					.attrs[0] = {.name = "pos", .sem_name = "POSITION"},
+					.vs.source = display_vs_src,
+					.fs = {
+							.images[0].used = true,
+							.samplers[0].used = true,
+							.image_sampler_pairs[0] = {.used = true, .image_slot = 0, .sampler_slot = 0, .glsl_name = "tex"},
+							.source = display_fs_src}}),
+			.layout.attrs[0].format = SG_VERTEXFORMAT_FLOAT2,
+			.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP});
+
 
 	const int screen_width = _pti.desc.window.width;
 	const int screen_height = _pti.desc.window.height;
-	state.bind.fs_images[0] = sg_make_image(&(sg_image_desc){
+	state.offscreen.render_target = sg_make_image(&(sg_image_desc){
+			.render_target = false,
 			.width = screen_width,
 			.height = screen_height,
 			.pixel_format = SG_PIXELFORMAT_RGBA8,
 			.usage = SG_USAGE_STREAM,
+	});
+
+	// create an sampler to render the offscreen render target with linear upscale filtering
+	state.display.sampler = sg_make_sampler(&(sg_sampler_desc){
 			.min_filter = SG_FILTER_NEAREST,
 			.mag_filter = SG_FILTER_NEAREST,
 			.wrap_u = SG_WRAP_CLAMP_TO_EDGE,
 			.wrap_v = SG_WRAP_CLAMP_TO_EDGE,
 	});
 
-	/* a pipeline state object */
-	state.pip = sg_make_pipeline(&(sg_pipeline_desc){
-			.layout =
-					{
-							.attrs =
-									{
-											[0].format = SG_VERTEXFORMAT_FLOAT2,
-											[1].format = SG_VERTEXFORMAT_FLOAT2,
-									},
-					},
-			.shader = shader,
-			.index_type = SG_INDEXTYPE_UINT16,
-			.label = "quad-pipeline",
-	});
-
 	/* default pass action */
 	state.pass_action = (sg_pass_action){
 			.colors[0] =
 					{
-							.action = SG_ACTION_CLEAR,
-							.value = {0.0f, 0.0f, 0.0f, 1.0f},
+							.load_action = SG_LOADACTION_CLEAR,
+							.clear_value = {0.0f, 0.0f, 0.0f, 1.0f},
 					},
 	};
 }
@@ -196,19 +169,26 @@ void sokol_gfx_draw(uint32_t *ptr) {
 	const int screen_width = _pti.desc.window.width;
 	const int screen_height = _pti.desc.window.height;
 	const size_t size = screen_width * screen_height * sizeof(uint32_t);
-	sg_update_image(state.bind.fs_images[0],
+	sg_update_image(state.offscreen.render_target,
 					&(sg_image_data){.subimage[0][0] = (sg_range){
 											 .ptr = ptr,
 											 .size = size,
 									 }});
 
-	/* graphics pipeline */
-	sg_begin_default_pass(&state.pass_action, sapp_width(), sapp_height());
-	sg_apply_pipeline(state.pip);
-	sg_apply_bindings(&state.bind);
+	// upscale-render the offscreen render target into the display framebuffer
+	const int canvas_width = sapp_width();
+	const int canvas_height = sapp_height();
+	sg_begin_default_pass(&state.pass_action, canvas_width, canvas_height);
+	sg_apply_pipeline(state.display.pip);
+	sg_apply_bindings(&(sg_bindings){
+			.vertex_buffers[0] = state.display.quad_vbuf,
+			.fs = {
+					.images[0] = state.offscreen.render_target,
+					.samplers[0] = state.display.sampler,
+			}});
 
 	/* flush */
-	sg_draw(0, 6, 1);
+	sg_draw(0, 4, 1);
 	sg_end_pass();
 	sg_commit();
 }
