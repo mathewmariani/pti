@@ -13,7 +13,10 @@
 #include <string.h>
 
 // FIXME: FPS scales don't work (PTI_FPS30, PTI_FPS60, PTI_FPS144)
-// TODO: implement pti_stat
+// FIXME: `pti_rect` and `pti_rectf` are two different filled rectangle algorithms.
+// FIXME: `pti_rect` should be a rectangle line.
+
+// TODO: implement `pti_stat`
 // TODO: convert int types into stdint types
 // TODO: implement bank switching
 // TODO: standardize memory layout
@@ -22,15 +25,18 @@
 // TODO: separate code to create cartridge
 //				- cartridge should provide a memory layout
 
+/*
 
-typedef struct {
-	/* header */
-} _pti_drawstate;
+>> memory layout
 
-typedef struct {
-	uint32_t *vram;
-} _pti_screen;
+0x0000 [...]
+0xFFFF [...]
 
+0x0000 : graphics state
+0x0000 : hardware state
+0x0000 : screen data
+
+*/
 
 #define _pti_kilobytes(n) (1024 * (n))
 #define _pti_megabytes(n) (1024 * _pti_kilobytes(n))
@@ -192,90 +198,65 @@ void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, 
 #include <sys/mman.h>
 #endif
 
-// TODO: random access memory
-//     : gfx state:
-//     : tileset: [...]
-//     : tilemap: [...]
-
-// TODO: read-only memory
-//     : header: [ tilemap: { width, height, tiles, ptr }]
-//     : header: [ tileset: { width, height, pixels, ptr }]
-//     : header: [ sprites: { width, height, pixels, ptr }]
-//     : chunk: tilemap
-//     : chunk: tileset
-//     : chunk: sprites
-
-// >>memory
-
 typedef struct {
-	unsigned char *begin;
-	unsigned char *end;
-	unsigned char *it;
-	unsigned char *cap;
+	uint8_t *begin;
+	uint8_t *end;
+	uint8_t *it;
+	uint8_t *cap;
 } _pti_memory_t;
 
 typedef struct {
-	unsigned char btn_state[PTI_BUTTON_COUNT];
-} _pti_input_t;
+	uint8_t *begin;
+	uint8_t *end;
+	uint8_t *it;
+	uint8_t *cap;
+} _pti_bank_t;
 
 typedef struct {
-	unsigned char reg[4];
-} _pti_random_t;
-
-// typedef struct pti_clip_t pti_clip_t;
-// typedef struct pti_camera_t pti_camera_t;
-
-// struct pti_clip_t {
-//   int x0, y0;
-//   int x1, y1;
-// };
-
-// struct pti_camera_t {
-//   int x, y;
-// };
-
-// typedef struct {
-//   pti_clip_t clip;
-//   pti_camera_t cam;
-//   uint16_t dither;
-//   uint32_t color_key;
-// } _pti_gfx_t;
-// static _pti_gfx_t _gfx_state;
+	int16_t clip_x0, clip_y0;
+	int16_t clip_x1, clip_y1;
+	int16_t cam_x, cam_y;
+	uint16_t dither;
+	uint32_t ckey;
+} _pti_drawstate_t;
 
 typedef struct {
-	int clip_x0;
-	int clip_y0;
-	int clip_x1;
-	int clip_y1;
-	float cam_x;
-	float cam_y;
-	uint16_t bstr;
-	uint32_t color_key;
-	// uint32_t *spritesheet;
-	// uint32_t *font_atlas;
-	// uint32_t *map;
+	uint8_t bank_id;
+	uint8_t btn_state[PTI_BUTTON_COUNT];
+	uint8_t rnd_reg[4];
+} _pti_hardwarestate_t;
+
+typedef struct {
+	uint16_t width;
+	uint16_t height;
 	uint32_t *vram;
+} _pti_screen_t;
 
-	/* userdefined */
-} _pti_graphics_t;
+typedef struct {
+	_pti_bank_t bank;
+	_pti_drawstate_t draw;
+	_pti_hardwarestate_t hardware;
+	_pti_screen_t screen;
+} _pti_vm_t;
+
+// <<< new stuff
 
 typedef struct {
 	pti_desc desc;
 	_pti_memory_t memory;
-	_pti_input_t input;
-	_pti_graphics_t graphics;
-	_pti_random_t random;
+	_pti_vm_t vm;
 } _pti_t;
 static _pti_t _pti;
 
 _PTI_PRIVATE void *_pti_virtual_reserve(void *ptr, const uint32_t size) {
 #if defined(_WIN32)
 	/* Reserves a range of the process's virtual offsetess space without
-     * allocating any actual physical storage in memory or in the paging file on
-     * disk. */
+	* allocating any actual physical storage in memory or in the paging file on
+  * disk. */
 	/* Disables all access to the committed region of pages. An attempt to read
-     * from, write to, or execute the committed region results in an access
-     * violation. */
+   * from, write to, or execute the committed region results in an access
+   * violation.
+	 */
 	ptr = VirtualAlloc(ptr, size, MEM_RESERVE, PAGE_NOACCESS);
 	PTI_ASSERT(ptr);
 #else
@@ -292,8 +273,7 @@ _PTI_PRIVATE void *_pti_virtual_reserve(void *ptr, const uint32_t size) {
 
 _PTI_PRIVATE void *_pti_virtual_commit(void *ptr, const uint32_t size) {
 #if defined(_WIN32)
-	/* Enables read-only or read/write access to the committed region of pages.
-     */
+	/* Enables read-only or read/write access to the committed region of pages. */
 	ptr = VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
 	PTI_ASSERT(ptr);
 #else
@@ -302,9 +282,8 @@ _PTI_PRIVATE void *_pti_virtual_commit(void *ptr, const uint32_t size) {
 	PTI_ASSERT(ptr != MAP_FAILED);
 	/* Requests an update and waits for it to complete. */
 	/* Asks to invalidate other mappings of the same file (so
-       that they can be updated with the fresh values just
-       written).
-    */
+   * that they can be updated with the fresh values just written).
+   */
 	msync(ptr, size, (MS_SYNC | MS_INVALIDATE));
 #endif
 	return ptr;
@@ -365,7 +344,7 @@ enum {
 };
 
 _PTI_PRIVATE inline bool _pti_check_input_flag(uint32_t idx, int flag) {
-	return _pti.input.btn_state[idx] & flag ? true : false;
+	return _pti.vm.hardware.btn_state[idx] & flag ? true : false;
 }
 
 bool pti_down(pti_button btn) {
@@ -398,60 +377,9 @@ _PTI_PRIVATE void _pti_scale_size_by_flags(int *w, int *h, int flags) {
 	}
 }
 
-_PTI_PRIVATE void _pti_memory_init(const pti_desc *desc) {
-	const size_t size = desc->memory_size;
-
-	/* allocate memory */
-	void *ptr = _pti_virtual_reserve(NULL, size);
-
-	_pti_memory_t *memory = &_pti.memory;
-	memory->begin = ptr;
-	memory->it = ptr;
-	memory->end = ptr;
-	memory->cap = ptr + size;
-}
-
-// #define _PTI_ALLOCATE_BITMAP(loc, bitmap)                                      \
-//   _pti.graphics.vram = _pti_alloc(&_pti.memory, bitmap.width * bitmap.height * \
-//                                                     sizeof(uint32_t));
-
-//   _PTI_ALLOCATE_BITMAP(_pti.graphics.vram, desc->window);
-//   _PTI_ALLOCATE_BITMAP(_pti.graphics.spritesheet, desc->spritesheet);
-//   _PTI_ALLOCATE_BITMAP(_pti.graphics.font_atlas, desc->font_atlas);
-
-_PTI_PRIVATE void _pti_graphics_init(const pti_desc *desc) {
-
-	/* allocate window buffer */
-	const int window_width = desc->window.width;
-	const int window_height = desc->window.height;
-	const size_t window_size =
-			window_width * window_height * sizeof(uint32_t);
-	_pti.graphics.vram = _pti_alloc(window_size);
-
-	//   /* allocate spritesheet buffer */
-	//   int spritesheet_width = desc->spritesheet.width;
-	//   int spritesheet_height = desc->spritesheet.height;
-	//   const size_t spriteheet_size =
-	//       spritesheet_width * spritesheet_height * sizeof(uint32_t);
-	//   _pti.graphics.spritesheet = _pti_alloc(spriteheet_size);
-
-	//   /* allocate font_atlas buffer */
-	//   int fontatlas_width = desc->font_atlas.width;
-	//   int fontatlas_height = desc->font_atlas.height;
-	//   const size_t fontatlas_size =
-	//       fontatlas_width * fontatlas_height * sizeof(uint32_t);
-	//   _pti.graphics.font_atlas = _pti_alloc(fontatlas_size);
-
-	//   /* allocate map buffer */
-	//   int map_width = desc->map.width;
-	//   int map_height = desc->map.height;
-	//   const size_t map_size = map_width * map_height * sizeof(uint32_t);
-	//   _pti.graphics.map = _pti_alloc(map_size);
-}
-
 _PTI_PRIVATE void _pti_random_init(const pti_desc *desc) {
 	for (int i = 0; i < 4; ++i) {
-		_pti.random.reg[i] = 0x0;
+		_pti.vm.hardware.rnd_reg[i] = 0x0;
 	}
 }
 
@@ -461,9 +389,29 @@ void pti_init(const pti_desc *desc) {
 	_pti.desc = *desc;
 
 	/* allocate memory */
-	_pti_memory_init(desc);
-	_pti_graphics_init(desc);
-	_pti_random_init(desc);
+	const size_t size = desc->memory_size;
+	void *ptr = _pti_virtual_reserve(NULL, size);
+
+	_pti.memory = (_pti_memory_t){
+			.begin = ptr,
+			.it = ptr,
+			.end = ptr,
+			.cap = ptr + size,
+	};
+
+	/* allocate virtual machine */
+	_pti.vm = *(_pti_vm_t *) _pti_alloc(sizeof(_pti_vm_t));
+
+	/* allocate screen */
+	const int window_w = desc->window.width;
+	const int window_h = desc->window.height;
+	const int screen_size = window_w * window_h * sizeof(uint32_t);
+
+	_pti.vm.screen = (_pti_screen_t){
+			.width = window_w,
+			.height = window_h,
+			.vram = _pti_alloc(screen_size),
+	};
 }
 
 // >>memory api
@@ -527,7 +475,7 @@ void pti_poke4(const uint32_t offset, const uint32_t index, const uint32_t value
 }
 
 _PTI_PRIVATE void _pti_random_tick(int i) {
-	unsigned char *reg = &_pti.random.reg[0];
+	uint8_t *reg = &_pti.vm.hardware.rnd_reg[0];
 	*(reg + 0) = 5 * *(reg + 0) + 1;
 	*(reg + 1) = ((*(reg + 1) & 0x80) == (*(reg + 1) & 0x10))
 						 ? 2 * *(reg + 1) + 1
@@ -539,7 +487,7 @@ uint16_t pti_prand(void) {
 	for (int i = 1; i >= 0; --i) {
 		_pti_random_tick(i);
 	}
-	unsigned char *reg = &_pti.random.reg[0];
+	uint8_t *reg = &_pti.vm.hardware.rnd_reg[0];
 	return ((uint16_t) * (reg + 2) << 0x8) | *(reg + 3);
 }
 
@@ -556,43 +504,43 @@ short pti_fget(const pti_tilemap_t *tilemap, int x, int y) {
 }
 
 _PTI_PRIVATE inline bool _pti_get_dither_bit(const int x, const int y) {
-	const unsigned char i = 0xf - ((x & 0x3) + 0x4 * (y & 0x3));
-	return ((_pti.graphics.bstr & (1 << i)) >> i) != 0;
+	const uint8_t i = 0xf - ((x & 0x3) + 0x4 * (y & 0x3));
+	return ((_pti.vm.draw.dither & (1 << i)) >> i) != 0;
 }
 
 _PTI_PRIVATE inline void _pti_transform(int *x, int *y) {
-	*x -= _pti.graphics.cam_x;
-	*y -= _pti.graphics.cam_y;
+	*x -= _pti.vm.draw.cam_x;
+	*y -= _pti.vm.draw.cam_y;
 }
 
 _PTI_PRIVATE void _pti_set_pixel(int x, int y, uint64_t c) {
-	const int clip_x0 = _pti.graphics.clip_x0;
-	const int clip_y0 = _pti.graphics.clip_y0;
-	const int clip_x1 = _pti.graphics.clip_x1;
-	const int clip_y1 = _pti.graphics.clip_y1;
+	const int clip_x0 = _pti.vm.draw.clip_x0;
+	const int clip_y0 = _pti.vm.draw.clip_y0;
+	const int clip_x1 = _pti.vm.draw.clip_x1;
+	const int clip_y1 = _pti.vm.draw.clip_y1;
 
 	if (x < clip_x0 || x >= clip_x1 || y < clip_y0 || y >= clip_y1) {
 		return;
 	}
 
-	uint32_t *vram = _pti.graphics.vram;
-	const int screen_width = _pti.desc.window.width;
-	*(vram + (x + y * screen_width)) = _pti_get_dither_bit(x, y)
-											   ? (c >> 32) & 0xffffffff
-											   : (c >> 0) & 0xffffffff;
+	uint32_t *vram = _pti.vm.screen.vram;
+	const int screen_w = _pti.vm.screen.width;
+	*(vram + (x + y * screen_w)) = _pti_get_dither_bit(x, y)
+										   ? (c >> 32) & 0xffffffff
+										   : (c >> 0) & 0xffffffff;
 }
 
 void pti_camera(int x, int y) {
-	_pti.graphics.cam_x = x;
-	_pti.graphics.cam_y = y;
+	_pti.vm.draw.cam_x = x;
+	_pti.vm.draw.cam_y = y;
 }
 
 void pti_get_camera(int *x, int *y) {
 	if (x) {
-		*x = _pti.graphics.cam_x;
+		*x = _pti.vm.draw.cam_x;
 	}
 	if (y) {
-		*y = _pti.graphics.cam_y;
+		*y = _pti.vm.draw.cam_y;
 	}
 }
 
@@ -600,22 +548,22 @@ void pti_cls(const uint32_t color) {
 	const int width = _pti.desc.window.width;
 	const int height = _pti.desc.window.height;
 	const size_t size = width * height * sizeof(uint32_t);
-	pti_memset(_pti.graphics.vram, color, size);
+	pti_memset(_pti.vm.screen.vram, color, size);
 }
 
 void pti_colorkey(const uint32_t color) {
-	_pti.graphics.color_key = color;
+	_pti.vm.draw.ckey = color;
 }
 
 void pti_dither(const uint16_t bstr) {
-	_pti.graphics.bstr = bstr;
+	_pti.vm.draw.dither = bstr;
 }
 
 void pti_clip(const int x0, const int y0, const int x1, const int y1) {
-	_pti.graphics.clip_x0 = x0;
-	_pti.graphics.clip_y0 = y0;
-	_pti.graphics.clip_x1 = x1;
-	_pti.graphics.clip_y1 = y1;
+	_pti.vm.draw.clip_x0 = x0;
+	_pti.vm.draw.clip_y0 = y0;
+	_pti.vm.draw.clip_x1 = x1;
+	_pti.vm.draw.clip_y1 = y1;
 }
 
 void pti_pset(const int x, const int y, uint64_t color) {
@@ -660,10 +608,10 @@ void pti_rect(int x, int y, int w, int h, uint64_t color) {
 
 	_pti_transform(&x, &y);
 
-	l = _pti_max(_pti.graphics.clip_x0, x);
-	t = _pti_max(_pti.graphics.clip_y0, y);
-	r = _pti_min(_pti.graphics.clip_x1, x + w);
-	b = _pti_min(_pti.graphics.clip_y1, y + h);
+	l = _pti_max(_pti.vm.draw.clip_x0, x);
+	t = _pti_max(_pti.vm.draw.clip_y0, y);
+	r = _pti_min(_pti.vm.draw.clip_x1, x + w);
+	b = _pti_min(_pti.vm.draw.clip_y1, y + h);
 
 	for (py = t; py < b; py++) {
 		for (px = l; px < r; px++) {
@@ -701,10 +649,10 @@ void pti_plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x, bool
 	int src_y1 = src_y;
 
 	// clip:
-	const int clip_x0 = _pti.graphics.clip_x0;
-	const int clip_y0 = _pti.graphics.clip_y0;
-	const int clip_x1 = _pti.graphics.clip_x1;
-	const int clip_y1 = _pti.graphics.clip_y1;
+	const int clip_x0 = _pti.vm.draw.clip_x0;
+	const int clip_y0 = _pti.vm.draw.clip_y0;
+	const int clip_x1 = _pti.vm.draw.clip_x1;
+	const int clip_y1 = _pti.vm.draw.clip_y1;
 
 	if (dst_x1 >= clip_x1 || dst_x2 < clip_x0) {
 		return;
@@ -740,7 +688,7 @@ void pti_plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x, bool
 
 	const size_t size = w * h * sizeof(int);
 	uint32_t *src = pixels + size * n;
-	uint32_t *dst = _pti.graphics.vram;
+	uint32_t *dst = _pti.vm.screen.vram;
 
 	const int dst_width = _pti.desc.window.width;
 	const int src_width = w;
@@ -755,7 +703,7 @@ void pti_plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x, bool
 
 	uint32_t *dst_pixel = dst + dst_y1 * dst_width + dst_x1;
 	uint32_t *src_pixel = src + src_y1 * src_width + src_x1;
-	uint32_t color_key = _pti.graphics.color_key;
+	uint32_t color_key = _pti.vm.draw.ckey;
 	for (int dst_y = dst_y1; dst_y <= dst_y2; dst_y++) {
 		for (int i = 0; i < clipped_width; i++) {
 			uint32_t src_color = *src_pixel;
@@ -769,10 +717,9 @@ void pti_plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x, bool
 	}
 }
 
-/** celx  : The column location of the map cell in the upper left corner of the
- * region to draw, where 0 is the leftmost column. */
-/** cely  : The row location of the map cell in the upper left corner of the
- * region to draw, where 0 is the topmost row. */
+/* FIXME: implement full functionality. */
+/** celx  : The column location of the map cell in the upper left corner of the region to draw, where 0 is the leftmost column. */
+/** cely  : The row location of the map cell in the upper left corner of the region to draw, where 0 is the topmost row. */
 /** sx    : The x coordinate of the screen to place the upper left corner. */
 /** sy    : The y coordinate of the screen to place the upper left corner. */
 /** celw  : The number of map cells wide in the region to draw. */

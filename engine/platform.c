@@ -77,7 +77,8 @@ static void sokol_init_gfx(void) {
 	// create a simple quad vertex buffer for rendering the offscreen render target to the display
 	float quad_verts[] = {0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f};
 	state.display.quad_vbuf = sg_make_buffer(&(sg_buffer_desc){
-			.data = SG_RANGE(quad_verts)});
+			.data = SG_RANGE(quad_verts),
+	});
 
 	const char *display_vs_src = 0;
 	const char *display_fs_src = 0;
@@ -91,14 +92,15 @@ static void sokol_init_gfx(void) {
 					"  gl_Position = vec4((pos.xy - 0.5) * 2.0, 0.0, 1.0);\n"
 					"  uv = vec2(pos.x, 1.0 - pos.y);\n"
 					"}\n";
-			display_fs_src = "#version 330\n"
-							 "uniform sampler2D tex;\n"
-							 "in vec2 uv;\n"
-							 "out vec4 frag_color;\n"
-							 "void main() {\n"
-							 "  vec4 texel = texture(tex, uv);\n"
-							 "  frag_color = texel;\n"
-							 "}\n";
+			display_fs_src =
+					"#version 330\n"
+					"uniform sampler2D tex;\n"
+					"in vec2 uv;\n"
+					"out vec4 frag_color;\n"
+					"void main() {\n"
+					"  vec4 texel = texture(tex, uv);\n"
+					"  frag_color = texel;\n"
+					"}\n";
 			break;
 		case SG_BACKEND_GLES3:
 			display_vs_src =
@@ -131,9 +133,12 @@ static void sokol_init_gfx(void) {
 							.images[0].used = true,
 							.samplers[0].used = true,
 							.image_sampler_pairs[0] = {.used = true, .image_slot = 0, .sampler_slot = 0, .glsl_name = "tex"},
-							.source = display_fs_src}}),
+							.source = display_fs_src,
+					},
+			}),
 			.layout.attrs[0].format = SG_VERTEXFORMAT_FLOAT2,
-			.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP});
+			.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP,
+	});
 
 
 	const int screen_width = _pti.desc.window.width;
@@ -166,14 +171,16 @@ static void sokol_init_gfx(void) {
 
 void sokol_gfx_draw(uint32_t *ptr) {
 	/* update image data */
-	const int screen_width = _pti.desc.window.width;
-	const int screen_height = _pti.desc.window.height;
-	const size_t size = screen_width * screen_height * sizeof(uint32_t);
+	const int screen_w = _pti.vm.screen.width;
+	const int screen_h = _pti.vm.screen.height;
+	const size_t size = screen_w * screen_h * sizeof(uint32_t);
 	sg_update_image(state.offscreen.render_target,
-					&(sg_image_data){.subimage[0][0] = (sg_range){
-											 .ptr = ptr,
-											 .size = size,
-									 }});
+					&(sg_image_data){
+							.subimage[0][0] = (sg_range){
+									.ptr = ptr,
+									.size = size,
+							},
+					});
 
 	// upscale-render the offscreen render target into the display framebuffer
 	const int canvas_width = sapp_width();
@@ -185,7 +192,8 @@ void sokol_gfx_draw(uint32_t *ptr) {
 			.fs = {
 					.images[0] = state.offscreen.render_target,
 					.samplers[0] = state.display.sampler,
-			}});
+			},
+	});
 
 	/* flush */
 	sg_draw(0, 4, 1);
@@ -226,25 +234,25 @@ static void frame(void) {
 		_pti.desc.frame_cb();
 
 		for (int i = 0; i < PTI_BUTTON_COUNT; i++) {
-			_pti.input.btn_state[i] &= ~(_PTI_KEY_PRESSED | _PTI_KEY_RELEASED);
+			_pti.vm.hardware.btn_state[i] &= ~(_PTI_KEY_PRESSED | _PTI_KEY_RELEASED);
 		}
 	}
 
 	/* draw graphics */
-	sokol_gfx_draw(_pti.graphics.vram);
+	sokol_gfx_draw(_pti.vm.screen.vram);
 }
 
 static void input(const sapp_event *ev) {
-#define BTN_DOWN(pti_key, sapp_key, sapp_alt)                                 \
-	if (ev->key_code == sapp_key || ev->key_code == sapp_alt) {               \
-		_pti.input.btn_state[pti_key] |= (_PTI_KEY_STATE | _PTI_KEY_PRESSED); \
-		_pti.input.btn_state[pti_key] &= ~_PTI_KEY_RELEASED;                  \
+#define BTN_DOWN(pti_key, sapp_key, sapp_alt)                                       \
+	if (ev->key_code == sapp_key || ev->key_code == sapp_alt) {                     \
+		_pti.vm.hardware.btn_state[pti_key] |= (_PTI_KEY_STATE | _PTI_KEY_PRESSED); \
+		_pti.vm.hardware.btn_state[pti_key] &= ~_PTI_KEY_RELEASED;                  \
 	}
 
-#define BTN_UP(pti_key, sapp_key, sapp_alt)                                    \
-	if (ev->key_code == sapp_key || ev->key_code == sapp_alt) {                \
-		_pti.input.btn_state[pti_key] &= ~(_PTI_KEY_STATE | _PTI_KEY_PRESSED); \
-		_pti.input.btn_state[pti_key] |= _PTI_KEY_RELEASED;                    \
+#define BTN_UP(pti_key, sapp_key, sapp_alt)                                          \
+	if (ev->key_code == sapp_key || ev->key_code == sapp_alt) {                      \
+		_pti.vm.hardware.btn_state[pti_key] &= ~(_PTI_KEY_STATE | _PTI_KEY_PRESSED); \
+		_pti.vm.hardware.btn_state[pti_key] |= _PTI_KEY_RELEASED;                    \
 	}
 
 	switch (ev->type) {
