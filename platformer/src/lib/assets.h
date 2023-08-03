@@ -32,6 +32,9 @@ namespace assets {
 	//   void *tiles;
 	// };
 
+	void init();
+	void reload();
+
 	const sprite_t *sprite(const std::string &path);
 	tileset_t *tileset(const std::string &path);
 	tilemap_t *tilemap(const std::string &path);

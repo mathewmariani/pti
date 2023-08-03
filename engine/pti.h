@@ -12,31 +12,14 @@
 #include <stdint.h>
 #include <string.h>
 
+// >>>
 // FIXME: FPS scales don't work (PTI_FPS30, PTI_FPS60, PTI_FPS144)
 // FIXME: `pti_rect` and `pti_rectf` are two different filled rectangle algorithms.
 // FIXME: `pti_rect` should be a rectangle line.
-
 // TODO: implement `pti_stat`
 // TODO: convert int types into stdint types
 // TODO: implement bank switching
-// TODO: standardize memory layout
-// TODO: separate code to create virtual machine
-//				- virtual machine should provide: graphics state, hardware state, persistent memory, and screen data
-// TODO: separate code to create cartridge
-//				- cartridge should provide a memory layout
-
-/*
-
->> memory layout
-
-0x0000 [...]
-0xFFFF [...]
-
-0x0000 : graphics state
-0x0000 : hardware state
-0x0000 : screen data
-
-*/
+// <<<
 
 #define _pti_kilobytes(n) (1024 * (n))
 #define _pti_megabytes(n) (1024 * _pti_kilobytes(n))
@@ -92,10 +75,16 @@ typedef struct pti_window {
 	int flags;
 } pti_window;
 
+typedef struct pti_bitmap_t {
+	int width;
+	int height;
+	void *pixels;
+} pti_bitmap_t;
+
 typedef struct pti_tileset_t {
 	int width;
 	int height;
-	int tiles;
+	int tile_count;
 	void *pixels;
 } pti_tileset_t;
 
@@ -104,6 +93,20 @@ typedef struct pti_tilemap_t {
 	int height;
 	void *tiles;
 } pti_tilemap_t;
+
+// typedef struct {
+// 	int bitmap_count;
+// 	pti_bitmap_t *bitmaps;
+// 	pti_tileset_t tileset;
+// 	pti_tilemap_t tilemap;
+// } pti_bank_t;
+
+typedef struct {
+	uint8_t *begin;
+	uint8_t *end;
+	uint8_t *it;
+	uint8_t *cap;
+} pti_bank_t;
 
 typedef struct pti_desc {
 	void (*init_cb)(void);
@@ -125,10 +128,11 @@ void pti_init(const pti_desc *desc);
 void *_pti_alloc(const uint32_t size);
 
 //>> virutal machine api
-
+void pti_bank_init(pti_bank_t *bank, uint32_t capacity);
+void *pti_bank_push(pti_bank_t *bank, uint32_t size);
 
 //>> memory api
-void pti_reload(void *dst, const void *src, size_t len);
+void pti_reload(const pti_bank_t *bank);
 void pti_cstore(void *dst, const void *src, size_t len);
 void pti_memcpy(void *dst, const void *src, size_t len);
 void pti_memset(void *dst, const int value, size_t len);
@@ -206,13 +210,6 @@ typedef struct {
 } _pti_memory_t;
 
 typedef struct {
-	uint8_t *begin;
-	uint8_t *end;
-	uint8_t *it;
-	uint8_t *cap;
-} _pti_bank_t;
-
-typedef struct {
 	int16_t clip_x0, clip_y0;
 	int16_t clip_x1, clip_y1;
 	int16_t cam_x, cam_y;
@@ -233,7 +230,6 @@ typedef struct {
 } _pti_screen_t;
 
 typedef struct {
-	_pti_bank_t bank;
 	_pti_drawstate_t draw;
 	_pti_hardwarestate_t hardware;
 	_pti_screen_t screen;
@@ -244,6 +240,7 @@ typedef struct {
 typedef struct {
 	pti_desc desc;
 	_pti_memory_t memory;
+	void *bank;
 	_pti_vm_t vm;
 } _pti_t;
 static _pti_t _pti;
@@ -264,7 +261,7 @@ _PTI_PRIVATE void *_pti_virtual_reserve(void *ptr, const uint32_t size) {
 	/* The mapping is not backed by any file; */
 	/* its contents are initialized to zero. */
 	uint16_t flags = (MAP_PRIVATE | MAP_ANON);
-	ptr = mmap((void *) ptr, size, PROT_NONE, flags, -1, 0);
+	ptr = mmap((void *) ptr, size, (PROT_READ | PROT_WRITE), flags, -1, 0);
 	PTI_ASSERT(ptr != MAP_FAILED);
 	msync(ptr, size, (MS_SYNC | MS_INVALIDATE));
 #endif
@@ -315,7 +312,6 @@ _PTI_PRIVATE void _pti_virtual_free(void *ptr, const uint32_t size) {
 #endif
 }
 
-// _PTI_PRIVATE void *_pti_alloc(_pti_memory_t *bank, const uint32_t size) {
 void *_pti_alloc(const uint32_t size) {
 	void *ptr;
 	_pti_memory_t *bank = &_pti.memory;
@@ -400,6 +396,7 @@ void pti_init(const pti_desc *desc) {
 	};
 
 	/* allocate virtual machine */
+	_pti.bank = _pti_alloc(_pti_kilobytes(512));
 	_pti.vm = *(_pti_vm_t *) _pti_alloc(sizeof(_pti_vm_t));
 
 	/* allocate screen */
@@ -416,9 +413,32 @@ void pti_init(const pti_desc *desc) {
 
 // >>memory api
 
-void pti_reload(void *dst, const void *src, size_t len) {
+void pti_bank_init(pti_bank_t *bank, uint32_t capacity) {
+	/* allocate memory */
+	void *ptr = _pti_virtual_reserve(NULL, capacity);
+	bank->begin = ptr;
+	bank->it = ptr;
+	bank->end = ptr;
+	bank->cap = ptr + capacity;
+}
+
+void *pti_bank_push(pti_bank_t *bank, uint32_t size) {
+	void *ptr;
+	if ((bank->end - bank->it) < size) {
+		PTI_ASSERT((bank->cap - bank->it) >= size);
+		uint32_t additional_size = size - (uint32_t) (bank->end - bank->it);
+		additional_size = _pti_min((bank->cap - bank->it), _pti_align_to(additional_size, 4096));
+		ptr = _pti_virtual_commit(bank->end, additional_size);
+		bank->end += additional_size;
+	}
+	ptr = bank->it;
+	bank->it += size;
+	return ptr;
+}
+
+void pti_reload(const pti_bank_t *bank) {
 	/* TODO: implementation. */
-	pti_memcpy(dst, src, len);
+	pti_memcpy(_pti.bank, bank->begin, (uint32_t) (bank->cap - bank->begin));
 }
 
 void pti_cstore(void *dst, const void *src, size_t len) {
@@ -514,10 +534,10 @@ _PTI_PRIVATE inline void _pti_transform(int *x, int *y) {
 }
 
 _PTI_PRIVATE void _pti_set_pixel(int x, int y, uint64_t c) {
-	const int clip_x0 = _pti.vm.draw.clip_x0;
-	const int clip_y0 = _pti.vm.draw.clip_y0;
-	const int clip_x1 = _pti.vm.draw.clip_x1;
-	const int clip_y1 = _pti.vm.draw.clip_y1;
+	const int16_t clip_x0 = _pti.vm.draw.clip_x0;
+	const int16_t clip_y0 = _pti.vm.draw.clip_y0;
+	const int16_t clip_x1 = _pti.vm.draw.clip_x1;
+	const int16_t clip_y1 = _pti.vm.draw.clip_y1;
 
 	if (x < clip_x0 || x >= clip_x1 || y < clip_y0 || y >= clip_y1) {
 		return;
@@ -525,9 +545,7 @@ _PTI_PRIVATE void _pti_set_pixel(int x, int y, uint64_t c) {
 
 	uint32_t *vram = _pti.vm.screen.vram;
 	const int screen_w = _pti.vm.screen.width;
-	*(vram + (x + y * screen_w)) = _pti_get_dither_bit(x, y)
-										   ? (c >> 32) & 0xffffffff
-										   : (c >> 0) & 0xffffffff;
+	*(vram + (x + y * screen_w)) = _pti_get_dither_bit(x, y) ? (c >> 32) & 0xffffffff : (c >> 0) & 0xffffffff;
 }
 
 void pti_camera(int x, int y) {
@@ -545,9 +563,9 @@ void pti_get_camera(int *x, int *y) {
 }
 
 void pti_cls(const uint32_t color) {
-	const int width = _pti.desc.window.width;
-	const int height = _pti.desc.window.height;
-	const size_t size = width * height * sizeof(uint32_t);
+	const int screen_w = _pti.vm.screen.width;
+	const int screen_h = _pti.vm.screen.height;
+	const size_t size = screen_w * screen_h * sizeof(uint32_t);
 	pti_memset(_pti.vm.screen.vram, color, size);
 }
 
@@ -649,10 +667,10 @@ void pti_plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x, bool
 	int src_y1 = src_y;
 
 	// clip:
-	const int clip_x0 = _pti.vm.draw.clip_x0;
-	const int clip_y0 = _pti.vm.draw.clip_y0;
-	const int clip_x1 = _pti.vm.draw.clip_x1;
-	const int clip_y1 = _pti.vm.draw.clip_y1;
+	const int16_t clip_x0 = _pti.vm.draw.clip_x0;
+	const int16_t clip_y0 = _pti.vm.draw.clip_y0;
+	const int16_t clip_x1 = _pti.vm.draw.clip_x1;
+	const int16_t clip_y1 = _pti.vm.draw.clip_y1;
 
 	if (dst_x1 >= clip_x1 || dst_x2 < clip_x0) {
 		return;

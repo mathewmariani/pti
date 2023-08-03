@@ -24,6 +24,8 @@ namespace game {
 #define YPOS(y) (y * entity::EN_GRID_SIZE)
 
 void game::startup() {
+	assets::init();
+
 	_tileset = assets::tileset("tilemap.ase");
 	_tilemap = assets::tilemap("tilemap.ase");
 
@@ -31,6 +33,8 @@ void game::startup() {
 }
 
 void game::load() {
+
+	assets::reload();
 
 	entity::clear();
 	int i, j, t;

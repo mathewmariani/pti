@@ -13,12 +13,22 @@ namespace assets {
 	static std::unordered_map<std::string, tileset_t> _tileset_cache;
 	static std::unordered_map<std::string, tilemap_t> _tilemap_cache;
 
+	pti_bank_t bank;
+
+	void init() {
+		pti_bank_init(&bank, _pti_kilobytes(256));
+	}
+
+	void reload() {
+		pti_reload(&bank);
+	}
+
 	sprite_t __create_sprite(const std::string &path) {
 		ase_t *ase = cute_aseprite_load_from_file(path.c_str(), NULL);
 
 		/* allocate sprite data */
 		const size_t size = ase->w * ase->h * sizeof(ase_color_t);
-		char *pixels = (char *) _pti_alloc(size * ase->frame_count);
+		char *pixels = (char *) pti_bank_push(&bank, size * ase->frame_count);
 
 		sprite_t sprite = {
 				.width = ase->w,
@@ -45,7 +55,7 @@ namespace assets {
 		ase_tileset_t tileset = ase->tileset;
 
 		const size_t size = (tileset.tile_w * (tileset.tile_h * tileset.tile_count)) * sizeof(ase_color_t);
-		void *pixels = _pti_alloc(size);
+		void *pixels = pti_bank_push(&bank, size);
 
 		memcpy(pixels, tileset.pixels, size);
 
@@ -55,7 +65,7 @@ namespace assets {
 		return (tileset_t){
 				.width = tileset.tile_w,
 				.height = tileset.tile_h,
-				.tiles = tileset.tile_count,
+				.tile_count = tileset.tile_count,
 				.pixels = pixels,
 		};
 	}
@@ -70,7 +80,7 @@ namespace assets {
 				ase_cel_t *cel = frame->cels + j;
 				if (cel->is_tilemap) {
 					const size_t size = cel->w * cel->h * sizeof(int);
-					void *tiles = _pti_alloc(size);
+					void *tiles = pti_bank_push(&bank, size);
 					memcpy(tiles, cel->tiles, size);
 					tilemap = (tilemap_t){
 							.width = cel->w,
