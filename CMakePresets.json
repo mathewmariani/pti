@@ -7,134 +7,43 @@
     },
     "configurePresets": [
         {
-            "name": "macos-debug",
-            "displayName": "Desktop debug",
-            "description": "",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
-            },
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Darwin"
-            }
+            "name": "desktop",
+            "displayName": "Desktop",
+            "generator": "Ninja Multi-Config",
+            "binaryDir": "build/desktop"
         },
         {
-            "name": "macos-release",
-            "displayName": "Desktop release",
-            "description": "",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
-            },
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Darwin"
-            }
+            "name": "web",
+            "displayName": "Web",
+            "generator": "Ninja Multi-Config",
+            "binaryDir": "build/web",
+            "toolchainFile": "emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "desktop-debug",
+            "displayName": "Desktop Debug",
+            "configurePreset": "desktop",
+            "configuration": "Debug"
         },
         {
-            "name": "macos-bundle",
-            "displayName": "macOS Bundle",
-            "description": "",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "PTI_BUILD_BUNDLE": "ON"
-            },
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Darwin"
-            }
-        },
-        {
-            "name": "windows-debug",
-            "displayName": "Desktop debug",
-            "description": "",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
-            },
-            "toolchainFile": "${sourceDir}/tools/desktop/toolchain-clang-mingw.cmake",
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Windows"
-            }
-        },
-        {
-            "name": "windows-release",
-            "displayName": "Desktop release",
-            "description": "",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
-            },
-            "toolchainFile": "${sourceDir}/tools/desktop/toolchain-clang-mingw.cmake",
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Windows"
-            }
-        },
-        {
-            "name": "linux-debug",
-            "displayName": "Desktop debug",
-            "description": "",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
-            },
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Linux"
-            }
-        },
-        {
-            "name": "linux-release",
-            "displayName": "Desktop release",
-            "description": "",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
-            },
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Linux"
-            }
+            "name": "desktop-release",
+            "displayName": "Desktop Release",
+            "configurePreset": "desktop",
+            "configuration": "Release"
         },
         {
             "name": "web-debug",
-            "displayName": "Web debug",
-            "description": "",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/web/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
-            }
+            "displayName": "Web Debug",
+            "configurePreset": "web",
+            "configuration": "Debug"
         },
         {
             "name": "web-release",
-            "displayName": "Web release",
-            "description": "",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/${presetName}",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/web/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
-            }
+            "displayName": "Web Release",
+            "configurePreset": "web",
+            "configuration": "Release"
         }
     ]
 }
