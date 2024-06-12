@@ -396,7 +396,7 @@ void pti_init(const pti_desc *desc) {
 	};
 
 	/* allocate virtual machine */
-	_pti.bank = _pti__alloc(_pti_kilobytes(512));
+	_pti.bank = _pti__alloc(_pti_kilobytes(0));
 	_pti.vm = *(_pti__vm_t *) _pti__alloc(sizeof(_pti__vm_t));
 
 	/* allocate screen */
@@ -438,12 +438,12 @@ void *pti_bank_push(pti_bank_t *bank, uint32_t size) {
 
 void pti_reload(const pti_bank_t *bank) {
 	/* TODO: implementation. */
-	pti_memcpy(_pti.bank, bank->begin, (uint32_t) (bank->cap - bank->begin));
+	// pti_memcpy(_pti.bank, bank->begin, (uint32_t) (bank->cap - bank->begin));
 }
 
 void pti_cstore(void *dst, const void *src, size_t len) {
 	/* TODO: implementation. */
-	pti_memcpy(dst, src, len);
+	// pti_memcpy(dst, src, len);
 }
 
 void pti_memcpy(void *dst, const void *src, size_t len) {
