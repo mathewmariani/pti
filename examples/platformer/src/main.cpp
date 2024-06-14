@@ -1,13 +1,8 @@
 #include "pti.h"
 
-// forward declarations
-static void init(void);
-static void cleanup(void);
-static void frame(void);
-
 namespace {
 	// sweetie16 palette
-	constexpr unsigned int pal[] = {
+	constexpr uint32_t pal[] = {
 			0xff1a1c2c,
 			0xff5d275d,
 			0xffb13e53,
@@ -27,22 +22,6 @@ namespace {
 	};
 }// namespace
 
-pti_desc pti_main(int argc, char *argv[]) {
-	return (pti_desc){
-			.init_cb = init,
-			.frame_cb = frame,
-			.cleanup_cb = cleanup,
-			.memory_size = _pti_kilobytes(128), /* 256KB */
-			.window =
-					(pti_window){
-							.name = "pti - platformer",
-							.width = 240,
-							.height = 135,
-							.flags = PTI_SCALE2X,
-					},
-	};
-}
-
 #include "game.h"
 
 static void init(void) {
@@ -60,4 +39,20 @@ static void cleanup(void) {
 static void frame(void) {
 	game::update();
 	game::render();
+}
+
+pti_desc pti_main(int argc, char *argv[]) {
+	return (pti_desc){
+			.init_cb = init,
+			.frame_cb = frame,
+			.cleanup_cb = cleanup,
+			.memory_size = _pti_kilobytes(128), /* 256KB */
+			.window =
+					(pti_window){
+							.name = "pti - platformer",
+							.width = 240,
+							.height = 135,
+							.flags = PTI_SCALE2X,
+					},
+	};
 }

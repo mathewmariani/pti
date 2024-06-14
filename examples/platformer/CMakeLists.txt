@@ -37,14 +37,3 @@ endif()
 
 target_include_directories(engine PUBLIC include)
 target_link_libraries(platformer engine)
-
-if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
-    set(CMAKE_EXECUTABLE_SUFFIX ".html")
-    target_link_options(platformer PUBLIC --shell-file ../../sokol/shell.html)
-    target_link_options(platformer PUBLIC -sNO_FILESYSTEM=1 -sASSERTIONS=0 -sMALLOC=emmalloc --closure=1)
-endif()
-
-# explicitly strip dead code
-if (CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
-    target_link_options(platformer PRIVATE LINKER:-dead_strip)
-endif()
