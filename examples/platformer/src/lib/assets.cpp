@@ -51,7 +51,6 @@ namespace assets {
 
 	tileset_t __create_tileset(const std::string &path) {
 		ase_t *ase = cute_aseprite_load_from_file(path.c_str(), NULL);
-
 		ase_tileset_t tileset = ase->tileset;
 
 		const size_t size = (tileset.tile_w * (tileset.tile_h * tileset.tile_count)) * sizeof(ase_color_t);
@@ -63,9 +62,9 @@ namespace assets {
 		cute_aseprite_free(ase);
 
 		return (tileset_t){
-				.width = tileset.tile_w,
-				.height = tileset.tile_h,
-				.tile_count = tileset.tile_count,
+				.count = (int32_t) tileset.tile_count,
+				.width = (int16_t) tileset.tile_w,
+				.height = (int16_t) tileset.tile_h,
 				.pixels = pixels,
 		};
 	}
@@ -83,8 +82,8 @@ namespace assets {
 					void *tiles = pti_bank_push(&bank, size);
 					memcpy(tiles, cel->tiles, size);
 					tilemap = (tilemap_t){
-							.width = cel->w,
-							.height = cel->h,
+							.width = (int16_t) cel->w,
+							.height = (int16_t) cel->h,
 							.tiles = tiles,
 					};
 				}
@@ -97,9 +96,7 @@ namespace assets {
 		return tilemap;
 	}
 
-	// << tilemap end
-
-	const sprite_t *sprite(const std::string &path) {
+	sprite_t *sprite(const std::string &path) {
 		if (_sprite_cache.find(path) == _sprite_cache.end()) {
 			_sprite_cache.emplace(std::make_pair(path, __create_sprite(path)));
 		}

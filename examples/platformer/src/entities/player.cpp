@@ -32,9 +32,9 @@ typedef struct {
 } player_t;
 
 static bool is_grounded(const entity::entity_t *self) {
-	return entity::place_meeting(self, 0, 1) ||
-		   (self->sy >= 0 && (entity::place_meeting(self, 0, 1) &&
-							  entity::place_meeting(self, 0, 1)));
+	return collisions::place_meeting(self, 0, 1) ||
+		   (self->sy >= 0 && (collisions::place_meeting(self, 0, 1) &&
+							  collisions::place_meeting(self, 0, 1)));
 }
 
 static void handle_player_horizontal_movement(entity::entity_t *self) {

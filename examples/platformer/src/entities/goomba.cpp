@@ -32,14 +32,14 @@ typedef struct {
 
 // TODO: move to collisions.cpp
 static bool is_grounded(const entity::entity_t *self) {
-	return entity::place_meeting(self, 0, 1) ||
-		   (self->sy >= 0 && (entity::place_meeting(self, 0, 1) &&
-							  entity::place_meeting(self, 0, 1)));
+	return collisions::place_meeting(self, 0, 1) ||
+		   (self->sy >= 0 && (collisions::place_meeting(self, 0, 1) &&
+							  collisions::place_meeting(self, 0, 1)));
 }
 
 static bool is_touching(const entity::entity_t *self) {
 	auto dir = ((goomba_t *) self->userdata)->direction;
-	return entity::place_meeting(self, dir, 0);
+	return collisions::place_meeting(self, dir, 0);
 }
 
 static void handle_horizontal_movement(entity::entity_t *self) {

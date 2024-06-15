@@ -62,8 +62,6 @@ void game::load() {
 					pti_mset(_tilemap, i, j, 0);
 					break;
 			}
-
-			entity::manager.tiles[i][j] = pti_mget(_tilemap, i, j);
 		}
 	}
 }

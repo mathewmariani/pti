@@ -58,10 +58,6 @@ namespace entity {
 
 	typedef struct entity_state {
 		entity_t all[EN_COUNT];
-
-		/* TODO: remove tiles from entity_state */
-		/* should reference pti_api. */
-		bool tiles[EN_ROOM_COLS][EN_ROOM_ROWS];
 	} entity_state;
 
 	// static
@@ -74,9 +70,5 @@ namespace entity {
 	void clear();
 	void update();
 	void draw();
-
-	/* collisions */
-	bool overlaps(const entity_t *a, const entity_t *b);
-	bool place_meeting(const entity_t *a, int dx, int dy);
 
 }// namespace entity

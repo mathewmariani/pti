@@ -38,7 +38,7 @@ namespace bullet {
 
 	inline bool is_touching(const entity::entity_t *self) {
 		auto dir = ((bullet_t *) self->userdata)->direction;
-		return entity::place_meeting(self, dir, 0);
+		return collisions::place_meeting(self, dir, 0);
 	}
 
 }// namespace bullet
