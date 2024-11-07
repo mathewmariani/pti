@@ -32,5 +32,8 @@
 	"editor.formatOnSave": true,
 	"editor.tabSize": 2,
 	"debug.onTaskErrors": "debugAnyway",
-	"editor.multiCursorModifier": "ctrlCmd"
+	"editor.multiCursorModifier": "ctrlCmd",
+	"files.associations": {
+		"utility": "cpp"
+	}
 }

@@ -12,15 +12,6 @@
 #include <stdint.h>
 #include <string.h>
 
-// >>>
-// FIXME: FPS scales don't work (PTI_FPS30, PTI_FPS60, PTI_FPS144)
-// FIXME: `pti_rect` and `pti_rectf` are two different filled rectangle algorithms.
-// FIXME: `pti_rect` should be a rectangle line.
-// TODO: implement `pti_stat`
-// TODO: convert int types into stdint types
-// TODO: implement bank switching
-// <<<
-
 #define _pti_kilobytes(n) (1024 * (n))
 #define _pti_megabytes(n) (1024 * _pti_kilobytes(n))
 #define _pti_gigabytes(n) (1024 * _pti_megabytes(n))
@@ -76,30 +67,23 @@ typedef struct pti_window {
 } pti_window;
 
 typedef struct pti_bitmap_t {
-	int width;
-	int height;
+	int32_t width;
+	int32_t height;
 	void *pixels;
 } pti_bitmap_t;
 
 typedef struct pti_tileset_t {
-	int width;
-	int height;
-	int tile_count;
-	void *pixels;
+	int32_t count;
+	int16_t width;
+	int16_t height;
+	void *pixels; /* (width) x (height x count) */
 } pti_tileset_t;
 
 typedef struct pti_tilemap_t {
-	int width;
-	int height;
+	int16_t width;
+	int16_t height;
 	void *tiles;
 } pti_tilemap_t;
-
-// typedef struct {
-// 	int bitmap_count;
-// 	pti_bitmap_t *bitmaps;
-// 	pti_tileset_t tileset;
-// 	pti_tilemap_t tilemap;
-// } pti_bank_t;
 
 typedef struct {
 	uint8_t *begin;
@@ -169,6 +153,9 @@ void pti_rectf(int x0, int y0, int x1, int y1, uint64_t color);
 void pti_plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x, bool flip_y);
 void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, int y);
 
+// uses built in tilemap.
+void pti_map_ext(int x, int y);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
@@ -210,37 +197,37 @@ typedef struct {
 } _pti__memory_t;
 
 typedef struct {
-	int16_t clip_x0, clip_y0;
-	int16_t clip_x1, clip_y1;
-	int16_t cam_x, cam_y;
-	uint16_t dither;
-	uint32_t ckey;
-} _pti__drawstate_t;
+	struct {
+		uint16_t width;
+		uint16_t height;
+		uint32_t *vram;
+	} screen;
 
-typedef struct {
-	uint8_t bank_id;
-	uint8_t btn_state[PTI_BUTTON_COUNT];
-	uint8_t rnd_reg[4];
-} _pti__hardwarestate_t;
+	struct {
+		int16_t clip_x0, clip_y0;
+		int16_t clip_x1, clip_y1;
+		int16_t cam_x, cam_y;
+		uint16_t dither;
+		uint32_t ckey;
+	} draw;
 
-typedef struct {
-	uint16_t width;
-	uint16_t height;
-	uint32_t *vram;
-} _pti__screen_t;
+	struct {
+		uint8_t bank_id;
+		uint8_t btn_state[PTI_BUTTON_COUNT];
+		uint8_t rnd_reg[4];
+	} hardware;
 
-typedef struct {
-	_pti__drawstate_t draw;
-	_pti__hardwarestate_t hardware;
-	_pti__screen_t screen;
+	pti_bank_t *bank;
 } _pti__vm_t;
 
 // <<< new stuff
 
 typedef struct {
 	pti_desc desc;
-	_pti__memory_t memory;
+
+	// memory is where everything is allocated.
 	void *bank;
+	_pti__memory_t memory;
 	_pti__vm_t vm;
 } _pti__t;
 static _pti__t _pti;
@@ -400,15 +387,9 @@ void pti_init(const pti_desc *desc) {
 	_pti.vm = *(_pti__vm_t *) _pti__alloc(sizeof(_pti__vm_t));
 
 	/* allocate screen */
-	const int window_w = desc->window.width;
-	const int window_h = desc->window.height;
-	const int screen_size = window_w * window_h * sizeof(uint32_t);
-
-	_pti.vm.screen = (_pti__screen_t){
-			.width = window_w,
-			.height = window_h,
-			.vram = _pti__alloc(screen_size),
-	};
+	_pti.vm.screen.width = desc->window.width;
+	_pti.vm.screen.height = desc->window.height;
+	_pti.vm.screen.vram = _pti__alloc(desc->window.width * desc->window.height * sizeof(uint32_t));
 }
 
 // >>memory api
@@ -758,6 +739,24 @@ void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, 
 		}
 	}
 }
+
+void pti_map_ext(int x, int y) {
+	// const int map_w = _pti.vm.bank->tilemap.width;
+	// const int map_h = _pti.vm.bank->tilemap.height;
+	// const int tile_w = _pti.vm.bank->tileset.width;
+	// const int tile_h = _pti.vm.bank->tileset.height;
+	// int i, j, t;
+	// for (j = 0; j < map_h; j++) {
+	// 	for (i = 0; i < map_w; i++) {
+	// 		t = *((int *) _pti.vm.bank->tilemap.tiles + i + j * map_w);
+	// 		if (t == 0) {
+	// 			continue;
+	// 		}
+	// 		pti_plot(_pti.vm.bank->tileset.pixels, t, x + (i * tile_h), y + (j * tile_w), tile_h, tile_w, false, false);
+	// 	}
+	// }
+}
+
 
 // FIXME: get font stuff from mac backup.
 // TODO: get font stuff from mac backup.

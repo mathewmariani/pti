@@ -18,20 +18,6 @@ namespace assets {
 		void *pixels;
 	};
 
-	// struct tileset_t {
-	//   int width;
-	//   int height;
-	//   int tiles;
-	//   void *pixels;
-	// };
-
-
-	// struct tilemap_t {
-	//   int width;
-	//   int height;
-	//   void *tiles;
-	// };
-
 	void init();
 	void reload();
 
