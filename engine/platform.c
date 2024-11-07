@@ -1,6 +1,5 @@
 // sokol
 #include "sokol/sokol_app.h"
-#include "sokol/sokol_audio.h"
 #include "sokol/sokol_gfx.h"
 #include "sokol/sokol_glue.h"
 #include "sokol/sokol_log.h"
@@ -24,7 +23,7 @@ int main(int argc, char *argv[]) {
 	_pti__scale_size_by_flags(&width, &height, desc.window.flags);
 
 	const char *name = desc.window.name ? desc.window.name : "pti";
-	sapp_run(&(sapp_desc){
+	sapp_run(&(sapp_desc) {
 			.init_cb = init,
 			.frame_cb = frame,
 			.cleanup_cb = cleanup,
@@ -65,7 +64,7 @@ static struct {
 
 static void sokol_init_gfx(void) {
 	/* setup sokol-gfx */
-	sg_setup(&(sg_desc){
+	sg_setup(&(sg_desc) {
 			.environment = sglue_environment(),
 			.buffer_pool_size = 2,
 			.image_pool_size = 3,
@@ -85,12 +84,12 @@ static void sokol_init_gfx(void) {
 	/* an index buffer with 2 triangles */
 	const uint16_t indices[] = {0, 1, 2, 0, 2, 3};
 
-	sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc){
+	sg_buffer vbuf = sg_make_buffer(&(sg_buffer_desc) {
 			.data = SG_RANGE(vertices),
 			.label = "quad-vertices",
 	});
 
-	sg_buffer ibuf = sg_make_buffer(&(sg_buffer_desc){
+	sg_buffer ibuf = sg_make_buffer(&(sg_buffer_desc) {
 			.type = SG_BUFFERTYPE_INDEXBUFFER,
 			.data = SG_RANGE(indices),
 			.label = "quad-indices",
@@ -139,7 +138,7 @@ static void sokol_init_gfx(void) {
 			break;
 	}
 
-	sg_shader_desc shd_desc = (sg_shader_desc){
+	sg_shader_desc shd_desc = (sg_shader_desc) {
 			.vs = {
 					.source = display_vs_src,
 			},
@@ -165,7 +164,7 @@ static void sokol_init_gfx(void) {
 	/* images and samplers */
 	const int screen_width = _pti.desc.window.width;
 	const int screen_height = _pti.desc.window.height;
-	sg_image img = sg_make_image(&(sg_image_desc){
+	sg_image img = sg_make_image(&(sg_image_desc) {
 			.render_target = false,
 			.width = screen_width,
 			.height = screen_height,
@@ -173,7 +172,7 @@ static void sokol_init_gfx(void) {
 			.usage = SG_USAGE_STREAM,
 	});
 
-	sg_sampler smp = sg_make_sampler(&(sg_sampler_desc){
+	sg_sampler smp = sg_make_sampler(&(sg_sampler_desc) {
 			.min_filter = SG_FILTER_NEAREST,
 			.mag_filter = SG_FILTER_NEAREST,
 			.wrap_u = SG_WRAP_CLAMP_TO_EDGE,
@@ -182,14 +181,14 @@ static void sokol_init_gfx(void) {
 	});
 
 	/* default pass action */
-	state.display.pass_action = (sg_pass_action){
+	state.display.pass_action = (sg_pass_action) {
 			.colors[0] = {
 					.load_action = SG_LOADACTION_CLEAR,
 					.clear_value = {0.0f, 0.0f, 0.0f, 1.0f},
 			},
 	};
 
-	state.display.pip = sg_make_pipeline(&(sg_pipeline_desc){
+	state.display.pip = sg_make_pipeline(&(sg_pipeline_desc) {
 			.shader = sg_make_shader(&shd_desc),
 			.index_type = SG_INDEXTYPE_UINT16,
 			.layout = {
@@ -201,7 +200,7 @@ static void sokol_init_gfx(void) {
 	});
 
 	/* bindings */
-	state.display.bind = (sg_bindings){
+	state.display.bind = (sg_bindings) {
 			.vertex_buffers[0] = vbuf,
 			.index_buffer = ibuf,
 			.fs = {
@@ -217,14 +216,14 @@ void sokol_gfx_draw(uint32_t *ptr) {
 	const int screen_h = _pti.vm.screen.height;
 	const size_t size = screen_w * screen_h * sizeof(uint32_t);
 	sg_update_image(state.display.bind.fs.images[0],
-					&(sg_image_data){
-							.subimage[0][0] = (sg_range){
+					&(sg_image_data) {
+							.subimage[0][0] = (sg_range) {
 									.ptr = ptr,
 									.size = size,
 							},
 					});
 
-	sg_begin_pass(&(sg_pass){.action = state.display.pass_action, .swapchain = sglue_swapchain()});
+	sg_begin_pass(&(sg_pass) {.action = state.display.pass_action, .swapchain = sglue_swapchain()});
 	sg_apply_pipeline(state.display.pip);
 	sg_apply_bindings(&state.display.bind);
 	sg_draw(0, 6, 1);

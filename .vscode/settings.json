@@ -1,32 +1,16 @@
 {
-	"C_Cpp.intelliSenseEngine": "enabled",
+	"C_Cpp.intelliSenseEngine": "default",
 	"C_Cpp.inlayHints.parameterNames.enabled": false,
 	"C_Cpp.inlayHints.referenceOperator.enabled": false,
-	"cmake.configureOnOpen": true,
-	"cmake.configureOnEdit": true,
-	"cmake.copyCompileCommands": "${workspaceFolder}/build/compile_commands.json",
-	"cmake.statusbar.advanced": {
-		"testPreset": {
-			"visibility": "hidden"
-		},
-		"ctest": {
-			"visibility": "hidden"
-		},
-		"launch": {
-			"visibility": "hidden"
-		},
+	"cmake.buildDirectory": "${workspaceFolder}/build",
+	"cmake.buildTask": false,
+	"cmake.configureOnOpen": false,
+	"cmake.configureOnEdit": false,
+	"cmake.options.statusBarVisibility": "hidden",
+	"cmake.options.advanced": {
 		"launchTarget": {
-			"visibility": "default"
-		},
-		"debug": {
 			"visibility": "hidden"
 		},
-		"buildTarget": {
-			"visibility": "hidden"
-		},
-		"buildPreset": {
-			"visibility": "hidden"
-		}
 	},
 	"debug.showInStatusBar": "always",
 	"editor.formatOnSave": true,
@@ -34,6 +18,24 @@
 	"debug.onTaskErrors": "debugAnyway",
 	"editor.multiCursorModifier": "ctrlCmd",
 	"files.associations": {
+		"__bit_reference": "cpp",
+		"algorithm": "cpp",
+		"vector": "cpp",
+		"string": "cpp",
+		"__hash_table": "cpp",
+		"__split_buffer": "cpp",
+		"__tree": "cpp",
+		"array": "cpp",
+		"bitset": "cpp",
+		"deque": "cpp",
+		"initializer_list": "cpp",
+		"map": "cpp",
+		"queue": "cpp",
+		"span": "cpp",
+		"stack": "cpp",
+		"string_view": "cpp",
+		"unordered_map": "cpp",
+		"atomic": "cpp",
 		"utility": "cpp"
 	}
 }

@@ -2,7 +2,9 @@
   "scripts": {
     "build": "ts-node docs/build.ts",
     "emsdk": "git clone https://github.com/emscripten-core/emsdk && cd emsdk && ./emsdk install latest && ./emsdk activate --embedded latest && cd ..",
-    "sokol": "./libs/sokol/update.sh"
+    "libs:imgui": "./libs/imgui/update.sh",
+    "libs:sokol": "./libs/sokol/update.sh",
+    "libs:stb": "./libs/stb/update.sh"
   },
   "dependencies": {
     "glob": "^10.3.10",

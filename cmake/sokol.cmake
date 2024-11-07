@@ -1,6 +1,6 @@
 set(BUILD_WITH_SOKOL_DEFAULT TRUE)
 
-option(BUILD_WITH_SOKOL "Sokol Enabled" ${BUILD_WITH_SOKOL_DEFAULT})
+option(BUILD_WITH_SOKOL "sokol Enabled" ${BUILD_WITH_SOKOL_DEFAULT})
 message("BUILD_WITH_SOKOL: ${BUILD_WITH_SOKOL}")
 
 if(BUILD_WITH_SOKOL)
@@ -18,13 +18,13 @@ if(BUILD_WITH_SOKOL)
   endif()
 
   set(SOKOL_DIR ${THIRDPARTY_DIR}/sokol)
-  set(SOKOL_SRC
+  set(SOKOL_HEADERS
     ${SOKOL_DIR}/sokol.c
     ${SOKOL_DIR}/sokol_app.h
     ${SOKOL_DIR}/sokol_gfx.h
     ${SOKOL_DIR}/sokol_glue.h)
 
-  add_library(sokol STATIC ${SOKOL_SRC})
+  add_library(sokol STATIC ${SOKOL_HEADERS})
 
   if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
     # compile sokol.c as Objective-C
@@ -39,6 +39,4 @@ if(BUILD_WITH_SOKOL)
       target_link_libraries(sokol PUBLIC Threads::Threads)
     endif()
   endif()
-
-  target_include_directories(sokol INTERFACE ${THIRDPARTY_DIR}/sokol)
 endif()
