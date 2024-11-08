@@ -66,7 +66,7 @@ void entity_goomba(entity::event_t *ev) {
 	switch (ev->type) {
 		case entity::EVENTTYPE_INIT: {
 
-			sprite = assets::sprite("goomba.ase");
+			sprite = assets::sprite("assets/goomba.ase");
 
 			auto *goomba = (goomba_t *) malloc(sizeof(goomba_t));
 			goomba->direction = 1;

@@ -18,7 +18,7 @@ void entity_coin(entity::event_t *ev) {
 
 	switch (ev->type) {
 		case entity::EVENTTYPE_INIT:
-			sprite = assets::sprite("coin.ase");
+			sprite = assets::sprite("assets/coin.ase");
 			self->bx = -2;
 			self->by = -2;
 			self->bw = 4;

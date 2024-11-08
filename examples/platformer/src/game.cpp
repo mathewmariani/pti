@@ -26,8 +26,8 @@ namespace game {
 void game::startup() {
 	assets::init();
 
-	_tileset = assets::tileset("tilemap.ase");
-	_tilemap = assets::tilemap("tilemap.ase");
+	_tileset = assets::tileset("assets/tilemap.ase");
+	_tilemap = assets::tilemap("assets/tilemap.ase");
 
 	game::load();
 }

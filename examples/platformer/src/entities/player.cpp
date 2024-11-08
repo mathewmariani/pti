@@ -116,7 +116,7 @@ void entity_player(entity::event_t *ev) {
 		case entity::EVENTTYPE_INIT: {
 			auto *player = (player_t *) malloc(sizeof(player_t));
 			// player->sprite = pti_sprite_create("dog.ase");
-			sprite = assets::sprite("dog.ase");
+			sprite = assets::sprite("assets/dog.ase");
 
 			self->bx = -4;
 			self->by = -8;

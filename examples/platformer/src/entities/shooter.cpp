@@ -36,7 +36,7 @@ void entity_shooter(entity::event_t *ev) {
 		case entity::EVENTTYPE_INIT: {
 			auto *shooter = (shooter_t *) malloc(sizeof(shooter_t));
 			// shooter->sprite = pti_sprite_create("goomba.ase");
-			sprite = assets::sprite("goomba.ase");
+			sprite = assets::sprite("assets/goomba.ase");
 
 			self->bx = -4;
 			self->by = -8;

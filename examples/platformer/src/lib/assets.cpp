@@ -4,8 +4,7 @@
 
 #include "pti.h"
 
-#define CUTE_ASEPRITE_IMPLEMENTATION
-#include "cute_aseprite.h"
+#include "cute/cute_aseprite.h"
 
 namespace assets {
 
@@ -61,7 +60,7 @@ namespace assets {
 		/* release cute resources. */
 		cute_aseprite_free(ase);
 
-		return (tileset_t){
+		return (tileset_t) {
 				.count = (int32_t) tileset.tile_count,
 				.width = (int16_t) tileset.tile_w,
 				.height = (int16_t) tileset.tile_h,
@@ -81,7 +80,7 @@ namespace assets {
 					const size_t size = cel->w * cel->h * sizeof(int);
 					void *tiles = pti_bank_push(&bank, size);
 					memcpy(tiles, cel->tiles, size);
-					tilemap = (tilemap_t){
+					tilemap = (tilemap_t) {
 							.width = (int16_t) cel->w,
 							.height = (int16_t) cel->h,
 							.tiles = tiles,

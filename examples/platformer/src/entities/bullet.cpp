@@ -56,7 +56,7 @@ void entity_bullet(entity::event_t *ev) {
 
 			/* FIXME: this will cause an insufficient memory error */
 			// bullet->sprite = pti_sprite_create("bullet.ase");
-			sprite = assets::sprite("bullet.ase");
+			sprite = assets::sprite("assets/bullet.ase");
 			bullet->direction = 1;
 
 			self->bx = -4;
