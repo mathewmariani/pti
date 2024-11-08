@@ -3,6 +3,27 @@
 #include <algorithm>
 #include <functional>
 
+class Entity {
+public:
+	Entity() = default;
+
+	virtual void Init(void) = 0;
+	virtual void Destroy(void) = 0;
+	virtual void Update(void) = 0;
+	virtual void Draw(void) = 0;
+	virtual void Overlap(Entity *other) = 0;
+
+private:
+	int x, y;           /* position */
+	float sx, sy;       /* speed */
+	float rx, ry;       /* movement remainder */
+	int bx, by, bw, bh; /* bounding box */
+	float timer;        /* general timer, starts at 0 on create */
+	int flags;          /* general entity flags */
+	void *userdata;     /* general user data */
+	int state;          /* state of the entity */
+};
+
 namespace entity {
 
 	constexpr int EN_COUNT = 64;

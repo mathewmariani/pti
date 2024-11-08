@@ -31,29 +31,6 @@ namespace entity {
 		return (id >= 0 && id < EN_COUNT ? manager.all + id : NULL);
 	}
 
-	// entity_t *create_ext(const entity_type type, int x, int y) {
-	//   unsigned int id = 0;
-	//   entity_t e;
-
-	//   for (id = 0; id < EN_COUNT; id++) {
-	//     if (manager.all[id].type == NULL) {
-	//       /* reset entity */
-	//       e = manager.all + id;
-	//       *e = null_entity;
-
-	//       e->type = type;
-	//       e->x = x; // * EN_GRID_SIZE;
-	//       e->y = y; // * EN_GRID_SIZE;
-	//       e->timer = 0.0f;
-	//       // ev.self->type(&ev);
-
-	//       break;
-	//     }
-	//   }
-	//   return (id >= 0 && id < EN_COUNT ? manager.all + id : NULL);
-	// }
-
-
 	void destroy(entity_t *entity) {
 		event_t ev;
 		int id = entity - manager.all;
