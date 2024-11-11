@@ -4,7 +4,8 @@
 
 #include "pti.h"
 
-#include "cute/cute_aseprite.h"
+#define CUTE_ASEPRITE_IMPLEMENTATION
+#include "cute_aseprite.h"
 
 namespace assets {
 

@@ -1,8 +1,3 @@
-macro(pti_demo target file)
-  add_executable(${target} ${file})
-  target_link_libraries(${target} PRIVATE engine)
-endmacro()
-
-pti_demo(rosecurve rosecurve.c)
-pti_demo(moire moire.c)
-pti_demo(mosaic mosaic.c)
+pti_executable(rosecurve rosecurve.c)
+pti_executable(moire moire.c)
+pti_executable(mosaic mosaic.c)
