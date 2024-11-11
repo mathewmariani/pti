@@ -5,6 +5,17 @@
 
 class Entity {
 public:
+	static Entity *all[64];
+
+public:
+	enum Flags {
+		ENTITYFLAG_HITS_SOLIDS = (1 << 0),
+		ENTITYFLAG_OVERLAP_CHECKS = (1 << 1),
+		ENTITYFLAG_FACING_LEFT = (1 << 2),
+		ENTITYFLAG_GROUNDED = (1 << 3),
+	};
+
+public:
 	Entity() = default;
 
 	virtual void Init(void) = 0;
@@ -13,7 +24,7 @@ public:
 	virtual void Draw(void) = 0;
 	virtual void Overlap(Entity *other) = 0;
 
-private:
+protected:
 	int x, y;           /* position */
 	float sx, sy;       /* speed */
 	float rx, ry;       /* movement remainder */
@@ -22,6 +33,7 @@ private:
 	int flags;          /* general entity flags */
 	void *userdata;     /* general user data */
 	int state;          /* state of the entity */
+	int frame;
 };
 
 namespace entity {
