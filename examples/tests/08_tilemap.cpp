@@ -9,27 +9,24 @@
 #include <string>
 #include <vector>
 
-typedef pti_tileset_t tileset_t;
-typedef pti_tilemap_t tilemap_t;
-
 pti_bank_t bank;
 
-tileset_t *__create_tileset(const std::string &path) {
+pti_tileset_t __create_tileset(const std::string &path) {
 	ase_t *ase = cute_aseprite_load_from_file(path.c_str(), NULL);
 	ase_tileset_t ase_tileset = ase->tileset;
 
 	const size_t size = (ase_tileset.tile_w * (ase_tileset.tile_h * ase_tileset.tile_count)) * sizeof(ase_color_t);
 	void *pixels = pti_alloc(&bank, size);
 
-	tileset_t *tileset = (tileset_t *) pti_alloc(&bank, size + sizeof(tileset_t));
+	pti_tileset_t tileset;
 
 	/* initialize */
-	tileset->count = (int32_t) ase_tileset.tile_count;
-	tileset->width = (int16_t) ase_tileset.tile_w;
-	tileset->height = (int16_t) ase_tileset.tile_h;
-	tileset->pixels = (void *) ((uintptr_t) tileset + sizeof(tileset_t));
+	tileset.count = (int32_t) ase_tileset.tile_count;
+	tileset.width = (int16_t) ase_tileset.tile_w;
+	tileset.height = (int16_t) ase_tileset.tile_h;
+	tileset.pixels = (void *) pti_alloc(&bank, size);
 
-	memcpy(tileset->pixels, ase_tileset.pixels, size);
+	memcpy(tileset.pixels, ase_tileset.pixels, size);
 
 	/* release cute resources. */
 	cute_aseprite_free(ase);
@@ -37,24 +34,20 @@ tileset_t *__create_tileset(const std::string &path) {
 	return tileset;
 }
 
-tilemap_t *__create_tilemap(const std::string &path) {
+pti_tilemap_t __create_tilemap(const std::string &path) {
 	ase_t *ase = cute_aseprite_load_from_file(path.c_str(), NULL);
 
-	tilemap_t *tilemap;
+	pti_tilemap_t tilemap;
 	for (int i = 0; i < ase->frame_count; ++i) {
 		ase_frame_t *frame = ase->frames + i;
 		for (int j = 0; j < frame->cel_count; ++j) {
 			ase_cel_t *cel = frame->cels + j;
 			if (cel->is_tilemap) {
 				const size_t size = cel->w * cel->h * sizeof(int);
-				tilemap = (tilemap_t *) pti_alloc(&bank, size + sizeof(pti_tilemap_t));
-
-				/* initialize */
-				tilemap->width = (int16_t) cel->w;
-				tilemap->height = (int16_t) cel->h;
-				tilemap->tiles = (void *) ((uintptr_t) tilemap + sizeof(pti_tilemap_t));
-
-				memcpy(tilemap->tiles, cel->tiles, size);
+				tilemap.width = (int16_t) cel->w;
+				tilemap.height = (int16_t) cel->h;
+				tilemap.tiles = (int *) pti_alloc(&bank, size);
+				memcpy(tilemap.tiles, cel->tiles, size);
 			}
 		}
 	}
@@ -86,8 +79,8 @@ pti_desc pti_main(int argc, char *argv[]) {
 	};
 }
 
-static tileset_t *tileset;
-static tilemap_t *tilemap;
+static pti_tileset_t tileset;
+static pti_tilemap_t tilemap;
 
 static void init(void) {
 	pti_bank_init(&bank, _pti_kilobytes(256));
@@ -110,5 +103,5 @@ static void frame(void) {
 	t += (1 / 60.0f);
 	pti_camera((int) (100.0f * sinf(t)), 0);
 	pti_cls(0x00000000);
-	pti_map(tilemap, tileset, 0, 0);
+	pti_map(&tilemap, &tileset, 0, 0);
 }
