@@ -20,7 +20,7 @@ namespace assets {
 	}
 
 	void reload() {
-		pti_reload(&bank);
+		pti_load_bank(&bank);
 	}
 
 	sprite_t __create_sprite(const std::string &path) {
@@ -28,7 +28,7 @@ namespace assets {
 
 		/* allocate sprite data */
 		const size_t size = ase->w * ase->h * sizeof(ase_color_t);
-		char *pixels = (char *) pti_bank_push(&bank, size * ase->frame_count);
+		char *pixels = (char *) pti_alloc(&bank, size * ase->frame_count);
 
 		sprite_t sprite = {
 				.width = ase->w,
@@ -54,7 +54,7 @@ namespace assets {
 		ase_tileset_t tileset = ase->tileset;
 
 		const size_t size = (tileset.tile_w * (tileset.tile_h * tileset.tile_count)) * sizeof(ase_color_t);
-		void *pixels = pti_bank_push(&bank, size);
+		void *pixels = pti_alloc(&bank, size);
 
 		memcpy(pixels, tileset.pixels, size);
 
@@ -79,7 +79,7 @@ namespace assets {
 				ase_cel_t *cel = frame->cels + j;
 				if (cel->is_tilemap) {
 					const size_t size = cel->w * cel->h * sizeof(int);
-					void *tiles = pti_bank_push(&bank, size);
+					void *tiles = pti_alloc(&bank, size);
 					memcpy(tiles, cel->tiles, size);
 					tilemap = (tilemap_t) {
 							.width = (int16_t) cel->w,

@@ -42,13 +42,13 @@ static void frame(void) {
 }
 
 pti_desc pti_main(int argc, char *argv[]) {
-	return (pti_desc){
+	return (pti_desc) {
 			.init_cb = init,
 			.frame_cb = frame,
 			.cleanup_cb = cleanup,
-			.memory_size = _pti_kilobytes(128), /* 256KB */
+			.memory_size = _pti_kilobytes(256), /* 256KB */
 			.window =
-					(pti_window){
+					(pti_window) {
 							.name = "pti - platformer",
 							.width = 240,
 							.height = 135,

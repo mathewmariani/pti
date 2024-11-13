@@ -269,7 +269,7 @@ static void frame(void) {
 	}
 
 	/* draw graphics */
-	sokol_gfx_draw(_pti.vm.screen.vram);
+	sokol_gfx_draw(_pti.screen);
 }
 
 static void input(const sapp_event *ev) {

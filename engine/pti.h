@@ -109,15 +109,13 @@ void pti_init(const pti_desc *desc);
 
 /* api functions */
 
-void *_pti__alloc(const uint32_t size);
-
 //>> virutal machine api
 void pti_bank_init(pti_bank_t *bank, uint32_t capacity);
-void *pti_bank_push(pti_bank_t *bank, uint32_t size);
 
 //>> memory api
-void pti_reload(const pti_bank_t *bank);
-void pti_cstore(void *dst, const void *src, size_t len);
+void *pti_alloc(pti_bank_t *bank, const uint32_t size);
+void pti_load_bank(const pti_bank_t *bank);
+void pti_reload(void);
 void pti_memcpy(void *dst, const void *src, size_t len);
 void pti_memset(void *dst, const int value, size_t len);
 const uint8_t pti_peek(const uint32_t offset, const uint32_t index);
@@ -153,9 +151,6 @@ void pti_rectf(int x0, int y0, int x1, int y1, uint64_t color);
 void pti_plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x, bool flip_y);
 void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, int y);
 
-// uses built in tilemap.
-void pti_map_ext(int x, int y);
-
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
@@ -190,17 +185,9 @@ void pti_map_ext(int x, int y);
 #endif
 
 typedef struct {
-	uint8_t *begin;
-	uint8_t *end;
-	uint8_t *it;
-	uint8_t *cap;
-} _pti__memory_t;
-
-typedef struct {
 	struct {
 		uint16_t width;
 		uint16_t height;
-		uint32_t *vram;
 	} screen;
 
 	struct {
@@ -216,21 +203,29 @@ typedef struct {
 		uint8_t btn_state[PTI_BUTTON_COUNT];
 		uint8_t rnd_reg[4];
 	} hardware;
-
-	pti_bank_t *bank;
 } _pti__vm_t;
 
 // <<< new stuff
 
 typedef struct {
-	pti_desc desc;
-
-	// memory is where everything is allocated.
-	void *bank;
-	_pti__memory_t memory;
-	_pti__vm_t vm;
+	pti_desc desc;  // cached description
+	pti_bank_t ram; // where everything is allocated.
+	pti_bank_t cart;// where everything is allocated.
+	_pti__vm_t vm;  // virtual machine (allocated in memory)
+	uint32_t *screen;
+	void *data;
 } _pti__t;
 static _pti__t _pti;
+
+// #define _PTI__ADJUST_PTR(ptr) \
+// 	((void *) ((uintptr_t) _pti.data + ((uintptr_t) _pti.data - (uintptr_t) ptr)))
+// #define _PTI__ADJUST_PTR(ptr) ((void *) ((uintptr_t) (ptr) + ((uintptr_t) _pti.data - (uintptr_t) _pti.cart.begin)))
+#define _PTI__ADJUST_PTR(ptr) ((void *) ((uintptr_t) _pti.data + (uintptr_t) _pti.cart.begin - (uintptr_t) (ptr)))
+
+_PTI_PRIVATE void *map_pointer_to_bank(void *ptr) {
+	uintptr_t offset = (uintptr_t) _pti.data - (uintptr_t) _pti.cart.begin;
+	return (void *) ((uintptr_t) ptr + offset);
+}
 
 _PTI_PRIVATE void *_pti__virtual_reserve(void *ptr, const uint32_t size) {
 #if defined(_WIN32)
@@ -299,26 +294,6 @@ _PTI_PRIVATE void _pti__virtual_free(void *ptr, const uint32_t size) {
 #endif
 }
 
-void *_pti__alloc(const uint32_t size) {
-	void *ptr;
-	_pti__memory_t *bank = &_pti.memory;
-	if ((bank->end - bank->it) < size) {
-		PTI_ASSERT((bank->cap - bank->it) >= size);
-		uint32_t additional_size = size - (uint32_t) (bank->end - bank->it);
-		additional_size = _pti_min((bank->cap - bank->it), _pti_align_to(additional_size, 4096));
-		ptr = _pti__virtual_commit(bank->end, additional_size);
-		bank->end += additional_size;
-	}
-	ptr = bank->it;
-	bank->it += size;
-	return ptr;
-}
-
-_PTI_PRIVATE void _pti__free(_pti__memory_t *bank) {
-	_pti__virtual_free(bank, (uint32_t) (bank->cap - bank->begin));
-	memset(bank, 0, sizeof(_pti__memory_t));
-}
-
 // >>input
 enum {
 	_PTI_KEY_STATE = (1 << 0),
@@ -371,25 +346,24 @@ void pti_init(const pti_desc *desc) {
 	/* cache description */
 	_pti.desc = *desc;
 
-	/* allocate memory */
-	const size_t size = desc->memory_size;
-	void *ptr = _pti__virtual_reserve(NULL, size);
+	/* calculate sizes */
+	const size_t vm_size = sizeof(_pti__vm_t);
+	const size_t vram_size = desc->window.width * desc->window.height * sizeof(uint32_t);
+	const size_t capacity = desc->memory_size + vm_size + vram_size;
 
-	_pti.memory = (_pti__memory_t){
-			.begin = ptr,
-			.it = ptr,
-			.end = ptr,
-			.cap = ptr + size,
-	};
+	/* init memory */
+	pti_bank_init(&_pti.ram, capacity);
 
 	/* allocate virtual machine */
-	_pti.bank = _pti__alloc(_pti_kilobytes(0));
-	_pti.vm = *(_pti__vm_t *) _pti__alloc(sizeof(_pti__vm_t));
-
-	/* allocate screen */
+	_pti.vm = *(_pti__vm_t *) pti_alloc(&_pti.ram, vm_size);
 	_pti.vm.screen.width = desc->window.width;
 	_pti.vm.screen.height = desc->window.height;
-	_pti.vm.screen.vram = _pti__alloc(desc->window.width * desc->window.height * sizeof(uint32_t));
+
+	/* allocate screen */
+	_pti.screen = pti_alloc(&_pti.ram, vram_size);
+
+	/* allocate ram */
+	_pti.data = pti_alloc(&_pti.ram, desc->memory_size);
 }
 
 // >>memory api
@@ -403,7 +377,7 @@ void pti_bank_init(pti_bank_t *bank, uint32_t capacity) {
 	bank->cap = ptr + capacity;
 }
 
-void *pti_bank_push(pti_bank_t *bank, uint32_t size) {
+void *pti_alloc(pti_bank_t *bank, const uint32_t size) {
 	void *ptr;
 	if ((bank->end - bank->it) < size) {
 		PTI_ASSERT((bank->cap - bank->it) >= size);
@@ -417,14 +391,18 @@ void *pti_bank_push(pti_bank_t *bank, uint32_t size) {
 	return ptr;
 }
 
-void pti_reload(const pti_bank_t *bank) {
-	/* TODO: implementation. */
-	// pti_memcpy(_pti.bank, bank->begin, (uint32_t) (bank->cap - bank->begin));
+_PTI_PRIVATE void pti_free(pti_bank_t *bank) {
+	_pti__virtual_free(bank, (uint32_t) (bank->cap - bank->begin));
+	memset(bank, 0, sizeof(pti_bank_t));
 }
 
-void pti_cstore(void *dst, const void *src, size_t len) {
-	/* TODO: implementation. */
-	// pti_memcpy(dst, src, len);
+void pti_load_bank(const pti_bank_t *bank) {
+	_pti.cart = *bank;
+	pti_reload();
+}
+
+void pti_reload(void) {
+	pti_memcpy(_pti.data, _pti.cart.begin, (uint32_t) (_pti.cart.cap - _pti.cart.begin));
 }
 
 void pti_memcpy(void *dst, const void *src, size_t len) {
@@ -436,7 +414,7 @@ void pti_memset(void *dst, const int value, size_t len) {
 }
 
 const uint8_t pti_peek(const uint32_t offset, const uint32_t index) {
-	const void *dst = (void *) _pti.memory.begin;
+	const void *dst = (void *) _pti.ram.begin;
 	return *(const uint8_t *) (dst + offset + index);
 }
 
@@ -459,7 +437,7 @@ const uint32_t pti_peek4(const uint32_t offset, const uint32_t index) {
 }
 
 void pti_poke(const uint32_t offset, const uint32_t index, const uint8_t value) {
-	const void *dst = (void *) _pti.memory.begin;
+	const void *dst = (void *) _pti.ram.begin;
 	*(uint8_t *) (dst + offset + index) = value;
 }
 
@@ -489,14 +467,16 @@ uint16_t pti_prand(void) {
 		_pti__random_tick(i);
 	}
 	uint8_t *reg = &_pti.vm.hardware.rnd_reg[0];
-	return ((uint16_t) * (reg + 2) << 0x8) | *(reg + 3);
+	return ((uint16_t) *(reg + 2) << 0x8) | *(reg + 3);
 }
 
-uint32_t pti_mget(const pti_tilemap_t *tilemap, int x, int y) {
+uint32_t pti_mget(const pti_tilemap_t *map, int x, int y) {
+	pti_tilemap_t *tilemap = (pti_tilemap_t *) map_pointer_to_bank(map);
 	return *((int *) tilemap->tiles + x + y * tilemap->width);
 }
 
-void pti_mset(pti_tilemap_t *tilemap, int x, int y, int value) {
+void pti_mset(pti_tilemap_t *map, int x, int y, int value) {
+	pti_tilemap_t *tilemap = (pti_tilemap_t *) map_pointer_to_bank(map);
 	*((int *) tilemap->tiles + x + y * tilemap->width) = value;
 }
 
@@ -524,7 +504,7 @@ _PTI_PRIVATE void _pti__set_pixel(int x, int y, uint64_t c) {
 		return;
 	}
 
-	uint32_t *vram = _pti.vm.screen.vram;
+	uint32_t *vram = _pti.screen;
 	const int screen_w = _pti.vm.screen.width;
 	*(vram + (x + y * screen_w)) = _pti__get_dither_bit(x, y) ? (c >> 32) & 0xffffffff : (c >> 0) & 0xffffffff;
 }
@@ -547,7 +527,7 @@ void pti_cls(const uint32_t color) {
 	const int screen_w = _pti.vm.screen.width;
 	const int screen_h = _pti.vm.screen.height;
 	const size_t size = screen_w * screen_h * sizeof(uint32_t);
-	pti_memset(_pti.vm.screen.vram, color, size);
+	pti_memset(_pti.screen, color, size);
 }
 
 void pti_colorkey(const uint32_t color) {
@@ -687,18 +667,18 @@ void pti_plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x, bool
 
 	const size_t size = w * h * sizeof(int);
 	uint32_t *src = pixels + size * n;
-	uint32_t *dst = _pti.vm.screen.vram;
+	uint32_t *dst = _pti.screen;
 
 	const int dst_width = _pti.desc.window.width;
 	const int src_width = w;
 
-	int clipped_width = dst_x2 - dst_x1 + 1;
-	int dst_next_row = dst_width - clipped_width;
-	int src_next_row = (flip_x && flip_y)
-							   ? (src_width - clipped_width)
-					   : (flip_x || flip_y)
-							   ? (src_width + clipped_width)
-							   : (src_width - clipped_width);
+	const int clipped_width = dst_x2 - dst_x1 + 1;
+	const int dst_next_row = dst_width - clipped_width;
+	const int src_next_row = (flip_x && flip_y)
+									 ? (src_width - clipped_width)
+							 : (flip_x || flip_y)
+									 ? (src_width + clipped_width)
+									 : (src_width - clipped_width);
 
 	uint32_t *dst_pixel = dst + dst_y1 * dst_width + dst_x1;
 	uint32_t *src_pixel = src + src_y1 * src_width + src_x1;
@@ -723,7 +703,10 @@ void pti_plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x, bool
 /** sy    : The y coordinate of the screen to place the upper left corner. */
 /** celw  : The number of map cells wide in the region to draw. */
 /** celh  : The number of map cells tall in the region to draw. */
-void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, int y) {
+void pti_map(const pti_tilemap_t *map, const pti_tileset_t *set, int x, int y) {
+	pti_tilemap_t *tilemap = (pti_tilemap_t *) map_pointer_to_bank(map);
+	pti_tileset_t *tileset = (pti_tileset_t *) map_pointer_to_bank(set);
+
 	const int map_w = tilemap->width;
 	const int map_h = tilemap->height;
 	const int tile_w = tileset->width;
@@ -739,24 +722,6 @@ void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, 
 		}
 	}
 }
-
-void pti_map_ext(int x, int y) {
-	// const int map_w = _pti.vm.bank->tilemap.width;
-	// const int map_h = _pti.vm.bank->tilemap.height;
-	// const int tile_w = _pti.vm.bank->tileset.width;
-	// const int tile_h = _pti.vm.bank->tileset.height;
-	// int i, j, t;
-	// for (j = 0; j < map_h; j++) {
-	// 	for (i = 0; i < map_w; i++) {
-	// 		t = *((int *) _pti.vm.bank->tilemap.tiles + i + j * map_w);
-	// 		if (t == 0) {
-	// 			continue;
-	// 		}
-	// 		pti_plot(_pti.vm.bank->tileset.pixels, t, x + (i * tile_h), y + (j * tile_w), tile_h, tile_w, false, false);
-	// 	}
-	// }
-}
-
 
 // FIXME: get font stuff from mac backup.
 // TODO: get font stuff from mac backup.

@@ -1,16 +1,13 @@
 // engine
 #include "pti.h"
 
+// cute
 #define CUTE_ASEPRITE_IMPLEMENTATION
 #include "cute_aseprite.h"
 
+// stl
 #include <string>
 #include <vector>
-
-// forward declarations
-static void init(void);
-static void cleanup(void);
-static void frame(void);
 
 struct sprite_t {
 	int width;
@@ -27,7 +24,7 @@ sprite_t __create_sprite(const std::string &path) {
 
 	/* allocate sprite data */
 	const size_t size = ase->w * ase->h * sizeof(ase_color_t);
-	char *pixels = (char *) pti_bank_push(&bank, size * ase->frame_count);
+	char *pixels = (char *) pti_alloc(&bank, size * ase->frame_count);
 
 	sprite_t sprite = {
 			.width = ase->w,
@@ -47,6 +44,11 @@ sprite_t __create_sprite(const std::string &path) {
 
 	return sprite;
 }
+
+// forward declarations
+static void init(void);
+static void cleanup(void);
+static void frame(void);
 
 pti_desc pti_main(int argc, char *argv[]) {
 	return (pti_desc) {
@@ -68,7 +70,7 @@ static sprite_t sprite;
 
 static void init(void) {
 	pti_bank_init(&bank, _pti_kilobytes(256));
-	sprite = __create_sprite("dog.ase");
+	sprite = __create_sprite("assets/dog.ase");
 	pti_clip(0, 0, 128, 128);
 }
 

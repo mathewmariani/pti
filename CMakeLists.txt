@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# set(CMAKE_CXX_STANDARD 17)
+# set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(pti)
 
@@ -16,7 +16,7 @@ add_compile_options(-Wno-reorder-init-list)
 include("extra/cmake/macros.cmake")
 
 # thirdparty
-include("extra/cmake/imgui.cmake")
+# include("extra/cmake/imgui.cmake")
 include("extra/cmake/sokol.cmake")
 include("extra/cmake/stb.cmake")
 

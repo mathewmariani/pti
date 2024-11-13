@@ -33,14 +33,10 @@ void game::startup() {
 }
 
 void game::load() {
-
 	assets::reload();
-
 	entity::clear();
-	int i, j, t;
 
-	/* Zero out tiles with solids along room edges */
-	/* FIXME: this is based on the tilemap */
+	int i, j, t;
 	for (i = 0; i < entity::EN_ROOM_COLS; i++) {
 		for (j = 0; j < entity::EN_ROOM_ROWS; j++) {
 			t = pti_mget(_tilemap, i, j);
