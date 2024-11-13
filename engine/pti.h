@@ -82,7 +82,7 @@ typedef struct pti_tileset_t {
 typedef struct pti_tilemap_t {
 	int16_t width;
 	int16_t height;
-	void *tiles;
+	int *tiles;
 } pti_tilemap_t;
 
 typedef struct {
@@ -217,14 +217,8 @@ typedef struct {
 } _pti__t;
 static _pti__t _pti;
 
-// #define _PTI__ADJUST_PTR(ptr) \
-// 	((void *) ((uintptr_t) _pti.data + ((uintptr_t) _pti.data - (uintptr_t) ptr)))
-// #define _PTI__ADJUST_PTR(ptr) ((void *) ((uintptr_t) (ptr) + ((uintptr_t) _pti.data - (uintptr_t) _pti.cart.begin)))
-#define _PTI__ADJUST_PTR(ptr) ((void *) ((uintptr_t) _pti.data + (uintptr_t) _pti.cart.begin - (uintptr_t) (ptr)))
-
 _PTI_PRIVATE void *map_pointer_to_bank(void *ptr) {
-	uintptr_t offset = (uintptr_t) _pti.data - (uintptr_t) _pti.cart.begin;
-	return (void *) ((uintptr_t) ptr + offset);
+	return (void *) ((uintptr_t) ptr + ((uintptr_t) _pti.data - (uintptr_t) _pti.cart.begin));
 }
 
 _PTI_PRIVATE void *_pti__virtual_reserve(void *ptr, const uint32_t size) {
@@ -468,14 +462,14 @@ uint16_t pti_prand(void) {
 	return ((uint16_t) *(reg + 2) << 0x8) | *(reg + 3);
 }
 
-uint32_t pti_mget(const pti_tilemap_t *map, int x, int y) {
-	pti_tilemap_t *tilemap = (pti_tilemap_t *) map_pointer_to_bank((void *) map);
-	return *((int *) tilemap->tiles + x + y * tilemap->width);
+uint32_t pti_mget(const pti_tilemap_t *tilemap, int x, int y) {
+	int *tiles = (int *) map_pointer_to_bank((void *) tilemap->tiles);
+	return *(tiles + x + y * tilemap->width);
 }
 
-void pti_mset(pti_tilemap_t *map, int x, int y, int value) {
-	pti_tilemap_t *tilemap = (pti_tilemap_t *) map_pointer_to_bank((void *) map);
-	*((int *) tilemap->tiles + x + y * tilemap->width) = value;
+void pti_mset(pti_tilemap_t *tilemap, int x, int y, int value) {
+	int *tiles = (int *) map_pointer_to_bank((void *) tilemap->tiles);
+	*(tiles + x + y * tilemap->width) = value;
 }
 
 short pti_fget(const pti_tilemap_t *tilemap, int x, int y) {
@@ -701,9 +695,9 @@ void pti_plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x, bool
 /** sy    : The y coordinate of the screen to place the upper left corner. */
 /** celw  : The number of map cells wide in the region to draw. */
 /** celh  : The number of map cells tall in the region to draw. */
-void pti_map(const pti_tilemap_t *map, const pti_tileset_t *set, int x, int y) {
-	pti_tilemap_t *tilemap = (pti_tilemap_t *) map_pointer_to_bank(map);
-	pti_tileset_t *tileset = (pti_tileset_t *) map_pointer_to_bank(set);
+void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, int y) {
+	int *tiles = (int *) map_pointer_to_bank((void *) tilemap->tiles);
+	void *pixels = (void *) map_pointer_to_bank((void *) tileset->pixels);
 
 	const int map_w = tilemap->width;
 	const int map_h = tilemap->height;
@@ -712,11 +706,11 @@ void pti_map(const pti_tilemap_t *map, const pti_tileset_t *set, int x, int y) {
 	int i, j, t;
 	for (j = 0; j < map_h; j++) {
 		for (i = 0; i < map_w; i++) {
-			t = *((int *) tilemap->tiles + i + j * map_w);
+			t = *(tiles + i + j * map_w);
 			if (t == 0) {
 				continue;
 			}
-			pti_plot(tileset->pixels, t, x + (i * tile_h), y + (j * tile_w), tile_h, tile_w, false, false);
+			pti_plot(pixels, t, x + (i * tile_h), y + (j * tile_w), tile_h, tile_w, false, false);
 		}
 	}
 }

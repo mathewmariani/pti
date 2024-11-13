@@ -4,9 +4,8 @@
 
 namespace game {
 
-	extern assets::tileset_t *_tileset;
-	extern assets::tilemap_t *_tilemap;
-
+	extern pti_tileset_t *_tileset;
+	extern pti_tilemap_t *_tilemap;
 
 	void load();
 	void startup();

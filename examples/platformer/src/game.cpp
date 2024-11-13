@@ -16,8 +16,8 @@ namespace {
 }// namespace
 
 namespace game {
-	assets::tileset_t *_tileset;
-	assets::tilemap_t *_tilemap;
+	pti_tileset_t *_tileset;
+	pti_tilemap_t *_tilemap;
 }// namespace game
 
 #define XPOS(x) (x * entity::EN_GRID_SIZE)
@@ -25,7 +25,6 @@ namespace game {
 
 void game::startup() {
 	assets::init();
-
 	_tileset = assets::tileset("assets/tilemap.ase");
 	_tilemap = assets::tilemap("assets/tilemap.ase");
 
@@ -33,8 +32,8 @@ void game::startup() {
 }
 
 void game::load() {
-	assets::reload();
 	entity::clear();
+	assets::reload();
 
 	int i, j, t;
 	for (i = 0; i < entity::EN_ROOM_COLS; i++) {
