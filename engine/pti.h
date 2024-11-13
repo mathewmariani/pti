@@ -114,7 +114,7 @@ void pti_bank_init(pti_bank_t *bank, uint32_t capacity);
 
 //>> memory api
 void *pti_alloc(pti_bank_t *bank, const uint32_t size);
-void pti_load_bank(const pti_bank_t *bank);
+void pti_load_bank(pti_bank_t *bank);
 void pti_reload(void);
 void pti_memcpy(void *dst, const void *src, size_t len);
 void pti_memset(void *dst, const int value, size_t len);
@@ -349,20 +349,18 @@ void pti_init(const pti_desc *desc) {
 	/* calculate sizes */
 	const size_t vm_size = sizeof(_pti__vm_t);
 	const size_t vram_size = desc->window.width * desc->window.height * sizeof(uint32_t);
-	const size_t capacity = desc->memory_size + vm_size + vram_size;
+	const size_t capacity = desc->memory_size + vram_size;
 
 	/* init memory */
 	pti_bank_init(&_pti.ram, capacity);
+	// pti_memset(&_pti.ram.begin, 0, (uint32_t) (_pti.ram.cap - _pti.ram.begin));
 
 	/* allocate virtual machine */
-	_pti.vm = *(_pti__vm_t *) pti_alloc(&_pti.ram, vm_size);
+	// _pti.vm = *(_pti__vm_t *) pti_alloc(&_pti.ram, vm_size);
 	_pti.vm.screen.width = desc->window.width;
 	_pti.vm.screen.height = desc->window.height;
 
-	/* allocate screen */
 	_pti.screen = pti_alloc(&_pti.ram, vram_size);
-
-	/* allocate ram */
 	_pti.data = pti_alloc(&_pti.ram, desc->memory_size);
 }
 
@@ -396,7 +394,7 @@ _PTI_PRIVATE void pti_free(pti_bank_t *bank) {
 	memset(bank, 0, sizeof(pti_bank_t));
 }
 
-void pti_load_bank(const pti_bank_t *bank) {
+void pti_load_bank(pti_bank_t *bank) {
 	_pti.cart = *bank;
 	pti_reload();
 }
@@ -471,12 +469,12 @@ uint16_t pti_prand(void) {
 }
 
 uint32_t pti_mget(const pti_tilemap_t *map, int x, int y) {
-	pti_tilemap_t *tilemap = (pti_tilemap_t *) map_pointer_to_bank(map);
+	pti_tilemap_t *tilemap = (pti_tilemap_t *) map_pointer_to_bank((void *) map);
 	return *((int *) tilemap->tiles + x + y * tilemap->width);
 }
 
 void pti_mset(pti_tilemap_t *map, int x, int y, int value) {
-	pti_tilemap_t *tilemap = (pti_tilemap_t *) map_pointer_to_bank(map);
+	pti_tilemap_t *tilemap = (pti_tilemap_t *) map_pointer_to_bank((void *) map);
 	*((int *) tilemap->tiles + x + y * tilemap->width) = value;
 }
 
