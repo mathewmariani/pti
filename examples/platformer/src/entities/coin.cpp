@@ -4,12 +4,10 @@
 /* stdlib */
 #include <algorithm>
 #include <math.h>
-#include <stdbool.h>
 
+#include "../bank.h"
 #include "../lib/assets.h"
 #include "entities.h"
-
-static const assets::sprite_t *sprite;
 
 void entity_coin(entity::event_t *ev) {
 	entity::entity_t *self = ev->self;
@@ -18,7 +16,6 @@ void entity_coin(entity::event_t *ev) {
 
 	switch (ev->type) {
 		case entity::EVENTTYPE_INIT:
-			sprite = assets::sprite("assets/coin.ase");
 			self->bx = -2;
 			self->by = -2;
 			self->bw = 4;
@@ -32,9 +29,7 @@ void entity_coin(entity::event_t *ev) {
 			break;
 		case entity::EVENTTYPE_DRAW:
 			frame = ((int) (self->timer * 8) % 2);
-			// pti_sspr(sprite.pixels, frame, self->x - 2, self->y - 2, false, false);
-			pti_plot(sprite->pixels, frame, self->x - 2, self->y - 2, 8, 8, false, false);
-
+			pti_spr(bitmap_coin, frame, self->x - 2, self->y - 2, false, false);
 			break;
 	}
 }

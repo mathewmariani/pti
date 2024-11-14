@@ -9,7 +9,7 @@
 
 namespace assets {
 
-	static std::unordered_map<std::string, sprite_t> _sprite_cache;
+	static std::unordered_map<std::string, pti_bitmap_t> _sprite_cache;
 	static std::unordered_map<std::string, pti_tileset_t> _tileset_cache;
 	static std::unordered_map<std::string, pti_tilemap_t> _tilemap_cache;
 
@@ -23,30 +23,28 @@ namespace assets {
 		pti_load_bank(&bank);
 	}
 
-	sprite_t __create_sprite(const std::string &path) {
+	pti_bitmap_t __create_bitmap(const std::string &path) {
 		ase_t *ase = cute_aseprite_load_from_file(path.c_str(), NULL);
 
-		/* allocate sprite data */
+		/* allocate bitmap data */
 		const size_t size = ase->w * ase->h * sizeof(ase_color_t);
 		char *pixels = (char *) pti_alloc(&bank, size * ase->frame_count);
+		char *pixels_start = pixels;
 
-		sprite_t sprite = {
-				.width = ase->w,
-				.height = ase->h,
-				.frames = ase->frame_count,
-				.pixels = pixels,
-		};
-
-		// sprite.durr.reserve(ase->frame_count);
 		for (int i = 0; i < ase->frame_count; ++i, pixels += size) {
 			ase_frame_t *frame = ase->frames + i;
 			memcpy(pixels, frame->pixels, size);
-			// sprite.durr.emplace_back(frame->duration_milliseconds);
 		}
 
+		/* release cute resources. */
 		cute_aseprite_free(ase);
 
-		return sprite;
+		return (pti_bitmap_t) {
+				.frames = (int32_t) ase->frame_count,
+				.width = (int16_t) ase->w,
+				.height = (int16_t) ase->h,
+				.pixels = pixels_start,
+		};
 	}
 
 	pti_tileset_t __create_tileset(const std::string &path) {
@@ -96,9 +94,9 @@ namespace assets {
 		return tilemap;
 	}
 
-	sprite_t *sprite(const std::string &path) {
+	pti_bitmap_t *sprite(const std::string &path) {
 		if (_sprite_cache.find(path) == _sprite_cache.end()) {
-			_sprite_cache.emplace(std::make_pair(path, __create_sprite(path)));
+			_sprite_cache.emplace(std::make_pair(path, __create_bitmap(path)));
 		}
 		return &_sprite_cache[path];
 	}

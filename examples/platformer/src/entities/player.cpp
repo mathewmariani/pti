@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdlib>
 
+#include "../bank.h"
 #include "../lib/assets.h"
 #include "../lib/collisions.h"
 #include "entities.h"
@@ -106,8 +107,6 @@ static void handle_player_jump(entity::entity_t *self) {
 	}
 }
 
-static const assets::sprite_t *sprite;
-
 void entity_player(entity::event_t *ev) {
 	entity::entity_t *self = ev->self;
 	int frame = 0;
@@ -115,9 +114,6 @@ void entity_player(entity::event_t *ev) {
 	switch (ev->type) {
 		case entity::EVENTTYPE_INIT: {
 			auto *player = (player_t *) malloc(sizeof(player_t));
-			// player->sprite = pti_sprite_create("dog.ase");
-			sprite = assets::sprite("assets/dog.ase");
-
 			self->bx = -4;
 			self->by = -8;
 			self->bw = 8;
@@ -163,8 +159,7 @@ void entity_player(entity::event_t *ev) {
 				frame = 0;
 			}
 
-			pti_plot(sprite->pixels, frame, self->x - 8, self->y - 16, 16, 16, self->flags & entity::ENTITYFLAG_FACING_LEFT ? 1 : 0, false);
-
+			pti_spr(bitmap_player, frame, self->x - 8, self->y - 16, self->flags & entity::ENTITYFLAG_FACING_LEFT ? 1 : 0, false);
 			break;
 	}
 }

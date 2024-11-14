@@ -1,13 +1,12 @@
 /* pti */
 #include "pti.h"
 
+#include "../bank.h"
 #include "../lib/assets.h"
 #include "../lib/collisions.h"
 #include "entities.h"
 #include <cstdio>
 #include <cstdlib>
-
-static const assets::sprite_t *sprite;
 
 namespace shooter {
 
@@ -35,9 +34,6 @@ void entity_shooter(entity::event_t *ev) {
 	switch (ev->type) {
 		case entity::EVENTTYPE_INIT: {
 			auto *shooter = (shooter_t *) malloc(sizeof(shooter_t));
-			// shooter->sprite = pti_sprite_create("goomba.ase");
-			sprite = assets::sprite("assets/goomba.ase");
-
 			self->bx = -4;
 			self->by = -8;
 			self->bw = 8;
@@ -74,11 +70,7 @@ void entity_shooter(entity::event_t *ev) {
 		case entity::EVENTTYPE_OVERLAP: {
 		} break;
 		case entity::EVENTTYPE_DRAW:
-			// pti_sprite *sprite = data->sprite;
-			// pti_plot_sprite(sprite, 0, self->x - 8, self->y - 16,
-			//                 self->flags & entity::ENTITYFLAG_FACING_LEFT ? 1 : 0,
-			//                 false);
-			pti_plot(sprite->pixels, frame, self->x - 8, self->y - 16, 16, 16, self->flags & entity::ENTITYFLAG_FACING_LEFT ? 1 : 0, false);
+			pti_spr(bitmap_shooter, frame, self->x - 8, self->y - 16, self->flags & entity::ENTITYFLAG_FACING_LEFT ? 1 : 0, false);
 			break;
 	}
 }

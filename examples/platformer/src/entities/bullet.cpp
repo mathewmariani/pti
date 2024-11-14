@@ -1,6 +1,7 @@
 /* pti */
 #include "pti.h"
 
+#include "../bank.h"
 #include "../lib/assets.h"
 #include "../lib/collisions.h"
 #include "entities.h"
@@ -10,8 +11,6 @@
 typedef struct {
 	int direction;
 } bullet_t;
-
-static const assets::sprite_t *sprite;
 
 namespace bullet {
 	constexpr float max_speed = 1.0f;
@@ -53,10 +52,6 @@ void entity_bullet(entity::event_t *ev) {
 	switch (ev->type) {
 		case entity::EVENTTYPE_INIT: {
 			auto *bullet = (bullet_t *) malloc(sizeof(bullet_t));
-
-			/* FIXME: this will cause an insufficient memory error */
-			// bullet->sprite = pti_sprite_create("bullet.ase");
-			sprite = assets::sprite("assets/bullet.ase");
 			bullet->direction = 1;
 
 			self->bx = -4;
@@ -109,16 +104,7 @@ void entity_bullet(entity::event_t *ev) {
 			}
 		} break;
 		case entity::EVENTTYPE_DRAW:
-			// pti_sprite *sprite = data->sprite;
-			// pti_plot_sprite(sprite, 0, self->x - 4, self->y - 4,
-			//                 self->flags & entity::ENTITYFLAG_FACING_LEFT ? 1 : 0,
-			//                 false);
-
-			pti_plot(sprite->pixels, 0, self->x - 4, self->y - 4, 8, 8, false, false);
-
-			// pti_rect(self->x + self->bx, self->y + self->by, self->bw, self->bh,
-			//          0xffff0000);
-
+			pti_spr(bitmap_bullet, 0, self->x - 4, self->y - 4, false, false);
 			break;
 	}
 }

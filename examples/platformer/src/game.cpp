@@ -2,6 +2,7 @@
 #include "pti.h"
 
 #include "game.h"
+#include "bank.h"
 
 #include "lib/assets.h"
 #include "lib/entity.h"
@@ -15,18 +16,19 @@ namespace {
 	constexpr int height = 135;
 }// namespace
 
-namespace game {
-	pti_tileset_t *_tileset;
-	pti_tilemap_t *_tilemap;
-}// namespace game
-
 #define XPOS(x) (x * entity::EN_GRID_SIZE)
 #define YPOS(y) (y * entity::EN_GRID_SIZE)
 
 void game::startup() {
 	assets::init();
-	_tileset = assets::tileset("assets/tilemap.ase");
-	_tilemap = assets::tilemap("assets/tilemap.ase");
+	tileset = assets::tileset("assets/tilemap.ase");
+	tilemap = assets::tilemap("assets/tilemap.ase");
+	bitmap_bullet = assets::sprite("assets/bullet.ase");
+	bitmap_coin = assets::sprite("assets/coin.ase");
+	bitmap_goomba = assets::sprite("assets/goomba.ase");
+	bitmap_player = assets::sprite("assets/dog.ase");
+	// bitmap_pop = assets::sprite("assets/pop.ase");
+	bitmap_shooter = assets::sprite("assets/goomba.ase");
 
 	game::load();
 }
@@ -38,23 +40,23 @@ void game::load() {
 	int i, j, t;
 	for (i = 0; i < entity::EN_ROOM_COLS; i++) {
 		for (j = 0; j < entity::EN_ROOM_ROWS; j++) {
-			t = pti_mget(_tilemap, i, j);
+			t = pti_mget(tilemap, i, j);
 			switch (t) {
 				case 48:
 					entity::create(entity_player, XPOS(i), YPOS(j));
-					pti_mset(_tilemap, i, j, 0);
+					pti_mset(tilemap, i, j, 0);
 					break;
 				case 49:
 					entity::create(entity_coin, XPOS(i), YPOS(j));
-					pti_mset(_tilemap, i, j, 0);
+					pti_mset(tilemap, i, j, 0);
 					break;
 				case 50:
 					entity::create(entity_goomba, XPOS(i), YPOS(j));
-					pti_mset(_tilemap, i, j, 0);
+					pti_mset(tilemap, i, j, 0);
 					break;
 				case 51:
 					entity::create(entity_shooter, XPOS(i), YPOS(j));
-					pti_mset(_tilemap, i, j, 0);
+					pti_mset(tilemap, i, j, 0);
 					break;
 			}
 		}
@@ -82,7 +84,7 @@ void game::render() {
 
 	/* draw tilemap */
 	// pti_plot_tilemap(0, 0);
-	pti_map(_tilemap, _tileset, 0, 0);
+	pti_map(tilemap, tileset, 0, 0);
 
 	/* draw entities */
 	entity::draw();

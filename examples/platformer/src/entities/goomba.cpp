@@ -1,6 +1,7 @@
 /* pti */
 #include "pti.h"
 
+#include "../bank.h"
 #include "../lib/assets.h"
 #include "../lib/collisions.h"
 #include "entities.h"
@@ -16,9 +17,6 @@ static const float phy_vertical_grav_fall = 0.4254f;
 static const float phy_vertical_grav_alt = 0.1940f;
 static const float phy_jump_strength = 6.1135f;
 static const float phy_bounce_strength = 4.5535f;
-
-static const assets::sprite_t *sprite;
-
 
 typedef enum {
 	GOOMBA_STATE_NORMAL,
@@ -65,9 +63,6 @@ void entity_goomba(entity::event_t *ev) {
 
 	switch (ev->type) {
 		case entity::EVENTTYPE_INIT: {
-
-			sprite = assets::sprite("assets/goomba.ase");
-
 			auto *goomba = (goomba_t *) malloc(sizeof(goomba_t));
 			goomba->direction = 1;
 			goomba->state = GOOMBA_STATE_NORMAL;
@@ -144,15 +139,7 @@ void entity_goomba(entity::event_t *ev) {
 			if (self->sx == 0 && self->sy == 0) {
 				frame = 0;
 			}
-
-			// pti_sprite *sprite = ((goomba_t *)self->userdata)->sprite;
-			// pti_plot_sprite(sprite, frame, self->x - 8, self->y - 16,
-			//                 self->flags & entity::ENTITYFLAG_FACING_LEFT ? 1 : 0,
-			//                 false);
-
-			pti_plot(sprite->pixels, frame, self->x - 8, self->y - 16, 16, 16, self->flags & entity::ENTITYFLAG_FACING_LEFT ? 1 : 0, false);
-
-
+			pti_spr(bitmap_goomba, frame, self->x - 8, self->y - 16, self->flags & entity::ENTITYFLAG_FACING_LEFT ? 1 : 0, false);
 			break;
 	}
 }

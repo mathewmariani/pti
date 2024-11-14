@@ -2,7 +2,7 @@
 
 #include "entity.h"
 #include "collisions.h"
-#include "../game.h"
+#include "../bank.h"
 
 #include <algorithm>
 
@@ -40,7 +40,7 @@ namespace collisions {
 		int x, y, f;
 		for (y = t; y <= b; y++) {
 			for (x = l; x <= r; x++) {
-				f = pti_fget(game::_tilemap, x, y);
+				f = pti_fget(tilemap, x, y);
 				switch (f) {
 					case 0:
 					case 46:

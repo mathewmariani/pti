@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #=== EXECUTABLE: platformer
 set(PLATFORMER_HEADERS
     src/game.h
+    src/bank.h
     
     src/entities/entities.h
 
@@ -16,6 +17,7 @@ set(PLATFORMER_HEADERS
 
 set(PLATFORMER_SRC
     src/game.cpp
+    src/bank.cpp
 
     src/entities/bullet.cpp
     src/entities/coin.cpp
