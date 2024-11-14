@@ -7,7 +7,8 @@ if(BUILD_WITH_STB)
   set(STB_DIR ${THIRDPARTY_DIR}/stb)
   set(STB_FILES
     ${STB_DIR}/stb.c
-    ${STB_DIR}/stb_image.h)
+    ${STB_DIR}/stb_image.h
+    ${STB_DIR}/stb_truetype.h)
 
   add_library(stb STATIC ${STB_FILES})
 endif()

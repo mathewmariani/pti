@@ -1,4 +1,5 @@
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_TRUETYPE_IMPLEMENTATION
 
 // #define STB_IMAGE_IMPLEMENTATION
 // #if defined(__clang__)
@@ -12,5 +13,5 @@
 // #undef STB_IMAGE_IMPLEMENTATION
 // #include "stb/stb_image.h"
 
-/* headers */
 #include "stb_image.h"
+#include "stb_truetype.h"
