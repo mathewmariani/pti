@@ -1,8 +1,5 @@
 project(platformer)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 #=== EXECUTABLE: platformer
 set(PLATFORMER_HEADERS
     src/game.h

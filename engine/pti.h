@@ -70,7 +70,7 @@ typedef struct pti_bitmap_t {
 	int32_t frames;
 	int32_t width;
 	int32_t height;
-	void *pixels;
+	void *pixels; /* (width) x (height x frames) */
 } pti_bitmap_t;
 
 typedef struct pti_tileset_t {
@@ -209,10 +209,10 @@ typedef struct {
 // <<< new stuff
 
 typedef struct {
-	pti_desc desc;  // cached description
-	pti_bank_t ram; // where everything is allocated.
-	pti_bank_t cart;// where everything is allocated.
-	_pti__vm_t vm;  // virtual machine (allocated in memory)
+	pti_desc desc;
+	pti_bank_t ram;
+	pti_bank_t cart;
+	_pti__vm_t vm;
 	uint32_t *screen;
 	void *data;
 } _pti__t;
@@ -296,7 +296,7 @@ enum {
 	_PTI_KEY_RELEASED = (1 << 2),
 };
 
-_PTI_PRIVATE bool _pti__check_input_flag(uint32_t idx, int flag) {
+_PTI_PRIVATE inline bool _pti__check_input_flag(uint32_t idx, int flag) {
 	return _pti.vm.hardware.btn_state[idx] & flag ? true : false;
 }
 
@@ -477,12 +477,12 @@ short pti_fget(const pti_tilemap_t *tilemap, int x, int y) {
 	return (short) pti_mget(tilemap, x, y);
 }
 
-_PTI_PRIVATE bool _pti__get_dither_bit(const int x, const int y) {
+_PTI_PRIVATE inline bool _pti__get_dither_bit(const int x, const int y) {
 	const uint8_t i = 0xf - ((x & 0x3) + 0x4 * (y & 0x3));
 	return ((_pti.vm.draw.dither & (1 << i)) >> i) != 0;
 }
 
-_PTI_PRIVATE void _pti__transform(int *x, int *y) {
+_PTI_PRIVATE inline void _pti__transform(int *x, int *y) {
 	*x -= _pti.vm.draw.cam_x;
 	*y -= _pti.vm.draw.cam_y;
 }
@@ -637,9 +637,9 @@ void pti_line(int x0, int y0, int x1, int y1, uint64_t c) {
 		_pti_swap(y0, y1);
 	}
 
-	int dx = x1 - x0;
-	int dy = y1 - y0;
-	int de = 2 * _pti_abs(dy);
+	const int dx = x1 - x0;
+	const int dy = y1 - y0;
+	const int de = 2 * _pti_abs(dy);
 	int err = 0;
 	int y = y0;
 
@@ -658,15 +658,14 @@ void pti_line(int x0, int y0, int x1, int y1, uint64_t c) {
 }
 
 void pti_rect(int x, int y, int w, int h, uint64_t color) {
-	int px, py, l, t, r, b;
-
 	_pti__transform(&x, &y);
 
-	l = _pti_max(_pti.vm.draw.clip_x0, x);
-	t = _pti_max(_pti.vm.draw.clip_y0, y);
-	r = _pti_min(_pti.vm.draw.clip_x1, x + w);
-	b = _pti_min(_pti.vm.draw.clip_y1, y + h);
+	const int l = _pti_max(_pti.vm.draw.clip_x0, x);
+	const int t = _pti_max(_pti.vm.draw.clip_y0, y);
+	const int r = _pti_min(_pti.vm.draw.clip_x1, x + w);
+	const int b = _pti_min(_pti.vm.draw.clip_y1, y + h);
 
+	int px, py;
 	for (py = t; py < b; py++) {
 		for (px = l; px < r; px++) {
 			_pti__set_pixel(px, py, color);
