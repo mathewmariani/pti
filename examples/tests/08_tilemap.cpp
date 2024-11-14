@@ -15,23 +15,21 @@ pti_tileset_t __create_tileset(const std::string &path) {
 	ase_t *ase = cute_aseprite_load_from_file(path.c_str(), NULL);
 	ase_tileset_t ase_tileset = ase->tileset;
 
+	/* allocate tileset data */
 	const size_t size = (ase_tileset.tile_w * (ase_tileset.tile_h * ase_tileset.tile_count)) * sizeof(ase_color_t);
 	void *pixels = pti_alloc(&bank, size);
 
-	pti_tileset_t tileset;
-
-	/* initialize */
-	tileset.count = (int32_t) ase_tileset.tile_count;
-	tileset.width = (int16_t) ase_tileset.tile_w;
-	tileset.height = (int16_t) ase_tileset.tile_h;
-	tileset.pixels = (void *) pti_alloc(&bank, size);
-
-	memcpy(tileset.pixels, ase_tileset.pixels, size);
+	memcpy(pixels, ase_tileset.pixels, size);
 
 	/* release cute resources. */
 	cute_aseprite_free(ase);
 
-	return tileset;
+	return (pti_tileset_t) {
+			.count = (int32_t) ase_tileset.tile_count,
+			.width = (int16_t) ase_tileset.tile_w,
+			.height = (int16_t) ase_tileset.tile_h,
+			.pixels = pixels,
+	};
 }
 
 pti_tilemap_t __create_tilemap(const std::string &path) {
@@ -86,10 +84,7 @@ static void init(void) {
 	pti_bank_init(&bank, _pti_kilobytes(256));
 	tilemap = __create_tilemap("assets/tilemap.ase");
 	tileset = __create_tileset("assets/tilemap.ase");
-
-	// this should load bank into RAM, we can consider our bank as ROM
 	pti_load_bank(&bank);
-	pti_reload();
 
 	pti_clip(0, 0, 240 * 2, 136 * 2);
 }

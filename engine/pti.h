@@ -67,6 +67,7 @@ typedef struct pti_window {
 } pti_window;
 
 typedef struct pti_bitmap_t {
+	int32_t frames;
 	int32_t width;
 	int32_t height;
 	void *pixels;
@@ -148,8 +149,8 @@ void pti_pset(const int x, const int y, uint64_t color);
 void pti_line(int x0, int y0, int x1, int y1, uint64_t color);
 void pti_rect(int x, int y, int w, int h, uint64_t color);
 void pti_rectf(int x0, int y0, int x1, int y1, uint64_t color);
-void pti_plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x, bool flip_y);
 void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, int y);
+void pti_spr(const pti_bitmap_t *bitmap, int n, int x, int y, bool flip_x, bool flip_y);
 
 #ifdef __cplusplus
 } /* extern "C" */
@@ -501,6 +502,88 @@ _PTI_PRIVATE void _pti__set_pixel(int x, int y, uint64_t c) {
 	*(vram + (x + y * screen_w)) = _pti__get_dither_bit(x, y) ? (c >> 32) & 0xffffffff : (c >> 0) & 0xffffffff;
 }
 
+_PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x, bool flip_y) {
+	// adjust camera:
+	_pti__transform(&x, &y);
+
+	int src_x = 0;
+	int src_y = 0;
+	int dst_x1 = x;
+	int dst_y1 = y;
+	int dst_x2 = x + w - 1;
+	int dst_y2 = y + h - 1;
+	int src_x1 = src_x;
+	int src_y1 = src_y;
+
+	// clip:
+	const int16_t clip_x0 = _pti.vm.draw.clip_x0;
+	const int16_t clip_y0 = _pti.vm.draw.clip_y0;
+	const int16_t clip_x1 = _pti.vm.draw.clip_x1;
+	const int16_t clip_y1 = _pti.vm.draw.clip_y1;
+
+	if (dst_x1 >= clip_x1 || dst_x2 < clip_x0) {
+		return;
+	}
+	if (dst_y1 >= clip_y1 || dst_y2 < clip_y0) {
+		return;
+	}
+
+	if (dst_x1 < clip_x0) {
+		src_x1 -= dst_x1;
+		dst_x1 = clip_x0;
+	}
+	if (dst_y1 < clip_y0) {
+		src_y1 -= dst_y1;
+		dst_y1 = clip_y0;
+	}
+	if (dst_x2 >= clip_x1) {
+		dst_x2 = clip_x1 - 1;
+	}
+	if (dst_y2 >= clip_y1) {
+		dst_y2 = clip_y1 - 1;
+	}
+
+	const int ix = flip_x ? -1 : 1;
+	const int iy = flip_y ? -1 : 1;
+
+	if (flip_x) {
+		src_x1 += w - 1;
+	}
+	if (flip_y) {
+		src_y1 += h - 1;
+	}
+
+	const size_t size = w * h * sizeof(int);
+	uint32_t *src = pixels + size * n;
+	uint32_t *dst = _pti.screen;
+
+	const int dst_width = _pti.desc.window.width;
+	const int src_width = w;
+
+	const int clipped_width = dst_x2 - dst_x1 + 1;
+	const int dst_next_row = dst_width - clipped_width;
+	const int src_next_row = (flip_x && flip_y)
+									 ? (src_width - clipped_width)
+							 : (flip_x || flip_y)
+									 ? (src_width + clipped_width)
+									 : (src_width - clipped_width);
+
+	uint32_t *dst_pixel = dst + dst_y1 * dst_width + dst_x1;
+	uint32_t *src_pixel = src + src_y1 * src_width + src_x1;
+	uint32_t color_key = _pti.vm.draw.ckey;
+	for (int dst_y = dst_y1; dst_y <= dst_y2; dst_y++) {
+		for (int i = 0; i < clipped_width; i++) {
+			uint32_t src_color = *src_pixel;
+			uint32_t dst_color = *dst_pixel;
+			*dst_pixel = src_color != color_key ? src_color : dst_color;
+			src_pixel += ix;
+			dst_pixel++;
+		}
+		dst_pixel += dst_next_row;
+		src_pixel += src_next_row * iy;
+	}
+}
+
 void pti_camera(int x, int y) {
 	_pti.vm.draw.cam_x = x;
 	_pti.vm.draw.cam_y = y;
@@ -606,88 +689,6 @@ void pti_rectf(int x0, int y0, int x1, int y1, uint64_t color) {
 	}
 }
 
-void pti_plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x, bool flip_y) {
-	// adjust camera:
-	_pti__transform(&x, &y);
-
-	int src_x = 0;
-	int src_y = 0;
-	int dst_x1 = x;
-	int dst_y1 = y;
-	int dst_x2 = x + w - 1;
-	int dst_y2 = y + h - 1;
-	int src_x1 = src_x;
-	int src_y1 = src_y;
-
-	// clip:
-	const int16_t clip_x0 = _pti.vm.draw.clip_x0;
-	const int16_t clip_y0 = _pti.vm.draw.clip_y0;
-	const int16_t clip_x1 = _pti.vm.draw.clip_x1;
-	const int16_t clip_y1 = _pti.vm.draw.clip_y1;
-
-	if (dst_x1 >= clip_x1 || dst_x2 < clip_x0) {
-		return;
-	}
-	if (dst_y1 >= clip_y1 || dst_y2 < clip_y0) {
-		return;
-	}
-
-	if (dst_x1 < clip_x0) {
-		src_x1 -= dst_x1;
-		dst_x1 = clip_x0;
-	}
-	if (dst_y1 < clip_y0) {
-		src_y1 -= dst_y1;
-		dst_y1 = clip_y0;
-	}
-	if (dst_x2 >= clip_x1) {
-		dst_x2 = clip_x1 - 1;
-	}
-	if (dst_y2 >= clip_y1) {
-		dst_y2 = clip_y1 - 1;
-	}
-
-	const int ix = flip_x ? -1 : 1;
-	const int iy = flip_y ? -1 : 1;
-
-	if (flip_x) {
-		src_x1 += w - 1;
-	}
-	if (flip_y) {
-		src_y1 += h - 1;
-	}
-
-	const size_t size = w * h * sizeof(int);
-	uint32_t *src = pixels + size * n;
-	uint32_t *dst = _pti.screen;
-
-	const int dst_width = _pti.desc.window.width;
-	const int src_width = w;
-
-	const int clipped_width = dst_x2 - dst_x1 + 1;
-	const int dst_next_row = dst_width - clipped_width;
-	const int src_next_row = (flip_x && flip_y)
-									 ? (src_width - clipped_width)
-							 : (flip_x || flip_y)
-									 ? (src_width + clipped_width)
-									 : (src_width - clipped_width);
-
-	uint32_t *dst_pixel = dst + dst_y1 * dst_width + dst_x1;
-	uint32_t *src_pixel = src + src_y1 * src_width + src_x1;
-	uint32_t color_key = _pti.vm.draw.ckey;
-	for (int dst_y = dst_y1; dst_y <= dst_y2; dst_y++) {
-		for (int i = 0; i < clipped_width; i++) {
-			uint32_t src_color = *src_pixel;
-			uint32_t dst_color = *dst_pixel;
-			*dst_pixel = src_color != color_key ? src_color : dst_color;
-			src_pixel += ix;
-			dst_pixel++;
-		}
-		dst_pixel += dst_next_row;
-		src_pixel += src_next_row * iy;
-	}
-}
-
 /* FIXME: implement full functionality. */
 /** celx  : The column location of the map cell in the upper left corner of the region to draw, where 0 is the leftmost column. */
 /** cely  : The row location of the map cell in the upper left corner of the region to draw, where 0 is the topmost row. */
@@ -696,13 +697,14 @@ void pti_plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x, bool
 /** celw  : The number of map cells wide in the region to draw. */
 /** celh  : The number of map cells tall in the region to draw. */
 void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, int y) {
-	int *tiles = (int *) map_pointer_to_bank((void *) tilemap->tiles);
-	void *pixels = (void *) map_pointer_to_bank((void *) tileset->pixels);
-
 	const int map_w = tilemap->width;
 	const int map_h = tilemap->height;
 	const int tile_w = tileset->width;
 	const int tile_h = tileset->height;
+
+	int *tiles = (int *) map_pointer_to_bank((void *) tilemap->tiles);
+	void *pixels = (void *) map_pointer_to_bank((void *) tileset->pixels);
+
 	int i, j, t;
 	for (j = 0; j < map_h; j++) {
 		for (i = 0; i < map_w; i++) {
@@ -710,9 +712,16 @@ void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, 
 			if (t == 0) {
 				continue;
 			}
-			pti_plot(pixels, t, x + (i * tile_h), y + (j * tile_w), tile_h, tile_w, false, false);
+			_pti__plot(pixels, t, x + (i * tile_h), y + (j * tile_w), tile_h, tile_w, false, false);
 		}
 	}
+}
+
+void pti_spr(const pti_bitmap_t *sprite, int n, int x, int y, bool flip_x, bool flip_y) {
+	const int bmp_w = sprite->width;
+	const int bmp_h = sprite->height;
+	void *pixels = (void *) map_pointer_to_bank((void *) sprite->pixels);
+	_pti__plot(pixels, n, x, y, bmp_w, bmp_h, flip_x, flip_y);
 }
 
 // FIXME: get font stuff from mac backup.
