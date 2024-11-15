@@ -146,6 +146,8 @@ void pti_colorkey(const uint32_t color);
 void pti_dither(const uint16_t bstr);
 void pti_clip(const int x0, const int y0, const int x1, const int y1);
 void pti_pset(const int x, const int y, uint64_t color);
+void pti_circ(const int x, const int y, const int r, uint64_t color);
+void pti_circf(const int x, const int y, const int r, uint64_t color);
 void pti_line(int x0, int y0, int x1, int y1, uint64_t color);
 void pti_rect(int x, int y, int w, int h, uint64_t color);
 void pti_rectf(int x0, int y0, int x1, int y1, uint64_t color);
@@ -155,6 +157,15 @@ void pti_print(const pti_bitmap_t *font, const char *text, int x, int y);
 
 #ifdef __cplusplus
 } /* extern "C" */
+
+/* reference-based equivalents for C++ */
+inline uint32_t pti_mget(const pti_tilemap_t &tilemap, int x, int y) { return pti_mget(&tilemap, x, y); }
+inline void pti_mset(pti_tilemap_t &tilemap, int x, int y, int value) { pti_mset(&tilemap, x, y, value); }
+inline short pti_fget(const pti_tilemap_t &tilemap, int x, int y) { return pti_fget(&tilemap, x, y); }
+inline void pti_map(const pti_tilemap_t &tilemap, const pti_tileset_t &tileset, int x, int y) { pti_map(&tilemap, &tileset, x, y); }
+inline void pti_spr(const pti_bitmap_t &bitmap, int n, int x, int y, bool flip_x, bool flip_y) { pti_spr(&bitmap, n, x, y, flip_x, flip_y); }
+inline void pti_print(const pti_bitmap_t &font, const char *text, int x, int y) { pti_print(&font, text, x, y); }
+
 #endif
 
 #endif// PTI_INCLUDED
@@ -612,6 +623,66 @@ void pti_pset(const int x, const int y, uint64_t color) {
 	_pti__set_pixel(x, y, color);
 }
 
+void pti_circ(const int x, const int y, const int r, uint64_t color) {
+	int32_t dx = r;
+	int32_t dy = 0;
+	int32_t err = 1 - dx;
+	while (dx >= dy) {
+		_pti__set_pixel(dx + x, dy + y, color);
+		_pti__set_pixel(-dx + x, dy + y, color);
+		_pti__set_pixel(dx + x, -dy + y, color);
+		_pti__set_pixel(-dx + x, -dy + y, color);
+		_pti__set_pixel(dy + x, dx + y, color);
+		_pti__set_pixel(-dy + x, dx + y, color);
+		_pti__set_pixel(dy + x, -dx + y, color);
+		_pti__set_pixel(-dy + x, -dx + y, color);
+		dy++;
+		if (err < 0) {
+			err += 2 * dy + 1;
+		} else {
+			dx--;
+			err += 2 * (dy - dx + 1);
+		}
+	}
+}
+
+void pti_circf(const int x, const int y, const int r, uint64_t color) {
+	int32_t dx = r;
+	int32_t dy = 0;
+	int32_t err = 1 - dx;
+	while (dx >= dy) {
+#define FILL_ROW(startx, endx, starty, c)                         \
+	do {                                                          \
+		int32_t sx = (startx);                                    \
+		int32_t ex = (endx);                                      \
+		int32_t sy = (starty);                                    \
+		if (sy < 0 || sy >= _pti.vm.screen.height) break;         \
+		if (sx < 0) sx = 0;                                       \
+		if (sx > _pti.vm.screen.width) sx = _pti.vm.screen.width; \
+		if (ex < 0) ex = 0;                                       \
+		if (ex > _pti.vm.screen.width) ex = _pti.vm.screen.width; \
+		if (sx == ex) break;                                      \
+		for (int32_t i = 0; i < (ex - sx); i++) {                 \
+			_pti__set_pixel(sx + i, sy, c);                       \
+		}                                                         \
+	} while (0)
+
+		FILL_ROW(-dx + x, dx + x, dy + y, color);
+		FILL_ROW(-dx + x, dx + x, -dy + y, color);
+		FILL_ROW(-dy + x, dy + x, dx + y, color);
+		FILL_ROW(-dy + x, dy + x, -dx + y, color);
+#undef FILL_ROW
+
+		dy++;
+		if (err < 0) {
+			err += 2 * dy + 1;
+		} else {
+			dx--;
+			err += 2 * (dy - dx + 1);
+		}
+	}
+}
+
 void pti_line(int x0, int y0, int x1, int y1, uint64_t c) {
 	bool steep = false;
 	if (_pti_abs(x1 - x0) < _pti_abs(y1 - y0)) {
@@ -727,6 +798,7 @@ uint32_t _pti__next_utf8_code_point(const char *data, uint32_t *index, uint32_t 
 	return character;
 }
 
+// FIXME: remove magic numbers
 #define FONT_GLYPH_WIDTH (6)
 #define FONT_GLYPH_HEIGHT (13)
 #define FONT_GLYPHS_PER_ROW (96 / FONT_GLYPH_WIDTH)
