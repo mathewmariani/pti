@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build": "ts-node docs/build.ts",
+    "build": "ts-node resources/build.ts",
     "emsdk": "git clone https://github.com/emscripten-core/emsdk && cd emsdk && ./emsdk install latest && ./emsdk activate --embedded latest && cd ..",
     "libs:imgui": "./libs/imgui/update.sh",
     "libs:sokol": "./libs/sokol/update.sh",
