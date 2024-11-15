@@ -1,34 +1,21 @@
 #!/bin/bash
-# update the required sokol headers
-
-# repo url
-SOKOL_PREFIX="https://raw.githubusercontent.com/floooh/sokol/master"
-
-# headers
-SOKOL_APP_H="$SOKOL_PREFIX/sokol_app.h"
-SOKOL_FETCH_H="$SOKOL_PREFIX/sokol_fetch.h"
-SOKOL_GFX_H="$SOKOL_PREFIX/sokol_gfx.h"
-SOKOL_GLUE_H="$SOKOL_PREFIX/sokol_glue.h"
-SOKOL_LOG_H="$SOKOL_PREFIX/sokol_log.h"
-
-# utils
-SOKOL_IMGUI_H="$SOKOL_PREFIX/util/sokol_imgui.h"
-
-# license
-SOKOL_LICENSE="$SOKOL_PREFIX/LICENSE"
+# update tracy
 
 # output directory
-OUTPUT=./libs/sokol
+OUTPUT=./libs/tracy
+pushd $OUTPUT
 
-# curl all headers and utils
-curl $SOKOL_APP_H > $OUTPUT/sokol_app.h
-curl $SOKOL_FETCH_H > $OUTPUT/sokol_fetch.h
-curl $SOKOL_GFX_H > $OUTPUT/sokol_gfx.h
-curl $SOKOL_GLUE_H > $OUTPUT/sokol_glue.h
-curl $SOKOL_LOG_H > $OUTPUT/sokol_log.h
+# download tracy
+curl -O -L "https://github.com/wolfpld/tracy/archive/refs/tags/v0.11.1.zip"
+unzip v0.11.1.zip
 
-# utils
-curl $SOKOL_IMGUI_H > $OUTPUT/sokol_imgui.h
+cp -rf tracy-0.11.1/public/ .
+cp -rf tracy/Tracy.hpp .
+cp -rf tracy/TracyC.h .
+cp -rf tracy/TracyOpenGL.hpp .
 
-# license
-curl $SOKOL_LICENSE > $OUTPUT/LICENSE
+rm -rf tracy/
+rm -rf tracy-0.11.1
+rm -rf v0.11.1.zip
+
+popd
