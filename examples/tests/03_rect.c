@@ -6,13 +6,13 @@
 // engine
 #include "pti.h"
 
-#define PTI_ARGB(a, r, g, b)                                   \
-	(uint32_t)(((uint8_t) (a) << 24) | ((uint8_t) (r) << 16) | \
-			   ((uint8_t) (g) << 8) | ((uint8_t) (b) << 0))
+#define PTI_ARGB(a, r, g, b)                                    \
+	(uint32_t) (((uint8_t) (a) << 24) | ((uint8_t) (r) << 16) | \
+				((uint8_t) (g) << 8) | ((uint8_t) (b) << 0))
 
-#define PTI_RGBA(r, g, b, a)                                   \
-	(uint32_t)(((uint8_t) (a) << 24) | ((uint8_t) (r) << 16) | \
-			   ((uint8_t) (g) << 8) | ((uint8_t) (b) << 0))
+#define PTI_RGBA(r, g, b, a)                                    \
+	(uint32_t) (((uint8_t) (a) << 24) | ((uint8_t) (r) << 16) | \
+				((uint8_t) (g) << 8) | ((uint8_t) (b) << 0))
 
 // forward declarations
 static void init(void);
@@ -20,17 +20,18 @@ static void cleanup(void);
 static void frame(void);
 
 pti_desc pti_main(int argc, char *argv[]) {
-	return (pti_desc){
+	return (pti_desc) {
 			.init_cb = init,
 			.cleanup_cb = cleanup,
 			.frame_cb = frame,
 			.memory_size = _pti_kilobytes(256),
 			.window =
-					(pti_window){
+					(pti_window) {
 							.width = 128,
 							.height = 128,
 							.flags = PTI_SCALE3X,
-					}};
+					},
+	};
 }
 
 static void init(void) {
