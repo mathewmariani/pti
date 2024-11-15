@@ -52,7 +52,7 @@ pti_desc pti_main(int argc, char *argv[]) {
 							.name = "pti - platformer",
 							.width = 240,
 							.height = 135,
-							.flags = PTI_SCALE2X,
+							.flags = PTI_SCALE3X,
 					},
 	};
 }

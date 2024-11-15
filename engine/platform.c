@@ -4,6 +4,11 @@
 #include "sokol/sokol_glue.h"
 #include "sokol/sokol_log.h"
 
+// tracy
+#include "tracy/TracyC.h"
+
+#define PTI_PROFILE_FRAME(x) TracyCFrameMarkNamed(x)
+
 #define PTI_IMPL
 #include "pti.h"
 
@@ -215,6 +220,7 @@ static void cleanup(void) {}
 #define TICK_TOLERANCE_NS (1000000)
 
 static void frame(void) {
+	PTI_PROFILE_FRAME("main");
 	uint32_t frame_time_ns = (uint32_t) (sapp_frame_duration() * 1000000000.0);
 	if (frame_time_ns > TICK_DURATION_NS) {
 		frame_time_ns = TICK_DURATION_NS;
