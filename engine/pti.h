@@ -212,7 +212,6 @@ typedef struct {
 	} draw;
 
 	struct {
-		uint8_t bank_id;
 		uint8_t btn_state[PTI_BUTTON_COUNT];
 		uint8_t rnd_reg[4];
 	} hardware;
