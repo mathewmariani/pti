@@ -487,18 +487,7 @@ _PTI_PRIVATE inline void _pti__transform(int *x, int *y) {
 }
 
 _PTI_PRIVATE void _pti__set_pixel(int x, int y, uint64_t c) {
-	const int16_t clip_x0 = _pti.vm.draw.clip_x0;
-	const int16_t clip_y0 = _pti.vm.draw.clip_y0;
-	const int16_t clip_x1 = _pti.vm.draw.clip_x1;
-	const int16_t clip_y1 = _pti.vm.draw.clip_y1;
-
-	if (x < clip_x0 || x >= clip_x1 || y < clip_y0 || y >= clip_y1) {
-		return;
-	}
-
-	uint32_t *vram = _pti.screen;
-	const int screen_w = _pti.vm.screen.width;
-	*(vram + (x + y * screen_w)) = _pti__get_dither_bit(x, y) ? (c >> 32) & 0xffffffff : (c >> 0) & 0xffffffff;
+	*(_pti.screen + (x + y * _pti.vm.screen.width)) = _pti__get_dither_bit(x, y) ? (c >> 32) & 0xffffffff : (c >> 0) & 0xffffffff;
 }
 
 _PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, int sx, int sy, int sw, int sh, bool flip_x, bool flip_y) {
@@ -687,13 +676,6 @@ void pti_rectf(int x0, int y0, int x1, int y1, uint64_t color) {
 	}
 }
 
-/* FIXME: implement full functionality. */
-/** celx  : The column location of the map cell in the upper left corner of the region to draw, where 0 is the leftmost column. */
-/** cely  : The row location of the map cell in the upper left corner of the region to draw, where 0 is the topmost row. */
-/** sx    : The x coordinate of the screen to place the upper left corner. */
-/** sy    : The y coordinate of the screen to place the upper left corner. */
-/** celw  : The number of map cells wide in the region to draw. */
-/** celh  : The number of map cells tall in the region to draw. */
 void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, int y) {
 	const int map_w = tilemap->width;
 	const int map_h = tilemap->height;
@@ -751,6 +733,7 @@ uint32_t _pti__next_utf8_code_point(const char *data, uint32_t *index, uint32_t 
 #define FONT_TAB_SIZE (3)
 
 void pti_print(const pti_bitmap_t *font, const char *text, int x, int y) {
+	void *pixels = (void *) map_pointer_to_bank((void *) font->pixels);
 	int cursor_x = x;
 	int cursor_y = y;
 	uint32_t text_length = strlen(text);
@@ -777,8 +760,6 @@ void pti_print(const pti_bitmap_t *font, const char *text, int x, int y) {
 		glyph_x *= FONT_GLYPH_WIDTH;
 		glyph_y *= FONT_GLYPH_HEIGHT;
 
-		/* render the glyph */
-		void *pixels = (void *) map_pointer_to_bank((void *) font->pixels);
 		_pti__plot(pixels, 0, cursor_x, cursor_y, FONT_GLYPH_WIDTH, FONT_GLYPH_HEIGHT, glyph_x, glyph_y, font->width, font->height, false, false);
 
 		cursor_x += FONT_GLYPH_WIDTH;
