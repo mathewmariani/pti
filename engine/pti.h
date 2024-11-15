@@ -151,6 +151,7 @@ void pti_rect(int x, int y, int w, int h, uint64_t color);
 void pti_rectf(int x0, int y0, int x1, int y1, uint64_t color);
 void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, int y);
 void pti_spr(const pti_bitmap_t *bitmap, int n, int x, int y, bool flip_x, bool flip_y);
+void pti_print(const pti_bitmap_t *font, const char *text, int x, int y);
 
 #ifdef __cplusplus
 } /* extern "C" */
@@ -218,7 +219,7 @@ typedef struct {
 } _pti__t;
 static _pti__t _pti;
 
-_PTI_PRIVATE void *map_pointer_to_bank(void *ptr) {
+_PTI_PRIVATE inline void *map_pointer_to_bank(void *ptr) {
 	return (void *) ((uintptr_t) ptr + ((uintptr_t) _pti.data - (uintptr_t) _pti.cart.begin));
 }
 
@@ -341,6 +342,9 @@ void pti_init(const pti_desc *desc) {
 	/* cache description */
 	_pti.desc = *desc;
 
+	_pti.vm.screen.width = desc->window.width;
+	_pti.vm.screen.height = desc->window.height;
+
 	/* calculate sizes */
 	const size_t vm_size = sizeof(_pti__vm_t);
 	const size_t vram_size = desc->window.width * desc->window.height * sizeof(uint32_t);
@@ -348,13 +352,8 @@ void pti_init(const pti_desc *desc) {
 
 	/* init memory */
 	pti_bank_init(&_pti.ram, capacity);
-	// pti_memset(&_pti.ram.begin, 0, (uint32_t) (_pti.ram.cap - _pti.ram.begin));
 
 	/* allocate virtual machine */
-	// _pti.vm = *(_pti__vm_t *) pti_alloc(&_pti.ram, vm_size);
-	_pti.vm.screen.width = desc->window.width;
-	_pti.vm.screen.height = desc->window.height;
-
 	_pti.screen = pti_alloc(&_pti.ram, vram_size);
 	_pti.data = pti_alloc(&_pti.ram, desc->memory_size);
 }
@@ -502,12 +501,12 @@ _PTI_PRIVATE void _pti__set_pixel(int x, int y, uint64_t c) {
 	*(vram + (x + y * screen_w)) = _pti__get_dither_bit(x, y) ? (c >> 32) & 0xffffffff : (c >> 0) & 0xffffffff;
 }
 
-_PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, bool flip_x, bool flip_y) {
+_PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, int sx, int sy, int sw, int sh, bool flip_x, bool flip_y) {
 	// adjust camera:
 	_pti__transform(&x, &y);
 
-	int src_x = 0;
-	int src_y = 0;
+	int src_x = sx;
+	int src_y = sy;
 	int dst_x1 = x;
 	int dst_y1 = y;
 	int dst_x2 = x + w - 1;
@@ -558,7 +557,7 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, bo
 	uint32_t *dst = _pti.screen;
 
 	const int dst_width = _pti.desc.window.width;
-	const int src_width = w;
+	const int src_width = sw;
 
 	const int clipped_width = dst_x2 - dst_x1 + 1;
 	const int dst_next_row = dst_width - clipped_width;
@@ -711,7 +710,7 @@ void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, 
 			if (t == 0) {
 				continue;
 			}
-			_pti__plot(pixels, t, x + (i * tile_h), y + (j * tile_w), tile_h, tile_w, false, false);
+			_pti__plot(pixels, t, x + (i * tile_w), y + (j * tile_h), tile_w, tile_h, 0, 0, tile_w, tile_h, false, false);
 		}
 	}
 }
@@ -720,10 +719,70 @@ void pti_spr(const pti_bitmap_t *sprite, int n, int x, int y, bool flip_x, bool 
 	const int bmp_w = sprite->width;
 	const int bmp_h = sprite->height;
 	void *pixels = (void *) map_pointer_to_bank((void *) sprite->pixels);
-	_pti__plot(pixels, n, x, y, bmp_w, bmp_h, flip_x, flip_y);
+	_pti__plot(pixels, n, x, y, bmp_w, bmp_h, 0, 0, bmp_w, bmp_h, flip_x, flip_y);
 }
 
-// FIXME: get font stuff from mac backup.
-// TODO: get font stuff from mac backup.
+uint32_t _pti__next_utf8_code_point(const char *data, uint32_t *index, uint32_t end) {
+	static const uint32_t utf8_offsets[6] = {
+			0x00000000UL,
+			0x00003080UL,
+			0x000E2080UL,
+			0x03C82080UL,
+			0xFA082080UL,
+			0x82082080UL,
+	};
+
+	uint32_t character = 0;
+	const unsigned char *bytes = (const unsigned char *) data;
+	int num_bytes = 0;
+	do {
+		character <<= 6;
+		character += bytes[(*index)++];
+		num_bytes++;
+	} while (*index != end && ((bytes[*index]) & 0xC0) == 0x80);
+	character -= utf8_offsets[num_bytes - 1];
+
+	return character;
+}
+
+#define FONT_GLYPH_WIDTH (6)
+#define FONT_GLYPH_HEIGHT (13)
+#define FONT_GLYPHS_PER_ROW (96 / FONT_GLYPH_WIDTH)
+#define FONT_TAB_SIZE (3)
+
+void pti_print(const pti_bitmap_t *font, const char *text, int x, int y) {
+	int cursor_x = x;
+	int cursor_y = y;
+	uint32_t text_length = strlen(text);
+	uint32_t index = 0;
+	while (index < text_length) {
+		uint32_t c = _pti__next_utf8_code_point(text, &index, text_length);
+		if (c == '\t') {
+			cursor_x += FONT_TAB_SIZE * FONT_GLYPH_WIDTH;
+			continue;
+		}
+		if (c == '\n') {
+			cursor_x = x;
+			cursor_y += FONT_GLYPH_HEIGHT;
+			continue;
+		}
+		if (c < 32 || c > 255) {
+			cursor_x += FONT_GLYPH_WIDTH;
+			continue;
+		}
+
+		int glyph_index = c - 32;
+		int glyph_x = (glyph_index % FONT_GLYPHS_PER_ROW);
+		int glyph_y = (glyph_index - glyph_x) / FONT_GLYPHS_PER_ROW;
+		glyph_x *= FONT_GLYPH_WIDTH;
+		glyph_y *= FONT_GLYPH_HEIGHT;
+
+		/* render the glyph */
+		void *pixels = (void *) map_pointer_to_bank((void *) font->pixels);
+		_pti__plot(pixels, 0, cursor_x, cursor_y, FONT_GLYPH_WIDTH, FONT_GLYPH_HEIGHT, glyph_x, glyph_y, font->width, font->height, false, false);
+
+		cursor_x += FONT_GLYPH_WIDTH;
+	}
+}
 
 #endif// PTI_API_IMPL
