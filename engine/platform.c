@@ -4,11 +4,6 @@
 #include "sokol/sokol_glue.h"
 #include "sokol/sokol_log.h"
 
-// tracy
-#include "tracy/TracyC.h"
-
-#define PTI_PROFILE_FRAME(x) TracyCFrameMarkNamed(x)
-
 #define PTI_IMPL
 #include "pti.h"
 
@@ -182,6 +177,7 @@ static void sokol_init_gfx(void) {
 }
 
 void sokol_gfx_draw() {
+	PTI_PROFILE_ZONE();
 	/* update image data */
 	const int screen_w = _pti.vm.screen.width;
 	const int screen_h = _pti.vm.screen.height;
@@ -200,6 +196,7 @@ void sokol_gfx_draw() {
 	sg_draw(0, 6, 1);
 	sg_end_pass();
 	sg_commit();
+	PTI_PROFILE_ZONE_END();
 }
 
 static void init(void) {
@@ -207,11 +204,11 @@ static void init(void) {
 	sokol_init_gfx();
 
 	/* initialize game */
-	// void *init_cb = _pti.desc.init_cb;
-	// if (init_cb != NULL) {
-	//   init_cb();
-	// }
-	_pti.desc.init_cb();
+	PTI_PROFILE_ZONE();
+	if (_pti.desc.init_cb != NULL) {
+		_pti.desc.init_cb();
+	}
+	PTI_PROFILE_ZONE_END();
 }
 
 static void cleanup(void) {}
@@ -220,7 +217,7 @@ static void cleanup(void) {}
 #define TICK_TOLERANCE_NS (1000000)
 
 static void frame(void) {
-	PTI_PROFILE_FRAME("main");
+	PTI_PROFILE_FRAME();
 	uint32_t frame_time_ns = (uint32_t) (sapp_frame_duration() * 1000000000.0);
 	if (frame_time_ns > TICK_DURATION_NS) {
 		frame_time_ns = TICK_DURATION_NS;
@@ -231,7 +228,11 @@ static void frame(void) {
 		state.timing.tick_accum -= TICK_DURATION_NS;
 		state.timing.tick++;
 
-		_pti.desc.frame_cb();
+		PTI_PROFILE_ZONE();
+		if (_pti.desc.frame_cb != NULL) {
+			_pti.desc.frame_cb();
+		}
+		PTI_PROFILE_ZONE_END();
 
 		for (int i = 0; i < PTI_BUTTON_COUNT; i++) {
 			_pti.vm.hardware.btn_state[i] &= ~(_PTI_KEY_PRESSED | _PTI_KEY_RELEASED);
@@ -242,42 +243,47 @@ static void frame(void) {
 	sokol_gfx_draw();
 }
 
+// Inline function for button down event
+static inline void btn_down(int pti_key, int sapp_key, int sapp_alt, const sapp_event *ev) {
+	if (ev->key_code == sapp_key || ev->key_code == sapp_alt) {
+		_pti.vm.hardware.btn_state[pti_key] |= (_PTI_KEY_STATE | _PTI_KEY_PRESSED);
+		_pti.vm.hardware.btn_state[pti_key] &= ~_PTI_KEY_RELEASED;
+	}
+}
+
+// Inline function for button up event
+static inline void btn_up(int pti_key, int sapp_key, int sapp_alt, const sapp_event *ev) {
+	if (ev->key_code == sapp_key || ev->key_code == sapp_alt) {
+		_pti.vm.hardware.btn_state[pti_key] &= ~(_PTI_KEY_STATE | _PTI_KEY_PRESSED);
+		_pti.vm.hardware.btn_state[pti_key] |= _PTI_KEY_RELEASED;
+	}
+}
+
 static void input(const sapp_event *ev) {
-#define BTN_DOWN(pti_key, sapp_key, sapp_alt)                                       \
-	if (ev->key_code == sapp_key || ev->key_code == sapp_alt) {                     \
-		_pti.vm.hardware.btn_state[pti_key] |= (_PTI_KEY_STATE | _PTI_KEY_PRESSED); \
-		_pti.vm.hardware.btn_state[pti_key] &= ~_PTI_KEY_RELEASED;                  \
-	}
-
-#define BTN_UP(pti_key, sapp_key, sapp_alt)                                          \
-	if (ev->key_code == sapp_key || ev->key_code == sapp_alt) {                      \
-		_pti.vm.hardware.btn_state[pti_key] &= ~(_PTI_KEY_STATE | _PTI_KEY_PRESSED); \
-		_pti.vm.hardware.btn_state[pti_key] |= _PTI_KEY_RELEASED;                    \
-	}
-
+	PTI_PROFILE_ZONE();
 	switch (ev->type) {
 		// keyboard:
 		case SAPP_EVENTTYPE_KEY_DOWN:
 			if (ev->key_repeat) {
 				break;
 			}
-			BTN_DOWN(PTI_RIGHT, SAPP_KEYCODE_RIGHT, SAPP_KEYCODE_D);
-			BTN_DOWN(PTI_LEFT, SAPP_KEYCODE_LEFT, SAPP_KEYCODE_A);
-			BTN_DOWN(PTI_UP, SAPP_KEYCODE_UP, SAPP_KEYCODE_W);
-			BTN_DOWN(PTI_DOWN, SAPP_KEYCODE_DOWN, SAPP_KEYCODE_S);
-			BTN_DOWN(PTI_A, SAPP_KEYCODE_Z, SAPP_KEYCODE_Z);
-			BTN_DOWN(PTI_B, SAPP_KEYCODE_X, SAPP_KEYCODE_X);
-			BTN_DOWN(PTI_DBG, SAPP_KEYCODE_C, SAPP_KEYCODE_C);
-
+			btn_down(PTI_RIGHT, SAPP_KEYCODE_RIGHT, SAPP_KEYCODE_D, ev);
+			btn_down(PTI_LEFT, SAPP_KEYCODE_LEFT, SAPP_KEYCODE_A, ev);
+			btn_down(PTI_UP, SAPP_KEYCODE_UP, SAPP_KEYCODE_W, ev);
+			btn_down(PTI_DOWN, SAPP_KEYCODE_DOWN, SAPP_KEYCODE_S, ev);
+			btn_down(PTI_A, SAPP_KEYCODE_Z, SAPP_KEYCODE_Z, ev);
+			btn_down(PTI_B, SAPP_KEYCODE_X, SAPP_KEYCODE_X, ev);
+			btn_down(PTI_DBG, SAPP_KEYCODE_C, SAPP_KEYCODE_C, ev);
 			break;
+
 		case SAPP_EVENTTYPE_KEY_UP:
-			BTN_UP(PTI_RIGHT, SAPP_KEYCODE_RIGHT, SAPP_KEYCODE_D);
-			BTN_UP(PTI_LEFT, SAPP_KEYCODE_LEFT, SAPP_KEYCODE_A);
-			BTN_UP(PTI_UP, SAPP_KEYCODE_UP, SAPP_KEYCODE_W);
-			BTN_UP(PTI_DOWN, SAPP_KEYCODE_DOWN, SAPP_KEYCODE_S);
-			BTN_UP(PTI_A, SAPP_KEYCODE_Z, SAPP_KEYCODE_Z);
-			BTN_UP(PTI_B, SAPP_KEYCODE_X, SAPP_KEYCODE_X);
-			BTN_UP(PTI_DBG, SAPP_KEYCODE_C, SAPP_KEYCODE_C);
+			btn_up(PTI_RIGHT, SAPP_KEYCODE_RIGHT, SAPP_KEYCODE_D, ev);
+			btn_up(PTI_LEFT, SAPP_KEYCODE_LEFT, SAPP_KEYCODE_A, ev);
+			btn_up(PTI_UP, SAPP_KEYCODE_UP, SAPP_KEYCODE_W, ev);
+			btn_up(PTI_DOWN, SAPP_KEYCODE_DOWN, SAPP_KEYCODE_S, ev);
+			btn_up(PTI_A, SAPP_KEYCODE_Z, SAPP_KEYCODE_Z, ev);
+			btn_up(PTI_B, SAPP_KEYCODE_X, SAPP_KEYCODE_X, ev);
+			btn_up(PTI_DBG, SAPP_KEYCODE_C, SAPP_KEYCODE_C, ev);
 			break;
 
 		// mouse:
@@ -287,7 +293,5 @@ static void input(const sapp_event *ev) {
 		default:
 			break;
 	}
-
-#undef BTN_DOWN
-#undef BTN_UP
+	PTI_PROFILE_ZONE_END();
 }
