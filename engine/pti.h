@@ -7,10 +7,22 @@
 */
 #define PTI_INCLUDED (1)
 
+#ifndef PTI_SIMD
+#define PTI_SIMD 1
+#endif
+
 // >>includes
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+
+// >>profiling
+#include "tracy/TracyC.h"
+static TracyCZoneCtx __tracy_ctx;
+#define PTI_PROFILE ZoneScoped
+#define PTI_PROFILE_FRAME() TracyCFrameMark
+#define PTI_PROFILE_ZONE() TracyCZoneN(__tracy_ctx, __FUNCTION__, true)
+#define PTI_PROFILE_ZONE_END() TracyCZoneEnd(__tracy_ctx)
 
 #define _pti_kilobytes(n) (1024 * (n))
 #define _pti_megabytes(n) (1024 * _pti_kilobytes(n))
@@ -183,10 +195,10 @@ inline void pti_print(const pti_bitmap_t &font, const char *text, int x, int y) 
 #endif
 #endif
 #ifndef _PTI_UNUSED
-#define _PTI_UNUSED(x) (void) (x)
+#define _PTI_UNUSED(x) ((void) (x))
 #endif
 
-#if !defined(PTI_ASSERT)
+#ifndef PTI_ASSERT
 #include <assert.h>
 #define PTI_ASSERT(c) assert(c)
 #endif
@@ -195,6 +207,13 @@ inline void pti_print(const pti_bitmap_t &font, const char *text, int x, int y) 
 #include <memoryapi.h>
 #else
 #include <sys/mman.h>
+#endif
+
+#if PTI_SIMD
+#include <pmmintrin.h>
+#include <emmintrin.h>// SSE2
+#include <tmmintrin.h>
+#include <smmintrin.h>
 #endif
 
 typedef struct {
@@ -249,7 +268,8 @@ _PTI_PRIVATE void *_pti__virtual_reserve(void *ptr, const uint32_t size) {
 	/* The mapping is not backed by any file; */
 	/* its contents are initialized to zero. */
 	uint16_t flags = (MAP_PRIVATE | MAP_ANON);
-	ptr = mmap((void *) ptr, size, (PROT_READ | PROT_WRITE), flags, -1, 0);
+	uint16_t prot = (PROT_READ | PROT_WRITE);
+	ptr = mmap((void *) ptr, size, prot, flags, -1, 0);
 	PTI_ASSERT(ptr != MAP_FAILED);
 	msync(ptr, size, (MS_SYNC | MS_INVALIDATE));
 #endif
@@ -496,7 +516,7 @@ _PTI_PRIVATE inline void _pti__transform(int *x, int *y) {
 	*y -= _pti.vm.draw.cam_y;
 }
 
-_PTI_PRIVATE void _pti__set_pixel(int x, int y, uint64_t c) {
+_PTI_PRIVATE inline void _pti__set_pixel(int x, int y, uint64_t c) {
 	*(_pti.screen + (x + y * _pti.vm.screen.width)) = _pti__get_dither_bit(x, y) ? (c >> 32) & 0xffffffff : (c >> 0) & 0xffffffff;
 }
 
@@ -513,16 +533,16 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, in
 	int src_x1 = src_x;
 	int src_y1 = src_y;
 
+	const int ix = flip_x ? -1 : 1;
+	const int iy = flip_y ? -1 : 1;
+
 	// clip:
 	const int16_t clip_x0 = _pti.vm.draw.clip_x0;
 	const int16_t clip_y0 = _pti.vm.draw.clip_y0;
 	const int16_t clip_x1 = _pti.vm.draw.clip_x1;
 	const int16_t clip_y1 = _pti.vm.draw.clip_y1;
 
-	if (dst_x1 >= clip_x1 || dst_x2 < clip_x0) {
-		return;
-	}
-	if (dst_y1 >= clip_y1 || dst_y2 < clip_y0) {
+	if ((dst_x1 >= clip_x1 || dst_x2 < clip_x0) || (dst_y1 >= clip_y1 || dst_y2 < clip_y0)) {
 		return;
 	}
 
@@ -540,9 +560,6 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, in
 	if (dst_y2 >= clip_y1) {
 		dst_y2 = clip_y1 - 1;
 	}
-
-	const int ix = flip_x ? -1 : 1;
-	const int iy = flip_y ? -1 : 1;
 
 	if (flip_x) {
 		src_x1 += w - 1;
@@ -569,6 +586,24 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, in
 	uint32_t *dst_pixel = dst + dst_y1 * dst_width + dst_x1;
 	uint32_t *src_pixel = src + src_y1 * src_width + src_x1;
 	uint32_t color_key = _pti.vm.draw.ckey;
+
+
+#if PTI_SIMD
+	__m128i key = _mm_set1_epi32(color_key);
+	for (int dst_y = dst_y1; dst_y <= dst_y2; dst_y++) {
+		for (int i = 0; i < clipped_width; i += 4) {
+			__m128i src_vals = _mm_loadu_si128((__m128i *) src_pixel);
+			__m128i dst_vals = _mm_loadu_si128((__m128i *) dst_pixel);
+			__m128i mask = _mm_cmpeq_epi32(src_vals, key);
+			__m128i blended = _mm_blendv_epi8(dst_vals, src_vals, _mm_andnot_si128(mask, _mm_set1_epi32(-1)));
+			_mm_storeu_si128((__m128i *) dst_pixel, blended);
+			src_pixel += 4 * ix;
+			dst_pixel += 4;
+		}
+		src_pixel += src_next_row * iy;
+		dst_pixel += dst_next_row;
+	}
+#else
 	for (int dst_y = dst_y1; dst_y <= dst_y2; dst_y++) {
 		for (int i = 0; i < clipped_width; i++) {
 			uint32_t src_color = *src_pixel;
@@ -580,6 +615,7 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, in
 		dst_pixel += dst_next_row;
 		src_pixel += src_next_row * iy;
 	}
+#endif
 }
 
 void pti_camera(int x, int y) {
@@ -747,6 +783,7 @@ void pti_rectf(int x0, int y0, int x1, int y1, uint64_t color) {
 }
 
 void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, int y) {
+	PTI_PROFILE_ZONE();
 	const int map_w = tilemap->width;
 	const int map_h = tilemap->height;
 	const int tile_w = tileset->width;
@@ -765,6 +802,7 @@ void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, 
 			_pti__plot(pixels, t, x + (i * tile_w), y + (j * tile_h), tile_w, tile_h, 0, 0, tile_w, tile_h, false, false);
 		}
 	}
+	PTI_PROFILE_ZONE_END();
 }
 
 void pti_spr(const pti_bitmap_t *sprite, int n, int x, int y, bool flip_x, bool flip_y) {
