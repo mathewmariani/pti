@@ -67,13 +67,13 @@ static void frame(void) {
 }
 
 pti_desc pti_main(int argc, char *argv[]) {
-	return (pti_desc){
+	return (pti_desc) {
 			.init_cb = init,
 			.cleanup_cb = cleanup,
 			.frame_cb = frame,
 			.memory_size = _pti_kilobytes(128),
 			.window =
-					(pti_window){
+					(pti_window) {
 							.width = 128,
 							.height = 128,
 							.flags = PTI_SCALE3X,

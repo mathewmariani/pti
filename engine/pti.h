@@ -7,10 +7,6 @@
 */
 #define PTI_INCLUDED (1)
 
-#ifndef PTI_SIMD
-#define PTI_SIMD 1
-#endif
-
 // >>includes
 #include <stdbool.h>
 #include <stdint.h>
@@ -209,11 +205,11 @@ inline void pti_print(const pti_bitmap_t &font, const char *text, int x, int y) 
 #include <sys/mman.h>
 #endif
 
-#if PTI_SIMD
-#include <pmmintrin.h>
-#include <emmintrin.h>// SSE2
+#ifndef PTI_SIMD
+#include <emmintrin.h>
 #include <tmmintrin.h>
 #include <smmintrin.h>
+#define PTI_SIMD 1
 #endif
 
 typedef struct {
@@ -595,8 +591,8 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, in
 			__m128i src_vals = _mm_loadu_si128((__m128i *) src_pixel);
 			__m128i dst_vals = _mm_loadu_si128((__m128i *) dst_pixel);
 			__m128i mask = _mm_cmpeq_epi32(src_vals, key);
-			__m128i blended = _mm_blendv_epi8(dst_vals, src_vals, _mm_andnot_si128(mask, _mm_set1_epi32(-1)));
-			_mm_storeu_si128((__m128i *) dst_pixel, blended);
+			__m128i final = _mm_blendv_epi8(dst_vals, src_vals, _mm_andnot_si128(mask, _mm_set1_epi32(-1)));
+			_mm_storeu_si128((__m128i *) dst_pixel, final);
 			src_pixel += 4 * ix;
 			dst_pixel += 4;
 		}

@@ -26,13 +26,13 @@ uint32_t pal[] = {
 		0xff333c57,
 };
 
-#define PTI_ARGB(a, r, g, b)                                   \
-	(uint32_t)(((uint8_t) (a) << 24) | ((uint8_t) (r) << 16) | \
-			   ((uint8_t) (g) << 8) | ((uint8_t) (b) << 0))
+#define PTI_ARGB(a, r, g, b)                                    \
+	(uint32_t) (((uint8_t) (a) << 24) | ((uint8_t) (r) << 16) | \
+				((uint8_t) (g) << 8) | ((uint8_t) (b) << 0))
 
-#define PTI_RGBA(r, g, b, a)                                   \
-	(uint32_t)(((uint8_t) (a) << 24) | ((uint8_t) (r) << 16) | \
-			   ((uint8_t) (g) << 8) | ((uint8_t) (b) << 0))
+#define PTI_RGBA(r, g, b, a)                                    \
+	(uint32_t) (((uint8_t) (a) << 24) | ((uint8_t) (r) << 16) | \
+				((uint8_t) (g) << 8) | ((uint8_t) (b) << 0))
 
 static void init(void) {
 	// gfx state
@@ -49,8 +49,8 @@ static void frame(void) {
 	int n = 5;
 	int b = 16;
 
-	float rotation = sinf(t) + t;
-	float growth = sinf(t) + t;
+	float rotation = cosf(t) + t;
+	float growth = sinf(t) * sinf(t) * t;
 	float offset = 0.2f;
 
 	const int width = 128;
@@ -80,13 +80,13 @@ static void frame(void) {
 }
 
 pti_desc pti_main(int argc, char *argv[]) {
-	return (pti_desc){
+	return (pti_desc) {
 			.init_cb = init,
 			.cleanup_cb = cleanup,
 			.frame_cb = frame,
 			.memory_size = _pti_kilobytes(128),
 			.window =
-					(pti_window){
+					(pti_window) {
 							.name = "pti - rosecurve",
 							.width = 128,
 							.height = 128,
