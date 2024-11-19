@@ -2,144 +2,91 @@
 #include "pti.h"
 
 #include "../bank.h"
-#include "../lib/assets.h"
-#include "../lib/collisions.h"
 #include "entities.h"
-#include <cstdio>
-#include <cstdlib>
 
-static const float max_speed = 1.0f;
-static const float accel = 20.0f;
-static const float friction = 15.0f;
-static const float phy_vertical_max = 6.0f;
-static const float phy_vertical_grav = 0.24f;
-static const float phy_vertical_grav_fall = 0.4254f;
-static const float phy_vertical_grav_alt = 0.1940f;
-static const float phy_jump_strength = 6.1135f;
-static const float phy_bounce_strength = 4.5535f;
+#include "../lib/collisions.h"
 
-typedef enum {
-	GOOMBA_STATE_NORMAL,
-	GOOMBA_STATE_DEATH,
-} goomba_state;
+namespace {
+	static const float max_speed = 1.0f;
+	static const float accel = 20.0f;
+	static const float friction = 15.0f;
+	static const float phy_vertical_max = 6.0f;
+	static const float phy_vertical_grav = 0.24f;
+	static const float phy_vertical_grav_fall = 0.4254f;
+	static const float phy_vertical_grav_alt = 0.1940f;
+	static const float phy_jump_strength = 6.1135f;
+	static const float phy_bounce_strength = 4.5535f;
+}// namespace
 
-typedef struct {
-	goomba_state state;
-	int direction;
-} goomba_t;
-
-// TODO: move to collisions.cpp
-static bool is_grounded(const entity::entity_t *self) {
-	return collisions::place_meeting(self, 0, 1) ||
-		   (self->sy >= 0 && (collisions::place_meeting(self, 0, 1) &&
-							  collisions::place_meeting(self, 0, 1)));
+void Goomba::Init(void) {
+	bx = -4;
+	by = -8;
+	bw = 8;
+	bh = 8;
+	timer = 0.0f;
+	direction = 1;
+	flags = (ENTITYFLAG_OVERLAP_CHECKS | ENTITYFLAG_HITS_SOLIDS);
 }
 
-static bool is_touching(const entity::entity_t *self) {
-	auto dir = ((goomba_t *) self->userdata)->direction;
-	return collisions::place_meeting(self, dir, 0);
+void Goomba::Destroy(void) {
+	// ...
 }
 
-static void handle_horizontal_movement(entity::entity_t *self) {
-	auto dir = ((goomba_t *) self->userdata)->direction;
-	_pti_appr(self->sx, dir * max_speed, accel * PTI_DELTA);
-}
+void Goomba::Update(void) {
+	/* ground check */
+	if (Collisions::IsGroudned(*this)) {
+		flags |= ENTITYFLAG_GROUNDED;
+	} else {
+		flags &= ~ENTITYFLAG_GROUNDED;
+	}
 
-static void handle_vertical_movement(entity::entity_t *self) {
+	// handle_horizontal_movement
+	_pti_appr(sx, direction * max_speed, accel * PTI_DELTA);
+
+	// handle_vertical_movement
 	/* simple gravity */
-	if ((self->flags & entity::ENTITYFLAG_GROUNDED) == 0) {
-		self->sy = self->sy + phy_vertical_grav_fall;
-		if (self->sy > phy_vertical_max) {
-			self->sy = phy_vertical_max;
+	if ((flags & ENTITYFLAG_GROUNDED) == 0) {
+		sy = sy + phy_vertical_grav_fall;
+		if (sy > phy_vertical_max) {
+			sy = phy_vertical_max;
 		}
 	} else {
-		self->sy = 0;
+		sy = 0;
+	}
+
+	if (Collisions::PlaceMeeting(*this, direction, 0)) {
+		direction *= -1;
+		flags ^= ENTITYFLAG_FACING_LEFT;
 	}
 }
 
-void entity_goomba(entity::event_t *ev) {
-	entity::entity_t *self = ev->self;
-	int frame = 0;
+void Goomba::Draw(void) {
+	frame = ((int) (timer * 8) % 2);
+	if (sx == 0 && sy == 0) {
+		frame = 0;
+	}
+	pti_spr(bitmap_goomba, frame, x - 8, y - 16, (flags & ENTITYFLAG_FACING_LEFT) ? 1 : 0, false);
+}
 
-	switch (ev->type) {
-		case entity::EVENTTYPE_INIT: {
-			auto *goomba = (goomba_t *) malloc(sizeof(goomba_t));
-			goomba->direction = 1;
-			goomba->state = GOOMBA_STATE_NORMAL;
-
-			self->bx = -4;
-			self->by = -8;
-			self->bw = 8;
-			self->bh = 8;
-			self->flags =
-					entity::ENTITYFLAG_OVERLAP_CHECKS | entity::ENTITYFLAG_HITS_SOLIDS;
-			self->userdata = goomba;
-		} break;
-		case entity::EVENTTYPE_DESTROY:
-			free(self->userdata);
-
-			entity::entity_t *other;
-			other = entity::create(entity_pop, self->x, self->y);
-			other->sx = 4;
-			other->sy = 4;
-			other = entity::create(entity_pop, self->x, self->y);
-			other->sx = -4;
-			other->sy = 4;
-			other = entity::create(entity_pop, self->x, self->y);
-			other->sx = 4;
-			other->sy = -4;
-			other = entity::create(entity_pop, self->x, self->y);
-			other->sx = -4;
-			other->sy = -4;
-			break;
-		case entity::EVENTTYPE_UPDATE: {
-			/* ground check */
-			if (is_grounded(self)) {
-				self->flags |= entity::ENTITYFLAG_GROUNDED;
-			} else {
-				self->flags &= ~entity::ENTITYFLAG_GROUNDED;
+void Goomba::Overlap(Entity &other) {
+	if (dynamic_cast<Goomba *>(&other)) {
+		direction *= -1;
+		x += direction;
+		flags ^= ENTITYFLAG_FACING_LEFT;
+		sx *= -1;
+	} else if (dynamic_cast<Player *>(&other)) {
+		/* bounce */
+		if (other.sy > 0.0f) {
+			if ((other.flags & ENTITYFLAG_GROUNDED) == 0) {
+				// other.state = Player::PLAYER_STATE_JUMP;
+				other.flags &= ~ENTITYFLAG_GROUNDED;
+				other.sy = -phy_jump_strength;
+				// TODO: proper interactions
+				// entity::destroy(self);
 			}
-
-			handle_horizontal_movement(self);
-			handle_vertical_movement(self);
-
-			if (is_touching(self)) {
-				((goomba_t *) self->userdata)->direction *= -1;
-				self->flags ^= entity::ENTITYFLAG_FACING_LEFT;
-			}
-
-		} break;
-		case entity::EVENTTYPE_OVERLAP: {
-			entity::entity_t *other = ev->other;
-			if (other->type == entity_goomba) {
-				/* interact with self self */
-				((goomba_t *) self->userdata)->direction *= -1;
-				self->x += ((goomba_t *) self->userdata)->direction;
-				self->flags ^= entity::ENTITYFLAG_FACING_LEFT;
-				self->sx = -self->sx;
-			} else if (other->type == entity_player) {
-				/* bounce */
-				if (other->sy > 0.0f) {
-					if ((other->flags & entity::ENTITYFLAG_GROUNDED) == 0) {
-						// other->state = PLAYER_STATE_JUMP;
-						other->flags &= ~entity::ENTITYFLAG_GROUNDED;
-						other->sy = -phy_jump_strength;
-
-						// TODO: proper interactions
-						entity::destroy(self);
-					}
-				} else {
-					/* if were not moving downwards we should take damage. */
-					std::printf("hello world\n");
-				}
-			}
-		} break;
-		case entity::EVENTTYPE_DRAW:
-			frame = ((int) (self->timer * 8) % 2);
-			if (self->sx == 0 && self->sy == 0) {
-				frame = 0;
-			}
-			pti_spr(bitmap_goomba, frame, self->x - 8, self->y - 16, self->flags & entity::ENTITYFLAG_FACING_LEFT ? 1 : 0, false);
-			break;
+		} else {
+			/* if were not moving downwards we should take damage. */
+			printf("hello world\n");
+		}
 	}
 }

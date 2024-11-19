@@ -2,11 +2,60 @@
 
 #include "../lib/entity.h"
 
-void entity_bullet(entity::event_t *ev);
-void entity_coin(entity::event_t *ev);
-void entity_goomba(entity::event_t *ev);
-void entity_player(entity::event_t *ev);
-void entity_pop(entity::event_t *ev);
-void entity_shooter(entity::event_t *ev);
+class Bullet : public Entity {
+public:
+	void Init(void);
+	void Destroy(void);
+	void Update(void);
+	void Draw(void);
+	void Overlap(Entity &other);
+};
 
-void create_coin(entity::entity_t *e);
+class Coin : public Entity {
+public:
+	void Init(void);
+	void Destroy(void);
+	void Update(void);
+	void Draw(void);
+	void Overlap(Entity &other);
+};
+
+class Goomba : public Entity {
+public:
+	void Init(void);
+	void Destroy(void);
+	void Update(void);
+	void Draw(void);
+	void Overlap(Entity &other);
+};
+
+class Player : public Entity {
+private:
+	enum PlayerState {
+		PLAYER_STATE_NORMAL,
+		PLAYER_STATE_JUMP,
+		PLAYER_STATE_DEATH,
+	};
+
+public:
+	void Init(void);
+	void Destroy(void);
+	void Update(void);
+	void Draw(void);
+	void Overlap(Entity &other);
+
+private:
+	int hang_time = 0;
+};
+
+class Shooter : public Entity {
+public:
+	void Init(void);
+	void Destroy(void);
+	void Update(void);
+	void Draw(void);
+	void Overlap(Entity &other);
+
+private:
+	float shoot_timer;
+};

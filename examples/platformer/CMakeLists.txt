@@ -27,6 +27,11 @@ set(PLATFORMER_SRC
     src/lib/collisions.cpp
     src/lib/entity.cpp)
 
+# set(PLATFORMER_FILES
+#     ${PLATFORMER_SRC}
+#     ${PLATFORMER_HEADERS})
+# pti_executable(platformer ${PLATFORMER_FILES})
+
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
     add_executable(platformer WIN32 ${PLATFORMER_SRC} ${PLATFORMER_HEADERS})
 else()

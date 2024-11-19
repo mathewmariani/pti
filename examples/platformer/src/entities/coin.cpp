@@ -1,50 +1,31 @@
 /* pti */
 #include "pti.h"
 
-/* stdlib */
-#include <algorithm>
-#include <math.h>
-
 #include "../bank.h"
-#include "../lib/assets.h"
 #include "entities.h"
 
-void entity_coin(entity::event_t *ev) {
-	entity::entity_t *self = ev->self;
-	entity::entity_t *other;
-	int frame;
-
-	switch (ev->type) {
-		case entity::EVENTTYPE_INIT:
-			self->bx = -2;
-			self->by = -2;
-			self->bw = 4;
-			self->bh = 4;
-			self->flags = entity::ENTITYFLAG_OVERLAP_CHECKS;
-			break;
-		case entity::EVENTTYPE_DESTROY:
-			break;
-		case entity::EVENTTYPE_UPDATE:
-		case entity::EVENTTYPE_OVERLAP:
-			break;
-		case entity::EVENTTYPE_DRAW:
-			frame = ((int) (self->timer * 8) % 2);
-			pti_spr(bitmap_coin, frame, self->x - 2, self->y - 2, false, false);
-			break;
-	}
+void Coin::Init(void) {
+	bx = -2;
+	by = -2;
+	bw = 4;
+	bh = 4;
+	timer = 0.0f;
+	flags = Entity::ENTITYFLAG_OVERLAP_CHECKS;
 }
 
-// void create_coin(int x, int y) {
-//   entity::entity_t* e = entity::create_ext()
-//   sprite = pti_sprite_create("coin.ase");
-//   e->bx = -2;
-//   e->by = -2;
-//   e->bw = 4;
-//   e->bh = 4;
-//   e->flags = entity::ENTITYFLAG_OVERLAP_CHECKS;
+void Coin::Destroy(void) {
+	// ...
+}
 
-//   e->draw = [](entity::entity_t* self) {
-//     auto frame = ((int)(self->timer * 8) % 2);
-//     pti_plot_sprite(sprite, frame, self->x - 2, self->y - 2, false, false);
-//   };
-// }
+void Coin::Update(void) {
+	// ...
+}
+
+void Coin::Draw(void) {
+	frame = ((int) (timer * 8) % 2);
+	pti_spr(bitmap_coin, frame, x - 2, y - 2, false, false);
+}
+
+void Coin::Overlap(Entity &other) {
+	// ...
+}

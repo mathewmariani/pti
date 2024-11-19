@@ -205,11 +205,10 @@ inline void pti_print(const pti_bitmap_t &font, const char *text, int x, int y) 
 #include <sys/mman.h>
 #endif
 
-#ifndef PTI_SIMD
+#if defined(PTI_SIMD)
 #include <emmintrin.h>
 #include <tmmintrin.h>
 #include <smmintrin.h>
-#define PTI_SIMD 1
 #endif
 
 typedef struct {
@@ -564,7 +563,7 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, in
 		src_y1 += h - 1;
 	}
 
-	const size_t size = w * h * sizeof(int);
+	const size_t size = w * h * sizeof(uint32_t);
 	uint32_t *src = pixels + size * n;
 	uint32_t *dst = _pti.screen;
 
@@ -578,26 +577,50 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, in
 							 : (flip_x || flip_y)
 									 ? (src_width + clipped_width)
 									 : (src_width - clipped_width);
-
 	uint32_t *dst_pixel = dst + dst_y1 * dst_width + dst_x1;
 	uint32_t *src_pixel = src + src_y1 * src_width + src_x1;
 	uint32_t color_key = _pti.vm.draw.ckey;
 
-
 #if PTI_SIMD
+	// __m128i key = _mm_set1_epi32(color_key);
+	// for (int dst_y = dst_y1; dst_y <= dst_y2; dst_y++) {
+	// 	for (int i = 0; i < clipped_width; i += 4) {
+	// 		__m128i src_vals = _mm_loadu_si128((__m128i *) src_pixel);
+	// 		__m128i dst_vals = _mm_loadu_si128((__m128i *) dst_pixel);
+	// 		__m128i mask = _mm_cmpeq_epi32(src_vals, key);
+	// 		__m128i pixels = _mm_blendv_epi8(dst_vals, src_vals, _mm_andnot_si128(mask, _mm_set1_epi32(-1)));
+	// 		_mm_storeu_si128((__m128i *) dst_pixel, pixels);
+	// 		src_pixel += 4 * ix;
+	// 		dst_pixel += 4;
+	// 	}
+	// 	src_pixel += src_next_row * iy;
+	// 	dst_pixel += dst_next_row;
+	// }
 	__m128i key = _mm_set1_epi32(color_key);
-	for (int dst_y = dst_y1; dst_y <= dst_y2; dst_y++) {
-		for (int i = 0; i < clipped_width; i += 4) {
-			__m128i src_vals = _mm_loadu_si128((__m128i *) src_pixel);
-			__m128i dst_vals = _mm_loadu_si128((__m128i *) dst_pixel);
-			__m128i mask = _mm_cmpeq_epi32(src_vals, key);
-			__m128i final = _mm_blendv_epi8(dst_vals, src_vals, _mm_andnot_si128(mask, _mm_set1_epi32(-1)));
-			_mm_storeu_si128((__m128i *) dst_pixel, final);
-			src_pixel += 4 * ix;
-			dst_pixel += 4;
+	for (int dst_y = dst_y1, src_y = src_y1; dst_y <= dst_y2; dst_y++, src_y += iy) {
+		uint32_t *dst_row_start = dst + dst_y * dst_width + dst_x1;
+		uint32_t *src_row_start = src + src_y * src_width + src_x1;
+
+		int i = 0;
+		for (; i < clipped_width && ((uintptr_t) (dst_row_start + i) % 16 != 0); i++) {
+			uint32_t src_val = src_row_start[i];
+			if (src_val != color_key) {
+				dst_row_start[i] = src_val;
+			}
 		}
-		src_pixel += src_next_row * iy;
-		dst_pixel += dst_next_row;
+		for (; i <= clipped_width - 4; i += 4) {
+			__m128i src_vals = _mm_loadu_si128((__m128i *) (src_row_start + i));
+			__m128i dst_vals = _mm_loadu_si128((__m128i *) (dst_row_start + i));
+			__m128i mask = _mm_cmpeq_epi32(src_vals, key);
+			__m128i pixels = _mm_blendv_epi8(dst_vals, src_vals, _mm_andnot_si128(mask, _mm_set1_epi32(-1)));
+			_mm_storeu_si128((__m128i *) (dst_row_start + i), pixels);
+		}
+		for (; i < clipped_width; i++) {
+			uint32_t src_val = src_row_start[i];
+			if (src_val != color_key) {
+				dst_row_start[i] = src_val;
+			}
+		}
 	}
 #else
 	for (int dst_y = dst_y1; dst_y <= dst_y2; dst_y++) {
