@@ -29,10 +29,12 @@ target_include_directories(blah
 
 #=== EXECUTABLE: tinylink
 set(TINYLINK_HEADERS
-    src/content.h
+    src/bank.h
     src/factory.h
     src/game.h
     src/world.h
+
+    src/cute_aseprite.h
 
     src/assets/sprite.h
 
@@ -48,7 +50,7 @@ set(TINYLINK_HEADERS
     src/components/timer.h)
 
 set(TINYLINK_SRC
-    src/content.cpp
+    src/bank.cpp
     src/factory.cpp
     src/game.cpp
     src/world.cpp
@@ -74,13 +76,10 @@ endif()
 target_link_libraries(tinylink engine)
 target_link_libraries(tinylink blah)
 
-if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
-    set(CMAKE_EXECUTABLE_SUFFIX ".html")
-    target_link_options(tinylink PUBLIC --shell-file ../../sokol/shell.html)
-    target_link_options(tinylink PUBLIC -sNO_FILESYSTEM=1 -sASSERTIONS=0 -sMALLOC=emmalloc --closure=1)
-endif()
-
-# explicitly strip dead code
-if (CMAKE_C_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
-    target_link_options(tinylink PRIVATE LINKER:-dead_strip)
-endif()
+# assets
+add_custom_command(
+  TARGET tinylink
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+  "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+  "$<TARGET_FILE_DIR:tinylink>/assets")
