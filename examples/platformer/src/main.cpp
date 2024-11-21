@@ -93,7 +93,7 @@ static void frame(void) {
 
 	entity::manager.update();
 
-	pti_cls(0xffef7d57);
+	// pti_cls(0xffef7d57);
 
 	/* adjust camera */
 	int cam_x, cam_y;
@@ -102,27 +102,27 @@ static void frame(void) {
 			   _pti_max(0, _pti_min(entity::EN_ROOM_HEIGHT - height, cam_y)));
 
 	//>> lissajous curves:
-	auto cx1 = (width * 0.5f) - sinf(t / 3) * (width * 0.5f);
-	auto cy1 = (height * 0.5f) - cosf(t / 2) * (height * 0.5f);
-	auto cx2 = (width * 0.5f) + sinf(t / 3) * (width * 0.5f);
-	auto cy2 = (height * 0.5f) + cosf(t / 2) * (height * 0.5f);
+	auto half_width = width * 0.5f;
+	auto half_height = height * 0.5f;
 	t += (1 / 30.0f);
 
-	int x, y;
-	for (y = 0; y < height; y++) {
-		auto dy1 = (y - cy1) * (y - cy1);
-		auto dy2 = (y - cy2) * (y - cy2);
-		for (x = 0; x < width; x++) {
-			auto dx1 = (x - cx1) * (x - cx1);
-			auto dx2 = (x - cx2) * (x - cx2);
+	auto cx1 = sinf(t / 3) * half_width;
+	auto cy1 = cosf(t / 2) * half_height;
+	auto cx2 = -cx1;
+	auto cy2 = -cy1;
+
+	for (auto y = 0; y < height; y++) {
+		auto dy1 = (y - cy1 - half_height) * (y - cy1 - half_height);
+		auto dy2 = (y - cy2 - half_height) * (y - cy2 - half_height);
+		for (auto x = 0; x < width; x++) {
+			auto dx1 = (x - cx1 - half_width) * (x - cx1 - half_width);
+			auto dx2 = (x - cx2 - half_width) * (x - cx2 - half_width);
 			int c = (((int) sqrtf(dx1 + dy1) ^ (int) sqrtf(dx2 + dy2)) >> 4);
-			if ((c & 1) == 0) {
-				if (rand() % 5 == 1) {
-					pti_pset(x, y, ((unsigned long int) pal[1] << 32) | pal[2]);
-				}
-			} else {
-				if (rand() % 5 == 1) {
-					pti_pset(x, y, ((unsigned long int) pal[3] << 32) | pal[4]);
+			if (rand() % 5 == 1) {
+				if ((c & 1) == 0) {
+					pti_pset(x, y, (unsigned long int) pal[1] << 32 | pal[2]);
+				} else {
+					pti_pset(x, y, (unsigned long int) pal[3] << 32 | pal[4]);
 				}
 			}
 		}

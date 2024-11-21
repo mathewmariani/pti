@@ -18,7 +18,6 @@ namespace collisions {
 		return collisions::place_meeting(self, 0, 1) || (self->sy >= 0 && collisions::place_meeting(self, 0, 1));
 	}
 
-	// Check if two entities overlap using their bounding boxes
 	bool overlaps(const entity::entity_t *a, const entity::entity_t *b) {
 		return (a->x + a->bx < b->x + b->bx + b->bw) &&
 			   (a->y + a->by < b->y + b->by + b->bh) &&
@@ -26,19 +25,15 @@ namespace collisions {
 			   (a->y + a->by + a->bh > b->y + b->by);
 	}
 
-	// Check if an entity collides with the environment after a movement
 	bool place_meeting(const entity::entity_t *a, int dx, int dy) {
-		// Calculate the bounding box of the entity in grid coordinates
-		const int top = std::max(0, (a->y + a->by + dy) / EN_GRID_SIZE);
-		const int left = std::max(0, (a->x + a->bx + dx) / EN_GRID_SIZE);
-		const int bottom = std::min(EN_ROOM_ROWS - 1, (a->y + a->by + a->bh + dy - 1) / EN_GRID_SIZE);
-		const int right = std::min(EN_ROOM_COLS - 1, (a->x + a->bx + a->bw + dx - 1) / EN_GRID_SIZE);
+		const auto top = std::max(0, (a->y + a->by + dy) / EN_GRID_SIZE);
+		const auto left = std::max(0, (a->x + a->bx + dx) / EN_GRID_SIZE);
+		const auto bottom = std::min(EN_ROOM_ROWS - 1, (a->y + a->by + a->bh + dy - 1) / EN_GRID_SIZE);
+		const auto right = std::min(EN_ROOM_COLS - 1, (a->x + a->bx + a->bw + dx - 1) / EN_GRID_SIZE);
 
-		// Iterate through the grid cells within the entity's bounding box
-		for (int y = top; y <= bottom; ++y) {
-			for (int x = left; x <= right; ++x) {
-				// Fetch tile properties from the tilemap
-				int flags = pti_fget(tilemap, x, y);
+		for (auto y = top; y <= bottom; ++y) {
+			for (auto x = left; x <= right; ++x) {
+				auto flags = pti_fget(tilemap, x, y);
 
 				switch (flags) {
 					// Non-colliding tiles
@@ -49,26 +44,26 @@ namespace collisions {
 
 					// Slope handling
 					case 31: {// Shallow slope bottom (right)
-						int cx = (a->x + a->bx + a->bw + dx) - (x * EN_GRID_SIZE);
-						float top = -0.5f * cx + ((y + 1) * EN_GRID_SIZE);
+						auto cx = (a->x + a->bx + a->bw + dx) - (x * EN_GRID_SIZE);
+						auto top = -0.5f * cx + ((y + 1) * EN_GRID_SIZE);
 						if (a->y + a->by + a->bh + dy > top) return true;
 						continue;
 					}
 					case 32: {// Shallow slope top (right)
-						int cx = (a->x + a->bx + a->bw + dx) - (x * EN_GRID_SIZE);
-						float top = -0.5f * cx + ((y + 1) * EN_GRID_SIZE - 4);
+						auto cx = (a->x + a->bx + a->bw + dx) - (x * EN_GRID_SIZE);
+						auto top = -0.5f * cx + ((y + 1) * EN_GRID_SIZE - 4);
 						if (a->y + a->by + a->bh + dy > top) return true;
 						continue;
 					}
 					case 33: {// Shallow slope top (left)
-						int cx = (a->x + a->bx + dx) - (x * EN_GRID_SIZE);
-						float top = 0.5f * cx + (y * EN_GRID_SIZE);
+						auto cx = (a->x + a->bx + dx) - (x * EN_GRID_SIZE);
+						auto top = 0.5f * cx + (y * EN_GRID_SIZE);
 						if (a->y + a->by + a->bh + dy > top) return true;
 						continue;
 					}
 					case 34: {// Shallow slope bottom (left)
-						int cx = (a->x + a->bx + dx) - (x * EN_GRID_SIZE);
-						float top = 0.5f * cx + ((y + 1) * EN_GRID_SIZE - 4);
+						auto cx = (a->x + a->bx + dx) - (x * EN_GRID_SIZE);
+						auto top = 0.5f * cx + ((y + 1) * EN_GRID_SIZE - 4);
 						if (a->y + a->by + a->bh + dy > top) return true;
 						continue;
 					}
@@ -96,5 +91,4 @@ namespace collisions {
 
 		return false;
 	}
-
 }// namespace collisions

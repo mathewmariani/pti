@@ -8,8 +8,6 @@ void entity_pop(entity::event_t *ev) {
 
 	switch (ev->type) {
 		case entity::EVENTTYPE_INIT: {
-			self->bw = 0;
-			self->bh = 0;
 		} break;
 
 		case entity::EVENTTYPE_DESTROY:

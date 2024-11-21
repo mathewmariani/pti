@@ -25,10 +25,9 @@ namespace entity {
 		return nullptr;
 	}
 
-
 	void entity_state::destroy(entity_t *entity) {
 		auto it = std::find_if(manager.all.begin(), manager.all.end(), [entity](const entity_t &e) {
-			return e.type == entity->type;
+			return &e == entity;
 		});
 
 		if (it != manager.all.end() && it->type != nullptr) {
