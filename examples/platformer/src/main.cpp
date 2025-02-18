@@ -6,6 +6,8 @@
 #include "lib/entity.h"
 #include "entities/entities.h"
 
+#include <math.h>
+
 namespace {
 	constexpr int width = 240;
 	constexpr int height = 135;

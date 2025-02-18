@@ -24,27 +24,28 @@ namespace assets {
 	}
 
 	pti_bitmap_t __create_bitmap(const std::string &path) {
-		ase_t *ase = cute_aseprite_load_from_file(path.c_str(), NULL);
+		auto *ase = cute_aseprite_load_from_file(path.c_str(), NULL);
 
 		/* allocate bitmap data */
-		const size_t size = ase->w * ase->h * sizeof(ase_color_t);
-		char *pixels = (char *) pti_alloc(&bank, size * ase->frame_count);
-		char *pixels_start = pixels;
+		auto size = ase->w * ase->h * sizeof(ase_color_t);
+		auto *data = (char *) pti_alloc(&bank, size * ase->frame_count);
 
-		for (int i = 0; i < ase->frame_count; ++i, pixels += size) {
-			ase_frame_t *frame = ase->frames + i;
-			memcpy(pixels, frame->pixels, size);
+		/* initialize */
+		pti_bitmap_t bitmap;
+		bitmap.frames = (int32_t) ase->frame_count;
+		bitmap.width = (int16_t) ase->w;
+		bitmap.height = (int16_t) ase->h;
+		bitmap.pixels = data;
+
+		for (int i = 0; i < ase->frame_count; ++i, data += size) {
+			auto *frame = ase->frames + i;
+			memcpy(data, frame->pixels, size);
 		}
 
 		/* release cute resources. */
 		cute_aseprite_free(ase);
 
-		return (pti_bitmap_t) {
-				.frames = (int32_t) ase->frame_count,
-				.width = (int16_t) ase->w,
-				.height = (int16_t) ase->h,
-				.pixels = pixels_start,
-		};
+		return bitmap;
 	}
 
 	pti_tileset_t __create_tileset(const std::string &path) {

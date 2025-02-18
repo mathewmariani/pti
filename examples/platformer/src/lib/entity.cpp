@@ -149,7 +149,6 @@ namespace entity {
 		}
 	}
 
-
 	void entity_state::draw(void) {
 		entity::event_t ev = {
 				.type = entity::EVENTTYPE_DRAW,
