@@ -24,6 +24,8 @@ int main(int argc, char *argv[]) {
 
 	const char *name = desc.window.name ? desc.window.name : "pti";
 	sapp_run(&(sapp_desc) {
+			.gl_major_version = 4,
+			.gl_minor_version = 2,
 			.init_cb = init,
 			.frame_cb = frame,
 			.cleanup_cb = cleanup,

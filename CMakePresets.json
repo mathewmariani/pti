@@ -17,7 +17,7 @@
             "displayName": "Web",
             "generator": "Ninja Multi-Config",
             "binaryDir": "build/web",
-            "toolchainFile": "emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+            "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
         }
     ],
     "buildPresets": [
