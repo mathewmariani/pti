@@ -1,5 +1,5 @@
 #include "player.h"
-
+#include "../bank.h"
 #include "pti.h"
 
 template<>
@@ -25,11 +25,23 @@ void Player::Update() {
 }
 
 void Player::Render() {
-	pti_rect(x + bx, y + by, bw, bh, 0xff0000);
+	auto frame = static_cast<int>(timer * kPlayerFrameCount) % kPlayerFrameMod;
+	if (sx == 0 && sy == 0) {
+		frame = 0;
+	}
+	auto flip = (flags & EntityFlags::ENTITYFLAG_FACING_LEFT) ? true : false;
+	pti_spr(bitmap_player, frame, x - 8, y - 16, flip, false);
 }
 
 void Player::InteractWith(const EntityBase *other) {
 	switch (other->type) {
+		case EntityType::Bullet:
+			if (sy > 0.0f) {
+				if ((flags & EntityFlags::ENTITYFLAG_GROUNDED) == 0) {
+					flags &= ~EntityFlags::ENTITYFLAG_GROUNDED;
+					sy = -kPlayerPhysicsJumpStrength;
+				}
+			}
 		case EntityType::Coin:
 			break;
 		case EntityType::Goomba:

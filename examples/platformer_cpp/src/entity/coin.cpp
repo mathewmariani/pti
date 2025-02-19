@@ -1,4 +1,5 @@
 #include "coin.h"
+#include "../bank.h"
 
 #include "pti.h"
 
@@ -10,7 +11,8 @@ bool EntityBase::Is<Coin>() const {
 void Coin::Update() {}
 
 void Coin::Render() {
-	pti_rect(x + bx, y + by, bw, bh, 0xff0000);
+	auto frame = static_cast<int>(timer * kCoinFrameCount) % kCoinFrameMod;
+	pti_spr(bitmap_coin, frame, x - kCoinWidth / 2, y - kCoinHeight / 2, false, false);
 }
 
 void Coin::InteractWith(const EntityBase *other) {

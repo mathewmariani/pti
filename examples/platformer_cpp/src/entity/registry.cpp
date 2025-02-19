@@ -6,19 +6,28 @@
 #include <vector>
 #include <cstdio>
 
+#include "bullet.h"
 #include "coin.h"
 #include "goomba.h"
 #include "player.h"
+#include "shooter.h"
 
 static std::vector<uint8_t> _freeIdList;
 
-using EntityVariant = std::variant<EntityBase, Coin, Goomba, Player>;
+using EntityVariant = std::variant<EntityBase, Bullet, Coin, Goomba, Player, Shooter>;
 EntityVariant Entities[kMaxEntities];
+
+auto GetEntityBase = [](auto &entity) -> EntityBase * { return &entity; };
 
 EntityBase *GetEntity(uint8_t sprite_idx) {
 	if (sprite_idx >= kMaxEntities) return nullptr;
 	return std::get_if<EntityBase>(&Entities[sprite_idx]);
 }
+
+#define CASE_FOR(T)                                          \
+	case EntityType::T:                                      \
+		entity = (EntityBase *) &Entities[idx].emplace<T>(); \
+		break
 
 EntityBase *CreateEntity(EntityType type) {
 	auto idx = _freeIdList.back();
@@ -29,15 +38,11 @@ EntityBase *CreateEntity(EntityType type) {
 
 	EntityBase *entity;
 	switch (type) {
-		case EntityType::Coin:
-			entity = (EntityBase *) &Entities[idx].emplace<Coin>();
-			break;
-		case EntityType::Goomba:
-			entity = (EntityBase *) &Entities[idx].emplace<Goomba>();
-			break;
-		case EntityType::Player:
-			entity = (EntityBase *) &Entities[idx].emplace<Player>();
-			break;
+		CASE_FOR(Bullet);
+		CASE_FOR(Coin);
+		CASE_FOR(Goomba);
+		CASE_FOR(Player);
+		CASE_FOR(Shooter);
 		default:
 			return nullptr;
 	}
@@ -48,6 +53,17 @@ EntityBase *CreateEntity(EntityType type) {
 	entity->y = 0;
 
 	return entity;
+}
+
+void RemoveEntity(EntityBase *entity) {
+	// add to free list
+	auto index = entity->id;
+	_freeIdList.insert(std::upper_bound(std::rbegin(_freeIdList), std::rend(_freeIdList), index).base(), index);
+
+	// reset entity
+	*entity = EntityBase();
+	entity->id = index;
+	entity->type = EntityType::Null;
 }
 
 void ResetAllEntities() {
@@ -64,84 +80,30 @@ void ResetAllEntities() {
 }
 
 void UpdateAllEntities() {
-	for (auto &entity : Entities) {
-		// clang-format off
-		EntityBase *e = std::visit([](auto &obj) -> EntityBase * {
-			if constexpr (std::is_base_of_v<EntityBase, std::decay_t<decltype(obj)>>) {
-				return &obj;
-			}
-			return nullptr;
-		}, entity);
-		// clang-format on
-
-		if (!e || e->type == EntityType::Null) {
-			continue;
-		}
-
-		switch (e->type) {
-			case EntityType::Coin:
-				std::get_if<Coin>(&entity)->Update();
-				break;
-			case EntityType::Goomba:
-				std::get_if<Goomba>(&entity)->Update();
-				break;
-			case EntityType::Player:
-				std::get_if<Player>(&entity)->Update();
-				break;
-			default:
-				break;
+	for (auto &e : Entities) {
+		EntityBase *entity = std::visit(GetEntityBase, e);
+		if (entity && entity->type != EntityType::Null) {
+			entity->Update();
 		}
 	}
 
 	// check for collisions
 	for (auto &a : Entities) {
-		// clang-format off
-		EntityBase *self = std::visit([](auto &obj) -> EntityBase * {
-			if constexpr (std::is_base_of_v<EntityBase, std::decay_t<decltype(obj)>>) {
-				return &obj;
-			}
-			return nullptr;
-		}, a);
-		// clang-format on
-
-		if (!self || self->type == EntityType::Null) {
-			continue;
-		}
-		if ((self->flags & EntityFlags::ENTITYFLAG_OVERLAP_CHECKS) == 0 || self->bw < 0 || self->bh <= 0) {
+		EntityBase *self = std::visit(GetEntityBase, a);
+		if (!self || self->type == EntityType::Null || !(self->flags & EntityFlags::ENTITYFLAG_OVERLAP_CHECKS) ||
+			self->bw < 0 || self->bh <= 0) {
 			continue;
 		}
 
 		for (auto &b : Entities) {
-			// clang-format off
-			EntityBase *other = std::visit([](auto &obj) -> EntityBase * {
-				if constexpr (std::is_base_of_v<EntityBase, std::decay_t<decltype(obj)>>) {
-					return &obj;
-				}
-				return nullptr;
-			}, b);
-			// clang-format on
-
-			if (!other || other->type == EntityType::Null || self == other) {
-				continue;
-			}
-			if ((other->flags & EntityFlags::ENTITYFLAG_OVERLAP_CHECKS) == 0 || other->bw < 0 || other->bh <= 0) {
+			EntityBase *other = std::visit(GetEntityBase, b);
+			if (!other || other->type == EntityType::Null || self == other || !(other->flags & EntityFlags::ENTITYFLAG_OVERLAP_CHECKS) ||
+				other->bw < 0 || other->bh <= 0) {
 				continue;
 			}
 
 			if (self->Overlaps(other)) {
-				switch (self->type) {
-					case EntityType::Coin:
-						std::get_if<Coin>(&a)->InteractWith(other);
-						break;
-					case EntityType::Goomba:
-						std::get_if<Goomba>(&a)->InteractWith(other);
-						break;
-					case EntityType::Player:
-						std::get_if<Player>(&a)->InteractWith(other);
-						break;
-					default:
-						break;
-				}
+				std::visit([&](auto &entity) { entity.InteractWith(other); }, a);
 			}
 		}
 	}
@@ -149,32 +111,10 @@ void UpdateAllEntities() {
 
 
 void RenderAllEntities() {
-	for (auto &entity : Entities) {
-		// clang-format off
-		EntityBase *e = std::visit([](auto &obj) -> EntityBase * {
-			if constexpr (std::is_base_of_v<EntityBase, std::decay_t<decltype(obj)>>) {
-				return &obj;
-			}
-			return nullptr;
-		}, entity);
-		// clang-format on
-
-		if (!e || e->type == EntityType::Null) {
-			continue;
-		}
-
-		switch (e->type) {
-			case EntityType::Coin:
-				std::get_if<Coin>(&entity)->Render();
-				break;
-			case EntityType::Goomba:
-				std::get_if<Goomba>(&entity)->Render();
-				break;
-			case EntityType::Player:
-				std::get_if<Player>(&entity)->Render();
-				break;
-			default:
-				break;
+	for (auto &e : Entities) {
+		EntityBase *entity = std::visit(GetEntityBase, e);
+		if (entity && entity->type != EntityType::Null) {
+			entity->Render();
 		}
 	}
 }

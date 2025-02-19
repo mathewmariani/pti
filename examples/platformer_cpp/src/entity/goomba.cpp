@@ -1,6 +1,8 @@
 #include "pti.h"
 
 #include "goomba.h"
+#include "registry.h"
+#include "../bank.h"
 
 template<>
 bool EntityBase::Is<Goomba>() const {
@@ -8,18 +10,25 @@ bool EntityBase::Is<Goomba>() const {
 }
 
 void Goomba::Update() {
+	if (IsTouching()) {
+		direction *= -1;
+		x += direction;
+		sx = -sx;
+		flags ^= EntityFlags::ENTITYFLAG_FACING_LEFT;
+	}
+
 	Physics();
 	HandleHorizontalMovement();
 	HandleVerticalMovement();
-
-	if (IsTouching()) {
-		direction *= -1;
-		flags ^= EntityFlags::ENTITYFLAG_FACING_LEFT;
-	}
 }
 
 void Goomba::Render() {
-	pti_rect(x + bx, y + by, bw, bh, 0xff0000);
+	auto frame = static_cast<int>(timer * kGoombaFrameCount) % kGoombaFrameMod;
+	if (sx == 0 && sy == 0) {
+		frame = 0;
+	}
+	auto flip = (flags & EntityFlags::ENTITYFLAG_FACING_LEFT) ? true : false;
+	pti_spr(bitmap_goomba, frame, x - 8, y - 16, flip, false);
 }
 
 void Goomba::InteractWith(const EntityBase *other) {
@@ -33,6 +42,7 @@ void Goomba::InteractWith(const EntityBase *other) {
 			flags ^= EntityFlags::ENTITYFLAG_FACING_LEFT;
 			break;
 		case EntityType::Player:
+			RemoveEntity(this);
 			break;
 		default:
 			break;

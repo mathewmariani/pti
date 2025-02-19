@@ -6,8 +6,10 @@
 
 enum class EntityType : uint8_t {
 	Coin,
+	Bullet,
 	Goomba,
 	Player,
+	Shooter,
 
 	// always last.
 	Count,
@@ -31,7 +33,7 @@ struct EntityBase {
 	float rx, ry;       /* movement remainder */
 	int bx, by, bw, bh; /* bounding box */
 	float timer;        /* general timer, starts at 0 on create */
-	int flags;          /* general entity flags */
+	uint8_t flags;      /* general entity flags */
 	void *userdata;     /* general user data */
 	int state;          /* state of the entity */
 	int direction;

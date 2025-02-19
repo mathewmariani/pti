@@ -7,6 +7,7 @@
 #include "entity/coin.h"
 #include "entity/goomba.h"
 #include "entity/player.h"
+#include "entity/shooter.h"
 #include "entity/registry.h"
 
 #include <math.h>
@@ -72,7 +73,8 @@ static void load(void) {
 					pti_mset(tilemap, i, j, 0);
 				} break;
 				case 51: {
-					// CreateEntity<Shooter>();
+					auto *e = CreateEntity<Shooter>();
+					e->SetLocation(XPOS(i), YPOS(j));
 					pti_mset(tilemap, i, j, 0);
 				} break;
 			}

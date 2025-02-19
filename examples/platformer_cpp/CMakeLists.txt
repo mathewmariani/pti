@@ -5,10 +5,12 @@ set(PLATFORMER_HEADERS
     src/bank.h
 
     src/entity/base.h
+    src/entity/bullet.h
     src/entity/coin.h
     src/entity/goomba.h
     src/entity/player.h
     src/entity/registry.h
+    src/entity/shooter.h
 
     src/lib/assets.h
     src/lib/cute_aseprite.h)
@@ -17,10 +19,12 @@ set(PLATFORMER_SRC
     src/bank.cpp
 
     src/entity/base.cpp
+    src/entity/bullet.cpp
     src/entity/coin.cpp
     src/entity/goomba.cpp
     src/entity/player.cpp
     src/entity/registry.cpp
+    src/entity/shooter.cpp
     
     src/lib/assets.cpp)
 

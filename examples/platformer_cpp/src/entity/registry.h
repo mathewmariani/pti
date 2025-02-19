@@ -20,6 +20,8 @@ T *CreateEntity() {
 	return static_cast<T *>(CreateEntity(T::cEntityType));
 }
 
+void RemoveEntity(EntityBase *entity);
+
 void ResetAllEntities();
 
 void UpdateAllEntities();

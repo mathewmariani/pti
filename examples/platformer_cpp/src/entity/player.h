@@ -11,6 +11,9 @@ constexpr float kPlayerPhysicsVerticalGravFall = 0.4254f;
 constexpr float kPlayerPhysicsVerticalGravAlt = 0.1940f;
 constexpr float kPlayerPhysicsJumpStrength = 6.1135f;
 constexpr float kPlayerPhysicsBounceStrength = 4.5535f;
+constexpr int kPlayerFrameCount = 8;
+constexpr int kPlayerFrameMod = 2;
+
 
 enum PlayerState {
 	PlayerNormal,
