@@ -63,12 +63,10 @@ static void load(void) {
 						pti_mset(tilemap, i, j, 0);
 					}
 				} break;
-				case 49: {
-					if (auto *e = CreateEntity<Coin>(); e) {
-						e->SetLocation(XPOS(i), YPOS(j));
-						pti_mset(tilemap, i, j, 0);
-					}
-				} break;
+				case 49:
+					Coin::Create(XPOS(i), YPOS(j));
+					pti_mset(tilemap, i, j, 0);
+					break;
 				case 50: {
 					if (auto *e = CreateEntity<Goomba>(); e) {
 						e->SetLocation(XPOS(i), YPOS(j));

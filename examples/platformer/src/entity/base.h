@@ -25,6 +25,14 @@ enum EntityFlags {
 
 using EntityId = uint8_t;
 
+struct BoundingBox {
+	uint8_t top;
+	uint8_t left;
+	uint8_t width;
+	uint8_t height;
+};
+
+
 struct EntityBase {
 	EntityType type;
 	EntityId id;
@@ -35,7 +43,7 @@ struct EntityBase {
 	int bx, by, bw, bh;// bounding box
 	float timer;       // general timer, starts at 0 on create
 
-	uint8_t direction;
+	int8_t direction;
 
 	template<typename T>
 	bool Is() const;

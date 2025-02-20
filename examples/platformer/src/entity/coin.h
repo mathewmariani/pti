@@ -9,15 +9,18 @@ constexpr int kCoinFrameCount = 8;
 constexpr int kCoinFrameMod = 2;
 
 struct Coin : EntityBase {
+	enum class Type : uint8_t {
+		Gold,
+		Red,
+		Blue,
+		Purple,
+	};
+
 	static constexpr auto cEntityType = EntityType::Coin;
 
-	Coin() {
-		bx = kCoinBoundaryOffset;
-		by = kCoinBoundaryOffset;
-		bw = kCoinWidth;
-		bh = kCoinHeight;
-		flags = EntityFlags::ENTITYFLAG_OVERLAP_CHECKS;
-	}
+	Type subtype;
+
+	static void Create(int32_t x, int32_t y, Type type = Type::Gold);
 
 	void Update() override;
 	void Render() override;

@@ -3,7 +3,7 @@
 #include "base.h"
 #include <algorithm>
 
-constexpr uint8_t kMaxEntities = 5;
+constexpr uint8_t kMaxEntities = 64;
 
 EntityBase *GetEntity(uint8_t sprite_idx);
 
