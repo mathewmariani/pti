@@ -15,10 +15,10 @@ constexpr int kPlayerFrameCount = 8;
 constexpr int kPlayerFrameMod = 2;
 
 
-enum PlayerState {
-	PlayerNormal,
-	PlayerJump,
-	PlayerDeath,
+enum class PlayerState : uint8_t {
+	Normal,
+	Jump,
+	Death,
 };
 
 struct Player : EntityBase {
@@ -30,7 +30,7 @@ struct Player : EntityBase {
 		bw = 8;
 		bh = 8;
 		flags = EntityFlags::ENTITYFLAG_OVERLAP_CHECKS | EntityFlags::ENTITYFLAG_HITS_SOLIDS;
-		state = PlayerState::PlayerNormal;
+		state = PlayerState::Normal;
 	}
 
 	void Update() override;
@@ -41,4 +41,7 @@ private:
 	void HandleHorizontalMovement();
 	void HandleVerticalMovement();
 	void HandleJump();
+
+private:
+	PlayerState state;
 };

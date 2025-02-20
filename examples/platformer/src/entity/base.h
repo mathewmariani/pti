@@ -26,17 +26,16 @@ enum EntityFlags {
 using EntityId = uint8_t;
 
 struct EntityBase {
-	EntityType type = EntityType::Null;
+	EntityType type;
 	EntityId id;
-	int32_t x, y;       /* position */
-	float sx, sy;       /* speed */
-	float rx, ry;       /* movement remainder */
-	int bx, by, bw, bh; /* bounding box */
-	float timer;        /* general timer, starts at 0 on create */
-	uint8_t flags;      /* general entity flags */
-	void *userdata;     /* general user data */
-	int state;          /* state of the entity */
-	int direction;
+	int32_t x, y;      // position
+	uint8_t flags;     // general entity flags
+	float sx, sy;      // speed
+	float rx, ry;      // movement remainder
+	int bx, by, bw, bh;// bounding box
+	float timer;       // general timer, starts at 0 on create
+
+	uint8_t direction;
 
 	template<typename T>
 	bool Is() const;

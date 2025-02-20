@@ -74,7 +74,7 @@ void Player::HandleVerticalMovement() {
 	static int hang_time = 0;
 
 	if ((flags & EntityFlags::ENTITYFLAG_GROUNDED) == 0) {
-		if (state == PlayerState::PlayerJump) {
+		if (state == PlayerState::Jump) {
 			if (sy <= -0.5f) {
 				hang_time = 3;
 				sy += kPlayerPhysicsVerticalGravFall;
@@ -104,18 +104,18 @@ void Player::HandleJump() {
 
 	// Full jump
 	if (kJump && (flags & EntityFlags::ENTITYFLAG_GROUNDED)) {
-		state = PlayerState::PlayerJump;
+		state = PlayerState::Jump;
 		flags &= ~EntityFlags::ENTITYFLAG_GROUNDED;
 		sy = -kPlayerPhysicsJumpStrength;
 	}
 
 	// Revert state
-	if (state == PlayerState::PlayerJump && (flags & EntityFlags::ENTITYFLAG_GROUNDED)) {
-		state = PlayerState::PlayerNormal;
+	if (state == PlayerState::Jump && (flags & EntityFlags::ENTITYFLAG_GROUNDED)) {
+		state = PlayerState::Normal;
 	}
 
 	// Variable jump
-	if (state == PlayerState::PlayerJump && sy < -(kPlayerPhysicsJumpStrength * 0.5f)) {
+	if (state == PlayerState::Jump && sy < -(kPlayerPhysicsJumpStrength * 0.5f)) {
 		if (pti_released(PTI_UP)) {
 			sy = -(kPlayerPhysicsJumpStrength * 0.5f);
 		}

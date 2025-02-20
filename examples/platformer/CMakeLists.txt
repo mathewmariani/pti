@@ -1,34 +1,32 @@
 project(platformer)
 
-#=== EXECUTABLE: platformer
+#=== EXECUTABLE: platformer_cpp
 set(PLATFORMER_HEADERS
     src/bank.h
-    
-    src/entities/entities.h
+
+    src/entity/base.h
+    src/entity/bullet.h
+    src/entity/coin.h
+    src/entity/goomba.h
+    src/entity/player.h
+    src/entity/registry.h
+    src/entity/shooter.h
 
     src/lib/assets.h
-    src/lib/collisions.h
-    src/lib/cute_aseprite.h
-    src/lib/entity.h)
+    src/lib/cute_aseprite.h)
 
 set(PLATFORMER_SRC
     src/bank.cpp
 
-    src/entities/bullet.cpp
-    src/entities/coin.cpp
-    src/entities/goomba.cpp
-    src/entities/player.cpp
-    src/entities/pop.cpp
-    src/entities/shooter.cpp
+    src/entity/base.cpp
+    src/entity/bullet.cpp
+    src/entity/coin.cpp
+    src/entity/goomba.cpp
+    src/entity/player.cpp
+    src/entity/registry.cpp
+    src/entity/shooter.cpp
     
-    src/lib/assets.cpp
-    src/lib/collisions.cpp
-    src/lib/entity.cpp)
-
-# set(PLATFORMER_FILES
-#     ${PLATFORMER_SRC}
-#     ${PLATFORMER_HEADERS})
-# pti_executable(platformer ${PLATFORMER_FILES})
+    src/lib/assets.cpp)
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
     add_executable(platformer WIN32 ${PLATFORMER_SRC} ${PLATFORMER_HEADERS})

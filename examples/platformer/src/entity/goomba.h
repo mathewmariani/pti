@@ -30,7 +30,6 @@ struct Goomba : EntityBase {
 		bh = 8;
 		direction = -1;
 		flags = EntityFlags::ENTITYFLAG_OVERLAP_CHECKS | EntityFlags::ENTITYFLAG_HITS_SOLIDS | EntityFlags::ENTITYFLAG_FACING_LEFT;
-		state = GoombaState::GoombaNormal;
 	}
 
 	void Update() override;

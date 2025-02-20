@@ -3,8 +3,12 @@
 
 #include "bank.h"
 #include "lib/assets.h"
-#include "lib/entity.h"
-#include "entities/entities.h"
+
+#include "entity/coin.h"
+#include "entity/goomba.h"
+#include "entity/player.h"
+#include "entity/shooter.h"
+#include "entity/registry.h"
 
 #include <math.h>
 
@@ -32,36 +36,51 @@ namespace {
 			0xff566c86,
 			0xff333c57,
 	};
+
+	constexpr int EN_COUNT = 64;
+	constexpr int EN_ROOM_COLS = 64;
+	constexpr int EN_ROOM_ROWS = 32;
+	constexpr int EN_ROOM_WIDTH = 512;
+	constexpr int EN_ROOM_HEIGHT = 256;
+	constexpr int EN_GRID_SIZE = 8;
 }// namespace
 
-#define XPOS(x) (x * entity::EN_GRID_SIZE)
-#define YPOS(y) (y * entity::EN_GRID_SIZE)
+#define XPOS(x) (x * EN_GRID_SIZE)
+#define YPOS(y) (y * EN_GRID_SIZE)
 
 static void load(void) {
-	entity::manager.clear();
+	ResetAllEntities();
 	assets::reload();
 
 	int i, j, t;
-	for (i = 0; i < entity::EN_ROOM_COLS; i++) {
-		for (j = 0; j < entity::EN_ROOM_ROWS; j++) {
+	for (i = 0; i < EN_ROOM_COLS; i++) {
+		for (j = 0; j < EN_ROOM_ROWS; j++) {
 			t = pti_mget(tilemap, i, j);
 			switch (t) {
-				case 48:
-					entity::manager.create(entity_player, XPOS(i), YPOS(j));
-					pti_mset(tilemap, i, j, 0);
-					break;
-				case 49:
-					entity::manager.create(entity_coin, XPOS(i), YPOS(j));
-					pti_mset(tilemap, i, j, 0);
-					break;
-				case 50:
-					entity::manager.create(entity_goomba, XPOS(i), YPOS(j));
-					pti_mset(tilemap, i, j, 0);
-					break;
-				case 51:
-					entity::manager.create(entity_shooter, XPOS(i), YPOS(j));
-					pti_mset(tilemap, i, j, 0);
-					break;
+				case 48: {
+					if (auto *e = CreateEntity<Player>(); e) {
+						e->SetLocation(XPOS(i), YPOS(j));
+						pti_mset(tilemap, i, j, 0);
+					}
+				} break;
+				case 49: {
+					if (auto *e = CreateEntity<Coin>(); e) {
+						e->SetLocation(XPOS(i), YPOS(j));
+						pti_mset(tilemap, i, j, 0);
+					}
+				} break;
+				case 50: {
+					if (auto *e = CreateEntity<Goomba>(); e) {
+						e->SetLocation(XPOS(i), YPOS(j));
+						pti_mset(tilemap, i, j, 0);
+					}
+				} break;
+				case 51: {
+					if (auto *e = CreateEntity<Shooter>(); e) {
+						e->SetLocation(XPOS(i), YPOS(j));
+						pti_mset(tilemap, i, j, 0);
+					}
+				} break;
 			}
 		}
 	}
@@ -93,46 +112,18 @@ static void frame(void) {
 		load();
 	}
 
-	entity::manager.update();
+	UpdateAllEntities();
 
-	// pti_cls(0xffef7d57);
+	pti_cls(0xffef7d57);
 
 	/* adjust camera */
 	int cam_x, cam_y;
 	pti_get_camera(&cam_x, &cam_y);
-	pti_camera(_pti_max(0, _pti_min(entity::EN_ROOM_WIDTH - width, cam_x)),
-			   _pti_max(0, _pti_min(entity::EN_ROOM_HEIGHT - height, cam_y)));
-
-	//>> lissajous curves:
-	auto half_width = width * 0.5f;
-	auto half_height = height * 0.5f;
-	t += (1 / 30.0f);
-
-	auto cx1 = sinf(t / 3) * half_width;
-	auto cy1 = cosf(t / 2) * half_height;
-	auto cx2 = -cx1;
-	auto cy2 = -cy1;
-
-	for (auto y = 0; y < height; y++) {
-		auto dy1 = (y - cy1 - half_height) * (y - cy1 - half_height);
-		auto dy2 = (y - cy2 - half_height) * (y - cy2 - half_height);
-		for (auto x = 0; x < width; x++) {
-			auto dx1 = (x - cx1 - half_width) * (x - cx1 - half_width);
-			auto dx2 = (x - cx2 - half_width) * (x - cx2 - half_width);
-			int c = (((int) sqrtf(dx1 + dy1) ^ (int) sqrtf(dx2 + dy2)) >> 4);
-			if (rand() % 5 == 1) {
-				if ((c & 1) == 0) {
-					pti_pset(x, y, (unsigned long int) pal[1] << 32 | pal[2]);
-				} else {
-					pti_pset(x, y, (unsigned long int) pal[3] << 32 | pal[4]);
-				}
-			}
-		}
-	}
-	//>> =============
+	pti_camera(_pti_max(0, _pti_min(EN_ROOM_WIDTH - width, cam_x)),
+			   _pti_max(0, _pti_min(EN_ROOM_HEIGHT - height, cam_y)));
 
 	pti_map(tilemap, tileset, 0, 0);
-	entity::manager.draw();
+	RenderAllEntities();
 }
 
 pti_desc pti_main(int argc, char *argv[]) {

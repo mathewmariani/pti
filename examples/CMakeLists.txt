@@ -1,5 +1,4 @@
 add_subdirectory(demos)
 add_subdirectory(platformer)
-add_subdirectory(platformer_cpp)
 add_subdirectory(tests)
 # add_subdirectory(tinylink)

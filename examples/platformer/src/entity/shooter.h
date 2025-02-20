@@ -2,26 +2,25 @@
 
 #include "base.h"
 
-constexpr float kBulletMaxSpeed = 1.0f;
-constexpr float kBulletAcceleration = 20.0f;
+constexpr float kShooterFireRate = 1.0f;
 
-enum BulletState {
-	BulletNormal,
-	BulletJump,
-	BulletDeath,
+enum ShooterState {
+	ShooterNormal,
+	ShooterJump,
+	ShooterDeath,
 };
 
-struct Bullet : EntityBase {
-	static constexpr auto cEntityType = EntityType::Bullet;
+struct Shooter : EntityBase {
+	static constexpr auto cEntityType = EntityType::Shooter;
 
-	Bullet() {
+	Shooter() {
 		bx = -4;
 		by = -8;
 		bw = 8;
 		bh = 8;
 		direction = -1;
 		flags = EntityFlags::ENTITYFLAG_OVERLAP_CHECKS | EntityFlags::ENTITYFLAG_HITS_SOLIDS;
-		state = BulletState::BulletNormal;
+		shoot_timer = kShooterFireRate;
 	}
 
 	void Update() override;
@@ -31,4 +30,7 @@ struct Bullet : EntityBase {
 private:
 	void HandleHorizontalMovement();
 	void HandleVerticalMovement();
+
+private:
+	float shoot_timer;
 };
