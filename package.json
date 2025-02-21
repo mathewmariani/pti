@@ -1,21 +1,18 @@
 {
   "scripts": {
-    "build": "ts-node resources/build.ts",
+    "cmake": "cmake --preset Release -B build && cmake --build build --preset Release",
     "emsdk": "git clone https://github.com/emscripten-core/emsdk && cd emsdk && ./emsdk install latest && ./emsdk activate --embedded latest && cd ..",
     "libs:imgui": "./libs/imgui/update.sh",
     "libs:sokol": "./libs/sokol/update.sh",
     "libs:stb": "./libs/stb/update.sh",
-    "libs:tracy": "./libs/tracy/update.sh"
-  },
-  "dependencies": {
-    "glob": "^10.3.10",
-    "markdown-it": "^13.0.1",
-    "mustache": "^4.2.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "libs:tracy": "./libs/tracy/update.sh",
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
   },
   "devDependencies": {
-    "@types/markdown-it": "^13.0.7",
-    "@types/mustache": "^4.2.5"
+    "@types/node": "^22.12.0",
+    "astro": "^5.1.8"
   }
 }

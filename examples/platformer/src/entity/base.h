@@ -16,6 +16,22 @@ enum class EntityType : uint8_t {
 	Null = 255,
 };
 
+enum class EntityInteraction : uint8_t {
+	CollectDirect,
+
+	// always last.
+	Count,
+	Null = 255,
+};
+
+enum class EntityReaction : uint8_t {
+	None,
+
+	// always last.
+	Count,
+	Null = 255,
+};
+
 enum EntityFlags {
 	ENTITYFLAG_HITS_SOLIDS = (1 << 0),
 	ENTITYFLAG_OVERLAP_CHECKS = (1 << 1),
@@ -48,9 +64,13 @@ struct EntityBase {
 	template<typename T>
 	bool Is() const;
 
+	void Step();
+
 	virtual void Update();
 	virtual void Render();
 	virtual void InteractWith(const EntityBase *other);
+
+	const EntityReaction Interact(const EntityInteraction interaction, EntityBase *from);
 
 	void SetLocation(int x, int y);
 
@@ -61,4 +81,9 @@ struct EntityBase {
 	bool IsTouching() const;
 
 	bool CanWiggle();
+
+	// new api
+	void Update_EXT();// all entities update in the same manner
+	virtual void PreMovement() {}
+	virtual void PostMovement() {}
 };

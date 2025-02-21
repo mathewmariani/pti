@@ -2,6 +2,7 @@
 
 #include "base.h"
 #include "../bank.h"
+#include "registry.h"
 
 #include <algorithm>
 
@@ -15,6 +16,29 @@ constexpr int EN_GRID_SIZE = 8;
 template<>
 bool EntityBase::Is<EntityBase>() const {
 	return true;
+}
+
+void EntityBase::Step() {
+	// check flags
+	// apply gravity
+	// physics
+	Physics();
+
+	// collisions
+	// check for collisions
+	EntityBase *other = nullptr;
+	if (CheckCollisionsWith(this, other)) {
+		InteractWith(other);
+	}
+
+	// update flags
+	if (IsGrounded()) {
+		flags |= EntityFlags::ENTITYFLAG_GROUNDED;
+	} else {
+		flags &= ~EntityFlags::ENTITYFLAG_GROUNDED;
+	}
+
+	Update();
 }
 
 void EntityBase::Update() {}

@@ -79,34 +79,54 @@ void ResetAllEntities() {
 	});
 }
 
+bool CheckCollisionsWith(const EntityBase *self, EntityBase *&out) {
+	for (auto &a : Entities) {
+		if (!self || self->type == EntityType::Null || !(self->flags & EntityFlags::ENTITYFLAG_OVERLAP_CHECKS)) {
+			continue;
+		}
+
+		EntityBase *other = std::visit(GetEntityBase, a);
+		if (!other || other->type == EntityType::Null || self == other | !(other->flags & EntityFlags::ENTITYFLAG_OVERLAP_CHECKS)) {
+			continue;
+		}
+
+		if (self->Overlaps(other)) {
+			out = other;
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void UpdateAllEntities() {
 	for (auto &e : Entities) {
 		EntityBase *entity = std::visit(GetEntityBase, e);
 		if (entity && entity->type != EntityType::Null) {
-			entity->Update();
+			entity->Step();
 		}
 	}
 
-	// check for collisions
-	for (auto &a : Entities) {
-		EntityBase *self = std::visit(GetEntityBase, a);
-		if (!self || self->type == EntityType::Null || !(self->flags & EntityFlags::ENTITYFLAG_OVERLAP_CHECKS) ||
-			self->bw < 0 || self->bh <= 0) {
-			continue;
-		}
+	// // check for collisions
+	// for (auto &a : Entities) {
+	// 	EntityBase *self = std::visit(GetEntityBase, a);
+	// 	if (!self || self->type == EntityType::Null || !(self->flags & EntityFlags::ENTITYFLAG_OVERLAP_CHECKS) ||
+	// 		self->bw < 0 || self->bh <= 0) {
+	// 		continue;
+	// 	}
 
-		for (auto &b : Entities) {
-			EntityBase *other = std::visit(GetEntityBase, b);
-			if (!other || other->type == EntityType::Null || self == other || !(other->flags & EntityFlags::ENTITYFLAG_OVERLAP_CHECKS) ||
-				other->bw < 0 || other->bh <= 0) {
-				continue;
-			}
+	// 	for (auto &b : Entities) {
+	// 		EntityBase *other = std::visit(GetEntityBase, b);
+	// 		if (!other || other->type == EntityType::Null || self == other || !(other->flags & EntityFlags::ENTITYFLAG_OVERLAP_CHECKS) ||
+	// 			other->bw < 0 || other->bh <= 0) {
+	// 			continue;
+	// 		}
 
-			if (self->Overlaps(other)) {
-				std::visit([&](auto &entity) { entity.InteractWith(other); }, a);
-			}
-		}
-	}
+	// 		if (self->Overlaps(other)) {
+	// 			std::visit([&](auto &entity) { entity.InteractWith(other); }, a);
+	// 		}
+	// 	}
+	// }
 }
 
 
