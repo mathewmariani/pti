@@ -59,23 +59,23 @@ static void load(void) {
 			switch (t) {
 				case 48: {
 					if (auto *e = CreateEntity<Player>(); e) {
-						e->SetLocation(XPOS(i), YPOS(j));
+						e->SetLocation({XPOS(i), YPOS(j)});
 						pti_mset(tilemap, i, j, 0);
 					}
 				} break;
 				case 49:
-					Coin::Create(XPOS(i), YPOS(j));
+					Coin::Create({XPOS(i), YPOS(j)});
 					pti_mset(tilemap, i, j, 0);
 					break;
 				case 50: {
 					if (auto *e = CreateEntity<Goomba>(); e) {
-						e->SetLocation(XPOS(i), YPOS(j));
+						e->SetLocation({XPOS(i), YPOS(j)});
 						pti_mset(tilemap, i, j, 0);
 					}
 				} break;
 				case 51: {
 					if (auto *e = CreateEntity<Shooter>(); e) {
-						e->SetLocation(XPOS(i), YPOS(j));
+						e->SetLocation({XPOS(i), YPOS(j)});
 						pti_mset(tilemap, i, j, 0);
 					}
 				} break;

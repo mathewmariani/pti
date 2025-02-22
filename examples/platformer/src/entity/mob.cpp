@@ -14,7 +14,6 @@ void Goomba::Update() {
 		direction *= -1;
 		x += direction;
 		sx = -sx;
-		flags ^= EntityFlags::ENTITYFLAG_FACING_LEFT;
 	}
 
 	Physics();
@@ -27,26 +26,8 @@ void Goomba::Render() {
 	if (sx == 0 && sy == 0) {
 		frame = 0;
 	}
-	auto flip = (flags & EntityFlags::ENTITYFLAG_FACING_LEFT) ? true : false;
-	pti_spr(bitmap_goomba, frame, x - 8, y - 16, flip, false);
-}
 
-void Goomba::InteractWith(const EntityBase *other) {
-	switch (other->type) {
-		case EntityType::Coin:
-			break;
-		case EntityType::Goomba:
-			direction *= -1;
-			x += direction;
-			sx = -sx;
-			flags ^= EntityFlags::ENTITYFLAG_FACING_LEFT;
-			break;
-		case EntityType::Player:
-			RemoveEntity(this);
-			break;
-		default:
-			break;
-	}
+	pti_spr(bitmap_goomba, frame, x - 8, y - 16, false, false);
 }
 
 void Goomba::HandleHorizontalMovement() {

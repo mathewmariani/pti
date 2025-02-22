@@ -1,7 +1,8 @@
 #pragma once
 
-#include <algorithm>
+#include "../world/coordinate.h"
 
+#include <algorithm>
 #include <stdint.h>
 
 enum class EntityType : uint8_t {
@@ -18,6 +19,7 @@ enum class EntityType : uint8_t {
 
 enum class EntityInteraction : uint8_t {
 	CollectDirect,
+	Touch,
 
 	// always last.
 	Count,
@@ -26,17 +28,19 @@ enum class EntityInteraction : uint8_t {
 
 enum class EntityReaction : uint8_t {
 	None,
+	Collected,
+	Hurt,
+	Bump,
 
 	// always last.
 	Count,
 	Null = 255,
 };
 
-enum EntityFlags {
-	ENTITYFLAG_HITS_SOLIDS = (1 << 0),
-	ENTITYFLAG_OVERLAP_CHECKS = (1 << 1),
-	ENTITYFLAG_FACING_LEFT = (1 << 2),
-	ENTITYFLAG_GROUNDED = (1 << 3),
+enum EntityFlags : uint8_t {
+	ProvidesStaticCollision = (1 << 0),
+	ENTITYFLAG_GROUNDED = (1 << 1),
+	MarkedForGarbage = (1 << 2),
 };
 
 using EntityId = uint8_t;
@@ -47,7 +51,6 @@ struct BoundingBox {
 	uint8_t width;
 	uint8_t height;
 };
-
 
 struct EntityBase {
 	EntityType type;
@@ -67,23 +70,19 @@ struct EntityBase {
 	void Step();
 
 	virtual void Update();
+	virtual void PostUpdate();
 	virtual void Render();
-	virtual void InteractWith(const EntityBase *other);
 
-	const EntityReaction Interact(const EntityInteraction interaction, EntityBase *from);
+	virtual bool PreSolidCollisionWith(EntityBase *const other, const CoordXY<int> &dir);
+	virtual const EntityReaction Interact(const EntityInteraction interaction, EntityBase *const from, const CoordXY<int> &dir);
 
-	void SetLocation(int x, int y);
+	void SetLocation(const CoordXY<int> &newLocation);
 
 	void Physics();
 	bool IsGrounded() const;
 	bool Overlaps(const EntityBase *other) const;
-	bool PlaceMeeting(int dx, int dy) const;
+	bool Overlaps(const EntityBase *other, const CoordXY<int> &dir) const;
+	bool PlaceMeeting(const CoordXY<int> &dir) const;
 	bool IsTouching() const;
-
 	bool CanWiggle();
-
-	// new api
-	void Update_EXT();// all entities update in the same manner
-	virtual void PreMovement() {}
-	virtual void PostMovement() {}
 };

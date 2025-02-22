@@ -79,18 +79,18 @@ void ResetAllEntities() {
 	});
 }
 
-bool CheckCollisionsWith(const EntityBase *self, EntityBase *&out) {
+bool CheckCollisionsWith(const EntityBase *self, EntityBase *&out, const CoordXY<int> &dir) {
 	for (auto &a : Entities) {
-		if (!self || self->type == EntityType::Null || !(self->flags & EntityFlags::ENTITYFLAG_OVERLAP_CHECKS)) {
+		if (!self || self->type == EntityType::Null) {
 			continue;
 		}
 
-		EntityBase *other = std::visit(GetEntityBase, a);
-		if (!other || other->type == EntityType::Null || self == other | !(other->flags & EntityFlags::ENTITYFLAG_OVERLAP_CHECKS)) {
+		auto *other = std::visit(GetEntityBase, a);
+		if (!other || other->type == EntityType::Null || self == other) {
 			continue;
 		}
 
-		if (self->Overlaps(other)) {
+		if (self->Overlaps(other, dir)) {
 			out = other;
 			return true;
 		}
@@ -99,40 +99,34 @@ bool CheckCollisionsWith(const EntityBase *self, EntityBase *&out) {
 	return false;
 }
 
+void CleanupEntities() {
+	for (auto &e : Entities) {
+		auto *entity = std::visit(GetEntityBase, e);
+		if (entity && entity->type != EntityType::Null && entity->flags) {
+			entity->Step();
+		}
+	}
+}
+
 void UpdateAllEntities() {
 	for (auto &e : Entities) {
-		EntityBase *entity = std::visit(GetEntityBase, e);
+		auto *entity = std::visit(GetEntityBase, e);
 		if (entity && entity->type != EntityType::Null) {
 			entity->Step();
 		}
 	}
 
-	// // check for collisions
-	// for (auto &a : Entities) {
-	// 	EntityBase *self = std::visit(GetEntityBase, a);
-	// 	if (!self || self->type == EntityType::Null || !(self->flags & EntityFlags::ENTITYFLAG_OVERLAP_CHECKS) ||
-	// 		self->bw < 0 || self->bh <= 0) {
-	// 		continue;
-	// 	}
-
-	// 	for (auto &b : Entities) {
-	// 		EntityBase *other = std::visit(GetEntityBase, b);
-	// 		if (!other || other->type == EntityType::Null || self == other || !(other->flags & EntityFlags::ENTITYFLAG_OVERLAP_CHECKS) ||
-	// 			other->bw < 0 || other->bh <= 0) {
-	// 			continue;
-	// 		}
-
-	// 		if (self->Overlaps(other)) {
-	// 			std::visit([&](auto &entity) { entity.InteractWith(other); }, a);
-	// 		}
-	// 	}
-	// }
+	for (auto &e : Entities) {
+		auto *entity = std::visit(GetEntityBase, e);
+		if (entity && entity->type != EntityType::Null) {
+			entity->PostUpdate();
+		}
+	}
 }
-
 
 void RenderAllEntities() {
 	for (auto &e : Entities) {
-		EntityBase *entity = std::visit(GetEntityBase, e);
+		auto *entity = std::visit(GetEntityBase, e);
 		if (entity && entity->type != EntityType::Null) {
 			entity->Render();
 		}

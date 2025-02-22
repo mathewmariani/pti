@@ -15,18 +15,23 @@ void Bullet::Update() {
 		RemoveEntity(this);
 	}
 
-	Physics();
 	HandleVerticalMovement();
 }
 
 void Bullet::Render() {
-	auto flip = (flags & EntityFlags::ENTITYFLAG_FACING_LEFT) ? true : false;
-	pti_spr(bitmap_bullet, 0, x - 4, y - 4, flip, false);
+	pti_spr(bitmap_bullet, 0, x - 4, y - 4, false, false);
+	pti_rect(x + bx, y + by, bw, bh, 0xff0000);
 }
 
-void Bullet::InteractWith(const EntityBase *other) {
-	// nothing.
+const EntityReaction Bullet::Interact(const EntityInteraction interaction, EntityBase *const from, const CoordXY<int> &dir) {
+	if (dir.y > 0) {
+		if (interaction == EntityInteraction::Touch) {
+			return EntityReaction::Bump;
+		}
+	}
+	return EntityReaction::None;
 }
+
 
 void Bullet::HandleHorizontalMovement() {
 	// nothing.

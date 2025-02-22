@@ -19,13 +19,11 @@ struct Shooter : EntityBase {
 		bw = 8;
 		bh = 8;
 		direction = -1;
-		flags = EntityFlags::ENTITYFLAG_OVERLAP_CHECKS | EntityFlags::ENTITYFLAG_HITS_SOLIDS;
 		shoot_timer = kShooterFireRate;
 	}
 
 	void Update() override;
 	void Render() override;
-	void InteractWith(const EntityBase *other) override;
 
 private:
 	void HandleHorizontalMovement();

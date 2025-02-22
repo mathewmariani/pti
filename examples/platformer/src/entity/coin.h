@@ -20,11 +20,13 @@ struct Coin : EntityBase {
 
 	Type subtype;
 
-	static void Create(int32_t x, int32_t y, Type type = Type::Gold);
+	static void Create(const CoordXY<int> &location, Type type = Type::Gold);
 
 	void Update() override;
+	void PostUpdate() override;
 	void Render() override;
-	void InteractWith(const EntityBase *other) override;
+
+	const EntityReaction Interact(const EntityInteraction interaction, EntityBase *const from, const CoordXY<int> &dir) override;
 };
 
 void CoinUpdateAll();

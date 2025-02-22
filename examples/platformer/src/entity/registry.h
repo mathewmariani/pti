@@ -21,3 +21,4 @@ void ResetAllEntities();
 void UpdateAllEntities();
 void RenderAllEntities();
 bool CheckCollisionsWith(const EntityBase *self, EntityBase *&other);
+bool CheckCollisionsWith(const EntityBase *self, EntityBase *&other, const CoordXY<int> &dir);

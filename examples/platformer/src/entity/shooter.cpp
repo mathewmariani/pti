@@ -22,12 +22,7 @@ void Shooter::Update() {
 }
 
 void Shooter::Render() {
-	auto flip = (flags & EntityFlags::ENTITYFLAG_FACING_LEFT) ? true : false;
-	pti_spr(bitmap_shooter, 0, x - 8, y - 16, flip, false);
-}
-
-void Shooter::InteractWith(const EntityBase *other) {
-	// nothing.
+	pti_spr(bitmap_shooter, 0, x - 8, y - 16, false, false);
 }
 
 void Shooter::HandleHorizontalMovement() {

@@ -10,7 +10,7 @@ bool EntityBase::Is<Coin>() const {
 	return type == EntityType::Coin;
 }
 
-void Coin::Create(int32_t x, int32_t y, Coin::Type type) {
+void Coin::Create(const CoordXY<int> &location, Coin::Type type) {
 	auto *coin = CreateEntity<Coin>();
 	if (coin == nullptr) {
 		return;
@@ -20,23 +20,33 @@ void Coin::Create(int32_t x, int32_t y, Coin::Type type) {
 	coin->by = kCoinBoundaryOffset;
 	coin->bw = kCoinWidth;
 	coin->bh = kCoinHeight;
-	coin->flags = EntityFlags::ENTITYFLAG_OVERLAP_CHECKS;
 	coin->subtype = type;
 
-	coin->SetLocation(x, y);
+	coin->SetLocation(location);
 }
 
 void Coin::Update() {
 	// nothing.
 }
 
+void Coin::PostUpdate() {
+	if (flags & EntityFlags::MarkedForGarbage) {
+		RemoveEntity(this);
+	}
+}
+
 void Coin::Render() {
 	auto frame = static_cast<int>(timer * kCoinFrameCount) % kCoinFrameMod;
 	pti_spr(bitmap_coin, frame, x - kCoinWidth / 2, y - kCoinHeight / 2, false, false);
+	pti_rect(x + bx, y + by, bw, bh, 0xff0000);
 }
 
-void Coin::InteractWith(const EntityBase *other) {
-	// nothing.
+const EntityReaction Coin::Interact(const EntityInteraction interaction, EntityBase *const from, const CoordXY<int> &dir) {
+	if (interaction == EntityInteraction::CollectDirect) {
+		flags |= EntityFlags::MarkedForGarbage;
+		return EntityReaction::Collected;
+	}
+	return EntityReaction::None;
 }
 
 void CoinUpdateAll() {

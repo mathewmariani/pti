@@ -8,7 +8,6 @@ bool EntityBase::Is<Player>() const {
 }
 
 void Player::Update() {
-	Physics();
 	HandleHorizontalMovement();
 	HandleVerticalMovement();
 	HandleJump();
@@ -29,42 +28,36 @@ void Player::Render() {
 	if (sx == 0 && sy == 0) {
 		frame = 0;
 	}
-	auto flip = (flags & EntityFlags::ENTITYFLAG_FACING_LEFT) ? true : false;
-	pti_spr(bitmap_player, frame, x - 8, y - 16, flip, false);
+
+	pti_spr(bitmap_player, frame, x - 8, y - 16, false, false);
+	pti_rect(x + bx, y + by, bw, bh, 0x00ff00);
 }
 
-void Player::InteractWith(const EntityBase *other) {
-	switch (other->type) {
-		case EntityType::Bullet:
-			if (sy > 0.0f) {
-				if ((flags & EntityFlags::ENTITYFLAG_GROUNDED) == 0) {
-					flags &= ~EntityFlags::ENTITYFLAG_GROUNDED;
-					sy = -kPlayerPhysicsJumpStrength;
-				}
-			}
-		case EntityType::Coin:
-			break;
-		case EntityType::Goomba:
-			if (sy > 0.0f) {
-				if ((flags & EntityFlags::ENTITYFLAG_GROUNDED) == 0) {
-					flags &= ~EntityFlags::ENTITYFLAG_GROUNDED;
-					sy = -kPlayerPhysicsJumpStrength;
-				}
-			}
-		case EntityType::Player:
-			break;
-		default:
-			break;
+bool Player::PreSolidCollisionWith(EntityBase *const other, const CoordXY<int> &dir) {
+	auto reaction = other->Interact(EntityInteraction::CollectDirect, this, dir);
+
+	if (reaction == EntityReaction::Collected) {
+		return false;
 	}
+
+	if (reaction == EntityReaction::None) {
+		reaction = other->Interact(EntityInteraction::Touch, this, dir);
+
+		if (reaction == EntityReaction::Bump) {
+			flags &= ~EntityFlags::ENTITYFLAG_GROUNDED;
+			sy = -kPlayerPhysicsJumpStrength;
+			return false;
+		}
+	}
+
+	return false;
 }
 
 void Player::HandleHorizontalMovement() {
 	if (pti_down(PTI_LEFT)) {
 		_pti_appr(sx, -kPlayerMaxSpeed, kPlayerAcceleration * PTI_DELTA);
-		flags |= EntityFlags::ENTITYFLAG_FACING_LEFT;
 	} else if (pti_down(PTI_RIGHT)) {
 		_pti_appr(sx, kPlayerMaxSpeed, kPlayerAcceleration * PTI_DELTA);
-		flags &= ~EntityFlags::ENTITYFLAG_FACING_LEFT;
 	} else {
 		_pti_appr(sx, 0, kPlayerFriction * PTI_DELTA);
 	}

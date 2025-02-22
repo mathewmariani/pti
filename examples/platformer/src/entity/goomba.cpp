@@ -1,6 +1,7 @@
 #include "pti.h"
 
 #include "goomba.h"
+#include "coin.h"
 #include "registry.h"
 #include "../bank.h"
 
@@ -14,10 +15,8 @@ void Goomba::Update() {
 		direction *= -1;
 		x += direction;
 		sx = -sx;
-		flags ^= EntityFlags::ENTITYFLAG_FACING_LEFT;
 	}
 
-	Physics();
 	HandleHorizontalMovement();
 	HandleVerticalMovement();
 }
@@ -27,26 +26,16 @@ void Goomba::Render() {
 	if (sx == 0 && sy == 0) {
 		frame = 0;
 	}
-	auto flip = (flags & EntityFlags::ENTITYFLAG_FACING_LEFT) ? true : false;
-	pti_spr(bitmap_goomba, frame, x - 8, y - 16, flip, false);
+
+	pti_spr(bitmap_goomba, frame, x - 8, y - 16, false, false);
+	pti_rect(x + bx, y + by, bw, bh, 0xff0000ff);
 }
 
-void Goomba::InteractWith(const EntityBase *other) {
-	switch (other->type) {
-		case EntityType::Coin:
-			break;
-		case EntityType::Goomba:
-			direction *= -1;
-			x += direction;
-			sx = -sx;
-			flags ^= EntityFlags::ENTITYFLAG_FACING_LEFT;
-			break;
-		case EntityType::Player:
-			RemoveEntity(this);
-			break;
-		default:
-			break;
+const EntityReaction Goomba::Interact(const EntityInteraction interaction, EntityBase *const from, const CoordXY<int> &dir) {
+	if (interaction == EntityInteraction::Touch) {
+		return EntityReaction::Bump;
 	}
+	return EntityReaction::None;
 }
 
 void Goomba::HandleHorizontalMovement() {

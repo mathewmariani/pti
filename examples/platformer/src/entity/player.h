@@ -29,13 +29,12 @@ struct Player : EntityBase {
 		by = -8;
 		bw = 8;
 		bh = 8;
-		flags = EntityFlags::ENTITYFLAG_OVERLAP_CHECKS | EntityFlags::ENTITYFLAG_HITS_SOLIDS;
 		state = PlayerState::Normal;
 	}
 
 	void Update() override;
 	void Render() override;
-	void InteractWith(const EntityBase *other) override;
+	bool PreSolidCollisionWith(EntityBase *const other, const CoordXY<int> &dir) override;
 
 private:
 	void HandleHorizontalMovement();

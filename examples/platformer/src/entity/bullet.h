@@ -20,12 +20,12 @@ struct Bullet : EntityBase {
 		bw = 8;
 		bh = 8;
 		direction = -1;
-		flags = EntityFlags::ENTITYFLAG_OVERLAP_CHECKS | EntityFlags::ENTITYFLAG_HITS_SOLIDS;
 	}
 
 	void Update() override;
 	void Render() override;
-	void InteractWith(const EntityBase *other) override;
+
+	const EntityReaction Interact(const EntityInteraction interaction, EntityBase *const from, const CoordXY<int> &dir) override;
 
 private:
 	void HandleHorizontalMovement();
