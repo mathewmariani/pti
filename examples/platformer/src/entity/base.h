@@ -7,9 +7,9 @@
 
 enum class EntityType : uint8_t {
 	Coin,
-	Bullet,
 	Goomba,
 	Player,
+	Projectile,
 	Shooter,
 
 	// always last.
@@ -41,6 +41,7 @@ enum EntityFlags : uint8_t {
 	ProvidesStaticCollision = (1 << 0),
 	ENTITYFLAG_GROUNDED = (1 << 1),
 	MarkedForGarbage = (1 << 2),
+	PhysicsBumped = (1 << 3),
 };
 
 using EntityId = uint8_t;
@@ -80,7 +81,6 @@ struct EntityBase {
 
 	void Physics();
 	bool IsGrounded() const;
-	bool Overlaps(const EntityBase *other) const;
 	bool Overlaps(const EntityBase *other, const CoordXY<int> &dir) const;
 	bool PlaceMeeting(const CoordXY<int> &dir) const;
 	bool IsTouching() const;

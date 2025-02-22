@@ -2,7 +2,7 @@
 
 #include "base.h"
 
-constexpr int kCoinBoundaryOffset = -2;
+constexpr int kCoinBoundaryOffset = 2;
 constexpr int kCoinWidth = 4;
 constexpr int kCoinHeight = 4;
 constexpr int kCoinFrameCount = 8;

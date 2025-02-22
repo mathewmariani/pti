@@ -1,7 +1,7 @@
 #include "pti.h"
 
 #include "shooter.h"
-#include "bullet.h"
+#include "projectile.h"
 #include "registry.h"
 #include "../bank.h"
 
@@ -14,15 +14,13 @@ void Shooter::Update() {
 	shoot_timer -= PTI_DELTA;
 	if (shoot_timer < 0.0f) {
 		shoot_timer = kShooterFireRate;
-		auto *e = CreateEntity<Bullet>();
-		e->x = x;
-		e->y = y;
-		e->direction = -1;
+		Projectile::Create({x, y}, Projectile::Type::Ball);
 	}
 }
 
 void Shooter::Render() {
-	pti_spr(bitmap_shooter, 0, x - 8, y - 16, false, false);
+	pti_spr(bitmap_shooter, 0, x - kShooterOffsetX, y - kShooterOffsetY, false, false);
+	pti_rect(x + bx, y + by, bw, bh, 0xff0000ff);
 }
 
 void Shooter::HandleHorizontalMovement() {

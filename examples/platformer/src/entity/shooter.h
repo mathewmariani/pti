@@ -3,21 +3,19 @@
 #include "base.h"
 
 constexpr float kShooterFireRate = 1.0f;
-
-enum ShooterState {
-	ShooterNormal,
-	ShooterJump,
-	ShooterDeath,
-};
+constexpr int kShooterOffsetX = 4;
+constexpr int kShooterOffsetY = 8;
+constexpr int kShooterWidth = 8;
+constexpr int kShooterHeight = 8;
 
 struct Shooter : EntityBase {
 	static constexpr auto cEntityType = EntityType::Shooter;
 
 	Shooter() {
-		bx = -4;
-		by = -8;
-		bw = 8;
-		bh = 8;
+		bx = 0;
+		by = 0;
+		bw = kShooterWidth;
+		bh = kShooterHeight;
 		direction = -1;
 		shoot_timer = kShooterFireRate;
 	}

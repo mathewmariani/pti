@@ -11,6 +11,11 @@ constexpr float kPlayerPhysicsVerticalGravFall = 0.4254f;
 constexpr float kPlayerPhysicsVerticalGravAlt = 0.1940f;
 constexpr float kPlayerPhysicsJumpStrength = 6.1135f;
 constexpr float kPlayerPhysicsBounceStrength = 4.5535f;
+
+constexpr int kPlayerOffsetX = 4;
+constexpr int kPlayerOffsetY = 8;
+constexpr int kPlayerWidth = 8;
+constexpr int kPlayerHeight = 8;
 constexpr int kPlayerFrameCount = 8;
 constexpr int kPlayerFrameMod = 2;
 
@@ -25,10 +30,10 @@ struct Player : EntityBase {
 	static constexpr auto cEntityType = EntityType::Player;
 
 	Player() {
-		bx = -4;
-		by = -8;
-		bw = 8;
-		bh = 8;
+		bx = 0;
+		by = 0;
+		bw = kPlayerWidth;
+		bh = kPlayerHeight;
 		state = PlayerState::Normal;
 	}
 
@@ -43,4 +48,6 @@ private:
 
 private:
 	PlayerState state;
+
+	bool bumped;
 };

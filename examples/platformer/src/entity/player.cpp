@@ -8,6 +8,14 @@ bool EntityBase::Is<Player>() const {
 }
 
 void Player::Update() {
+	if (bumped) {
+		state = PlayerState::Jump;
+		flags &= ~EntityFlags::ENTITYFLAG_GROUNDED;
+		sy = -kPlayerPhysicsJumpStrength;
+
+		bumped = false;
+	}
+
 	HandleHorizontalMovement();
 	HandleVerticalMovement();
 	HandleJump();
@@ -29,7 +37,7 @@ void Player::Render() {
 		frame = 0;
 	}
 
-	pti_spr(bitmap_player, frame, x - 8, y - 16, false, false);
+	pti_spr(bitmap_player, frame, x - kPlayerOffsetX, y - kPlayerOffsetY, false, false);
 	pti_rect(x + bx, y + by, bw, bh, 0x00ff00);
 }
 
@@ -44,9 +52,8 @@ bool Player::PreSolidCollisionWith(EntityBase *const other, const CoordXY<int> &
 		reaction = other->Interact(EntityInteraction::Touch, this, dir);
 
 		if (reaction == EntityReaction::Bump) {
-			flags &= ~EntityFlags::ENTITYFLAG_GROUNDED;
-			sy = -kPlayerPhysicsJumpStrength;
-			return false;
+			bumped = true;
+			return true;
 		}
 	}
 

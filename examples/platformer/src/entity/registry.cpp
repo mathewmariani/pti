@@ -6,15 +6,16 @@
 #include <vector>
 #include <cstdio>
 
-#include "bullet.h"
+
 #include "coin.h"
 #include "goomba.h"
 #include "player.h"
+#include "projectile.h"
 #include "shooter.h"
 
 static std::vector<uint8_t> _freeIdList;
 
-using EntityVariant = std::variant<EntityBase, Bullet, Coin, Goomba, Player, Shooter>;
+using EntityVariant = std::variant<EntityBase, Coin, Goomba, Player, Projectile, Shooter>;
 EntityVariant Entities[kMaxEntities];
 
 auto GetEntityBase = [](auto &entity) -> EntityBase * { return &entity; };
@@ -38,10 +39,10 @@ EntityBase *CreateEntity(EntityType type) {
 
 	EntityBase *entity;
 	switch (type) {
-		CASE_FOR(Bullet);
 		CASE_FOR(Coin);
 		CASE_FOR(Goomba);
 		CASE_FOR(Player);
+		CASE_FOR(Projectile);
 		CASE_FOR(Shooter);
 		default:
 			return nullptr;

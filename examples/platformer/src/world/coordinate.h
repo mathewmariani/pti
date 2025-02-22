@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <memory>
 
 template<typename T>
 struct CoordXY {
@@ -9,13 +10,14 @@ struct CoordXY {
 	static CoordXY<T> Down;
 	static CoordXY<T> Left;
 
-	static std::array<CoordXY<T>, 4> VonNewmanNeighborhood;
-
 	T x, y;
 	CoordXY() : x(0), y(0) {}
 	CoordXY(T x_, T y_) : x(x_), y(y_) {}
 	CoordXY(const CoordXY &) = default;
 	CoordXY(CoordXY &&) = default;
+	CoordXY<T> operator*(const T rhs) const {
+		return {x * rhs, y * rhs};
+	}
 	CoordXY<T> operator+(const CoordXY<T> &rhs) const {
 		return {x + rhs.x, y + rhs.y};
 	}
@@ -43,14 +45,6 @@ template<typename T>
 CoordXY<T> CoordXY<T>::Down{+0, -1};
 template<typename T>
 CoordXY<T> CoordXY<T>::Left{-1, +0};
-
-template<typename T>
-std::array<CoordXY<T>, 4> CoordXY<T>::VonNewmanNeighborhood{
-		CoordXY<T>::Up,
-		CoordXY<T>::Right,
-		CoordXY<T>::Down,
-		CoordXY<T>::Left,
-};
 
 template class CoordXY<int>;
 template class CoordXY<float>;

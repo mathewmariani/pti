@@ -21,19 +21,28 @@ void Goomba::Update() {
 	HandleVerticalMovement();
 }
 
+void Goomba::PostUpdate() {
+	if (flags & EntityFlags::MarkedForGarbage) {
+		RemoveEntity(this);
+	}
+}
+
 void Goomba::Render() {
 	auto frame = static_cast<int>(timer * kGoombaFrameCount) % kGoombaFrameMod;
 	if (sx == 0 && sy == 0) {
 		frame = 0;
 	}
 
-	pti_spr(bitmap_goomba, frame, x - 8, y - 16, false, false);
+	pti_spr(bitmap_goomba, frame, x - kGoombaOffsetX, y - kGoombaOffsetY, false, false);
 	pti_rect(x + bx, y + by, bw, bh, 0xff0000ff);
 }
 
 const EntityReaction Goomba::Interact(const EntityInteraction interaction, EntityBase *const from, const CoordXY<int> &dir) {
-	if (interaction == EntityInteraction::Touch) {
-		return EntityReaction::Bump;
+	if (dir.y > 0) {
+		if (interaction == EntityInteraction::Touch) {
+			flags |= EntityFlags::MarkedForGarbage;
+			return EntityReaction::Bump;
+		}
 	}
 	return EntityReaction::None;
 }

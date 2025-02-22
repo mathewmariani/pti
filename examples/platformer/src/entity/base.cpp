@@ -19,6 +19,8 @@ bool EntityBase::Is<EntityBase>() const {
 }
 
 void EntityBase::Step() {
+	Update();
+
 	// check flags
 	// apply gravity
 	// physics
@@ -30,8 +32,6 @@ void EntityBase::Step() {
 	} else {
 		flags &= ~EntityFlags::ENTITYFLAG_GROUNDED;
 	}
-
-	Update();
 }
 
 bool EntityBase::PreSolidCollisionWith(EntityBase *const other, const CoordXY<int> &dir) {
@@ -125,17 +125,10 @@ bool EntityBase::IsGrounded() const {
 	return PlaceMeeting({0, 1}) || (sy >= 0 && PlaceMeeting({0, 1}));
 }
 
-bool EntityBase::Overlaps(const EntityBase *other) const {
-	return (x + bx <= other->x + other->bx + other->bw) &&
-		   (y + by <= other->y + other->by + other->bh) &&
-		   (x + bx + bw >= other->x + other->bx) &&
-		   (y + by + bh >= other->y + other->by);
-}
-
 bool EntityBase::Overlaps(const EntityBase *other, const CoordXY<int> &dir) const {
 	return (x + bx + dir.x < other->x + other->bx + other->bw) &&
 		   (y + by + dir.y < other->y + other->by + other->bh) &&
-		   (x + bx + bw + dir.y > other->x + other->bx) &&
+		   (x + bx + bw + dir.x > other->x + other->bx) &&
 		   (y + by + bh + dir.y > other->y + other->by);
 }
 
