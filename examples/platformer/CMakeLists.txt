@@ -3,6 +3,7 @@ project(platformer)
 #=== EXECUTABLE: platformer_cpp
 set(PLATFORMER_HEADERS
     src/bank.h
+    src/gamestate.h
 
     src/entity/base.h
     src/entity/coin.h
@@ -17,6 +18,7 @@ set(PLATFORMER_HEADERS
 
 set(PLATFORMER_SRC
     src/bank.cpp
+    src/gamestate.cpp
 
     src/entity/base.cpp
     src/entity/coin.cpp

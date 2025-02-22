@@ -1,4 +1,5 @@
 #include "registry.h"
+#include "../gamestate.h"
 
 #include <algorithm>
 #include <array>
@@ -6,28 +7,16 @@
 #include <vector>
 #include <cstdio>
 
-
-#include "coin.h"
-#include "goomba.h"
-#include "player.h"
-#include "projectile.h"
-#include "shooter.h"
-
 static std::vector<uint8_t> _freeIdList;
 
-using EntityVariant = std::variant<EntityBase, Coin, Goomba, Player, Projectile, Shooter>;
-EntityVariant Entities[kMaxEntities];
+//
+// EntityVariant Entities[kMaxEntities];
 
 auto GetEntityBase = [](auto &entity) -> EntityBase * { return &entity; };
 
-EntityBase *GetEntity(uint8_t sprite_idx) {
-	if (sprite_idx >= kMaxEntities) return nullptr;
-	return std::get_if<EntityBase>(&Entities[sprite_idx]);
-}
-
-#define CASE_FOR(T)                                          \
-	case EntityType::T:                                      \
-		entity = (EntityBase *) &Entities[idx].emplace<T>(); \
+#define CASE_FOR(T)                                                    \
+	case EntityType::T:                                                \
+		entity = (EntityBase *) &gameState.Entities[idx].emplace<T>(); \
 		break
 
 EntityBase *CreateEntity(EntityType type) {
@@ -37,6 +26,7 @@ EntityBase *CreateEntity(EntityType type) {
 	}
 	_freeIdList.pop_back();
 
+	auto &gameState = GetGameState();
 	EntityBase *entity;
 	switch (type) {
 		CASE_FOR(Coin);
@@ -68,7 +58,8 @@ void RemoveEntity(EntityBase *entity) {
 }
 
 void ResetAllEntities() {
-	std::fill(std::begin(Entities), std::end(Entities), EntityBase());
+	// auto &gameState = GetGameState();
+	// std::fill(std::begin(gameState.Entities), std::end(gameState.Entities), EntityBase());
 
 	_freeIdList.clear();
 	_freeIdList.resize(kMaxEntities);
@@ -81,7 +72,7 @@ void ResetAllEntities() {
 }
 
 bool CheckCollisionsWith(const EntityBase *self, EntityBase *&out, const CoordXY<int> &dir) {
-	for (auto &a : Entities) {
+	for (auto &a : GetGameState().Entities) {
 		if (!self || self->type == EntityType::Null) {
 			continue;
 		}
@@ -101,7 +92,7 @@ bool CheckCollisionsWith(const EntityBase *self, EntityBase *&out, const CoordXY
 }
 
 void CleanupEntities() {
-	for (auto &e : Entities) {
+	for (auto &e : GetGameState().Entities) {
 		auto *entity = std::visit(GetEntityBase, e);
 		if (entity && entity->type != EntityType::Null && entity->flags) {
 			entity->Step();
@@ -110,14 +101,14 @@ void CleanupEntities() {
 }
 
 void UpdateAllEntities() {
-	for (auto &e : Entities) {
+	for (auto &e : GetGameState().Entities) {
 		auto *entity = std::visit(GetEntityBase, e);
 		if (entity && entity->type != EntityType::Null) {
 			entity->Step();
 		}
 	}
 
-	for (auto &e : Entities) {
+	for (auto &e : GetGameState().Entities) {
 		auto *entity = std::visit(GetEntityBase, e);
 		if (entity && entity->type != EntityType::Null) {
 			entity->PostUpdate();
@@ -126,7 +117,7 @@ void UpdateAllEntities() {
 }
 
 void RenderAllEntities() {
-	for (auto &e : Entities) {
+	for (auto &e : GetGameState().Entities) {
 		auto *entity = std::visit(GetEntityBase, e);
 		if (entity && entity->type != EntityType::Null) {
 			entity->Render();
