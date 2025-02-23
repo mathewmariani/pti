@@ -33,7 +33,7 @@ void Player::Update() {
 
 void Player::Render() {
 	auto frame = static_cast<int>(timer * kPlayerFrameCount) % kPlayerFrameMod;
-	if (sx == 0 && sy == 0) {
+	if (sx == 0 && IsGrounded()) {
 		frame = 0;
 	}
 
@@ -73,24 +73,20 @@ void Player::HandleHorizontalMovement() {
 void Player::HandleVerticalMovement() {
 	static int hang_time = 0;
 
-	if ((flags & EntityFlags::ENTITYFLAG_GROUNDED) == 0) {
-		if (state == PlayerState::Jump) {
-			if (sy <= -0.5f) {
-				hang_time = 3;
-				sy += kPlayerPhysicsVerticalGravFall;
-			} else {
-				if (hang_time > 0) {
-					--hang_time;
-					sy = 0;
-				} else {
-					sy += kPlayerPhysicsVerticalGravFall;
-				}
-			}
-		} else {
+	if (IsGrounded() && state == PlayerState::Jump) {
+		if (sy <= -0.5f) {
+			hang_time = 3;
 			sy += kPlayerPhysicsVerticalGravFall;
+		} else {
+			if (hang_time > 0) {
+				--hang_time;
+				sy = 0;
+			} else {
+				sy += kPlayerPhysicsVerticalGravFall;
+			}
 		}
 	} else {
-		sy = 0;
+		sy += kPlayerPhysicsVerticalGravFall;
 	}
 
 	// Limit vertical speed

@@ -9,10 +9,9 @@
 
 static std::vector<uint8_t> _freeIdList;
 
-//
-// EntityVariant Entities[kMaxEntities];
-
-auto GetEntityBase = [](auto &entity) -> EntityBase * { return &entity; };
+namespace {
+	auto GetEntityBase = [](auto &entity) -> EntityBase * { return &entity; };
+}// namespace
 
 #define CASE_FOR(T)                                                    \
 	case EntityType::T:                                                \
@@ -58,8 +57,8 @@ void RemoveEntity(EntityBase *entity) {
 }
 
 void ResetAllEntities() {
-	// auto &gameState = GetGameState();
-	// std::fill(std::begin(gameState.Entities), std::end(gameState.Entities), EntityBase());
+	auto &gameState = GetGameState();
+	std::fill(std::begin(gameState.Entities), std::end(gameState.Entities), EntityBase());
 
 	_freeIdList.clear();
 	_freeIdList.resize(kMaxEntities);
@@ -96,22 +95,6 @@ void CleanupEntities() {
 		auto *entity = std::visit(GetEntityBase, e);
 		if (entity && entity->type != EntityType::Null && entity->flags) {
 			entity->Step();
-		}
-	}
-}
-
-void UpdateAllEntities() {
-	for (auto &e : GetGameState().Entities) {
-		auto *entity = std::visit(GetEntityBase, e);
-		if (entity && entity->type != EntityType::Null) {
-			entity->Step();
-		}
-	}
-
-	for (auto &e : GetGameState().Entities) {
-		auto *entity = std::visit(GetEntityBase, e);
-		if (entity && entity->type != EntityType::Null) {
-			entity->PostUpdate();
 		}
 	}
 }

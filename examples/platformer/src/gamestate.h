@@ -13,6 +13,11 @@ using EntityVariant = std::variant<EntityBase, Coin, Goomba, Player, Projectile,
 
 struct GameState_t {
 	EntityVariant Entities[kMaxEntities];
+	uint8_t Coins;
+	uint8_t Deaths;
 };
 
 GameState_t &GetGameState();
+
+void GameStateInit();
+void GameStateTick();

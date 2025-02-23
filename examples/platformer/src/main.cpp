@@ -2,6 +2,7 @@
 #include "pti.h"
 
 #include "bank.h"
+#include "gamestate.h"
 #include "lib/assets.h"
 
 #include "entity/coin.h"
@@ -11,6 +12,8 @@
 #include "entity/registry.h"
 
 #include <math.h>
+
+#include <string>
 
 namespace {
 	constexpr int width = 240;
@@ -49,7 +52,7 @@ namespace {
 #define YPOS(y) (y * EN_GRID_SIZE)
 
 static void load(void) {
-	ResetAllEntities();
+	GameStateInit();
 	assets::reload();
 
 	int i, j, t;
@@ -68,10 +71,8 @@ static void load(void) {
 					pti_mset(tilemap, i, j, 0);
 					break;
 				case 50: {
-					if (auto *e = CreateEntity<Goomba>(); e) {
-						e->SetLocation({XPOS(i), YPOS(j)});
-						pti_mset(tilemap, i, j, 0);
-					}
+					Goomba::Create({XPOS(i), YPOS(j)});
+					pti_mset(tilemap, i, j, 0);
 				} break;
 				case 51: {
 					if (auto *e = CreateEntity<Shooter>(); e) {
@@ -93,6 +94,7 @@ static void init(void) {
 	bitmap_goomba = assets::sprite("assets/goomba.ase");
 	bitmap_player = assets::sprite("assets/dog.ase");
 	bitmap_shooter = assets::sprite("assets/goomba.ase");
+	bitmap_font = assets::sprite("assets/font.ase");
 
 	load();
 
@@ -106,11 +108,12 @@ static void cleanup(void) {
 }
 
 static void frame(void) {
+	auto &gameState = GetGameState();
 	if (pti_down(PTI_DBG)) {
 		load();
 	}
 
-	UpdateAllEntities();
+	GameStateTick();
 
 	pti_cls(0xffef7d57);
 
@@ -122,6 +125,14 @@ static void frame(void) {
 
 	pti_map(tilemap, tileset, 0, 0);
 	RenderAllEntities();
+
+	/* render ui */
+	// const auto coin_str = std::format("coins: &d\n", coins);
+	char buffer[100];
+	std::snprintf(buffer, sizeof(buffer), "coins: %d\n", gameState.Coins);
+	std::string coin_str(buffer);
+
+	pti_print(bitmap_font, coin_str.c_str(), 0, 64);
 }
 
 pti_desc pti_main(int argc, char *argv[]) {

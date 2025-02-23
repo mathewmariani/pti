@@ -12,3 +12,4 @@ extern pti_bitmap_t *bitmap_goomba;
 extern pti_bitmap_t *bitmap_player;
 extern pti_bitmap_t *bitmap_pop;
 extern pti_bitmap_t *bitmap_shooter;
+extern pti_bitmap_t *bitmap_font;

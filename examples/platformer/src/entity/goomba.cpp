@@ -1,13 +1,27 @@
 #include "pti.h"
 
 #include "goomba.h"
-#include "coin.h"
 #include "registry.h"
 #include "../bank.h"
 
 template<>
 bool EntityBase::Is<Goomba>() const {
 	return type == EntityType::Goomba;
+}
+
+void Goomba::Create(const CoordXY<int> &location) {
+	auto *goomba = CreateEntity<Goomba>();
+	if (goomba == nullptr) {
+		return;
+	}
+
+	goomba->bx = 0;
+	goomba->by = 0;
+	goomba->bw = kGoombaHeight;
+	goomba->bh = kGoombaWidth;
+	goomba->direction = -1;
+
+	goomba->SetLocation(location);
 }
 
 void Goomba::Update() {
@@ -29,7 +43,7 @@ void Goomba::PostUpdate() {
 
 void Goomba::Render() {
 	auto frame = static_cast<int>(timer * kGoombaFrameCount) % kGoombaFrameMod;
-	if (sx == 0 && sy == 0) {
+	if (sx == 0 && IsGrounded()) {
 		frame = 0;
 	}
 
@@ -52,12 +66,8 @@ void Goomba::HandleHorizontalMovement() {
 }
 
 void Goomba::HandleVerticalMovement() {
-	if ((flags & EntityFlags::ENTITYFLAG_GROUNDED) == 0) {
-		sy += kGoombaPhysicsVerticalGravFall;
-		if (sy > kGoombaPhysicsVerticalMax) {
-			sy = kGoombaPhysicsVerticalMax;
-		}
-	} else {
-		sy = 0;
+	sy += kGoombaPhysicsVerticalGravFall;
+	if (sy > kGoombaPhysicsVerticalMax) {
+		sy = kGoombaPhysicsVerticalMax;
 	}
 }

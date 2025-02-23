@@ -14,7 +14,7 @@ void Shooter::Update() {
 	shoot_timer -= PTI_DELTA;
 	if (shoot_timer < 0.0f) {
 		shoot_timer = kShooterFireRate;
-		Projectile::Create({x, y}, Projectile::Type::Ball);
+		Projectile::Create({x - 8, y}, Projectile::Type::Ball);
 	}
 }
 

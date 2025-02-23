@@ -17,6 +17,7 @@ struct Shooter : EntityBase {
 		bw = kShooterWidth;
 		bh = kShooterHeight;
 		direction = -1;
+		flags = EntityFlags::ProvidesStaticCollision;
 		shoot_timer = kShooterFireRate;
 	}
 

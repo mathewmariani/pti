@@ -69,6 +69,7 @@ struct EntityBase {
 	bool Is() const;
 
 	void Step();
+	void Physics();
 
 	virtual void Update();
 	virtual void PostUpdate();
@@ -79,8 +80,10 @@ struct EntityBase {
 
 	void SetLocation(const CoordXY<int> &newLocation);
 
-	void Physics();
+
 	bool IsGrounded() const;
+	bool ProvidesStaticCollision() const;
+
 	bool Overlaps(const EntityBase *other, const CoordXY<int> &dir) const;
 	bool PlaceMeeting(const CoordXY<int> &dir) const;
 	bool IsTouching() const;

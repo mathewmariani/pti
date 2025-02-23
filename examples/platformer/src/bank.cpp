@@ -8,3 +8,4 @@ pti_bitmap_t *bitmap_goomba = nullptr;
 pti_bitmap_t *bitmap_player = nullptr;
 pti_bitmap_t *bitmap_pop = nullptr;
 pti_bitmap_t *bitmap_shooter = nullptr;
+pti_bitmap_t *bitmap_font = nullptr;

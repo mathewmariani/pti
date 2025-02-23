@@ -1,5 +1,6 @@
 #include "coin.h"
 #include "registry.h"
+#include "../gamestate.h"
 
 #include "../bank.h"
 
@@ -32,6 +33,7 @@ void Coin::Update() {
 void Coin::PostUpdate() {
 	if (flags & EntityFlags::MarkedForGarbage) {
 		RemoveEntity(this);
+		GetGameState().Coins++;
 	}
 }
 

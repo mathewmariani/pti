@@ -19,22 +19,10 @@ constexpr int kGoombaHeight = 8;
 constexpr int kGoombaFrameCount = 8;
 constexpr int kGoombaFrameMod = 2;
 
-enum GoombaState {
-	GoombaNormal,
-	GoombaJump,
-	GoombaDeath,
-};
-
 struct Goomba : EntityBase {
 	static constexpr auto cEntityType = EntityType::Goomba;
 
-	Goomba() {
-		bx = 0;
-		by = 0;
-		bw = kGoombaHeight;
-		bh = kGoombaWidth;
-		direction = -1;
-	}
+	static void Create(const CoordXY<int> &locatio);
 
 	void Update() override;
 	void PostUpdate() override;

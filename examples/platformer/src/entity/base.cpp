@@ -20,36 +20,7 @@ bool EntityBase::Is<EntityBase>() const {
 
 void EntityBase::Step() {
 	Update();
-
-	// check flags
-	// apply gravity
-	// physics
 	Physics();
-
-	// update flags
-	if (IsGrounded()) {
-		flags |= EntityFlags::ENTITYFLAG_GROUNDED;
-	} else {
-		flags &= ~EntityFlags::ENTITYFLAG_GROUNDED;
-	}
-}
-
-bool EntityBase::PreSolidCollisionWith(EntityBase *const other, const CoordXY<int> &dir) {
-	return false;
-}
-
-const EntityReaction EntityBase::Interact(const EntityInteraction interaction, EntityBase *const from, const CoordXY<int> &dir) {
-	return EntityReaction::None;
-}
-
-
-void EntityBase::Update() {}
-void EntityBase::PostUpdate() {}
-void EntityBase::Render() {}
-
-void EntityBase::SetLocation(const CoordXY<int> &newLocation) {
-	x = newLocation.x;
-	y = newLocation.y;
 }
 
 void EntityBase::Physics() {
@@ -59,8 +30,7 @@ void EntityBase::Physics() {
 	int nx = sx + rx;
 	int ny = sy + ry;
 
-	/* Try to move */
-	// Move in X direction
+	/* Move in X direction */
 	int j = nx;
 	int dx = _pti_sign(j);
 	while (j != 0) {
@@ -82,7 +52,7 @@ void EntityBase::Physics() {
 		// check for entity
 		EntityBase *other = nullptr;
 		if (CheckCollisionsWith(this, other, {dx, 0})) {
-			if (PreSolidCollisionWith(other, {dx, 0})) {
+			if (PreSolidCollisionWith(other, {dx, 0}) || other->ProvidesStaticCollision()) {
 				sx = rx = nx = 0;
 				break;
 			}
@@ -101,17 +71,20 @@ void EntityBase::Physics() {
 			break;
 		}
 		if (PlaceMeeting({0, dy})) {
+			flags |= EntityFlags::ENTITYFLAG_GROUNDED;
 			sy = ry = ny = 0;
 			break;
 		}
 		// check for entity
 		EntityBase *other = nullptr;
 		if (CheckCollisionsWith(this, other, {0, dy})) {
-			if (PreSolidCollisionWith(other, {0, dy})) {
+			if (PreSolidCollisionWith(other, {0, dy}) || other->ProvidesStaticCollision()) {
+				flags |= EntityFlags::ENTITYFLAG_GROUNDED;
 				sy = ry = ny = 0;
 				break;
 			}
 		}
+		flags &= EntityFlags::ENTITYFLAG_GROUNDED;
 		y += dy;
 		j -= dy;
 	}
@@ -121,8 +94,29 @@ void EntityBase::Physics() {
 	ry = sy + ry - ny;
 }
 
+void EntityBase::Update() {}
+void EntityBase::PostUpdate() {}
+void EntityBase::Render() {}
+
+bool EntityBase::PreSolidCollisionWith(EntityBase *const other, const CoordXY<int> &dir) {
+	return false;
+}
+
+const EntityReaction EntityBase::Interact(const EntityInteraction interaction, EntityBase *const from, const CoordXY<int> &dir) {
+	return EntityReaction::None;
+}
+
+void EntityBase::SetLocation(const CoordXY<int> &newLocation) {
+	x = newLocation.x;
+	y = newLocation.y;
+}
+
 bool EntityBase::IsGrounded() const {
-	return PlaceMeeting({0, 1}) || (sy >= 0 && PlaceMeeting({0, 1}));
+	return (flags & EntityFlags::ENTITYFLAG_GROUNDED) != 0;
+}
+
+bool EntityBase::ProvidesStaticCollision() const {
+	return (flags & EntityFlags::ProvidesStaticCollision) != 0;
 }
 
 bool EntityBase::Overlaps(const EntityBase *other, const CoordXY<int> &dir) const {
