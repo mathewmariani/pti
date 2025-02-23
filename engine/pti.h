@@ -13,12 +13,19 @@
 #include <string.h>
 
 // >>profiling
+#if defined(PTI_USE_PROFILER)
 #include "tracy/TracyC.h"
 static TracyCZoneCtx __tracy_ctx;
-#define PTI_PROFILE ZoneScoped
+#define PTI_PROFILE() ZoneScoped
 #define PTI_PROFILE_FRAME() TracyCFrameMark
 #define PTI_PROFILE_ZONE() TracyCZoneN(__tracy_ctx, __FUNCTION__, true)
 #define PTI_PROFILE_ZONE_END() TracyCZoneEnd(__tracy_ctx)
+#else
+#define PTI_PROFILE()
+#define PTI_PROFILE_FRAME()
+#define PTI_PROFILE_ZONE()
+#define PTI_PROFILE_ZONE_END()
+#endif
 
 #define _pti_kilobytes(n) (1024 * (n))
 #define _pti_megabytes(n) (1024 * _pti_kilobytes(n))
@@ -78,14 +85,14 @@ typedef struct pti_bitmap_t {
 	int32_t frames;
 	int32_t width;
 	int32_t height;
-	void *pixels; /* (width) x (height x frames) */
+	void *pixels;// (width) x (height x frames)
 } pti_bitmap_t;
 
 typedef struct pti_tileset_t {
 	int32_t count;
 	int16_t width;
 	int16_t height;
-	void *pixels; /* (width) x (height x count) */
+	void *pixels;// (width) x (height x count)
 } pti_tileset_t;
 
 typedef struct pti_tilemap_t {
@@ -110,13 +117,13 @@ typedef struct pti_desc {
 	pti_window window;
 } pti_desc;
 
-/* user-provided function */
+// user-provided function
 extern pti_desc pti_main(int argc, char *argv[]);
 
-/* public functions */
+// public functions
 void pti_init(const pti_desc *desc);
 
-/* api functions */
+// api functions
 
 //>> virutal machine api
 void pti_bank_init(pti_bank_t *bank, uint32_t capacity);
@@ -164,9 +171,9 @@ void pti_spr(const pti_bitmap_t *bitmap, int n, int x, int y, bool flip_x, bool 
 void pti_print(const pti_bitmap_t *font, const char *text, int x, int y);
 
 #ifdef __cplusplus
-} /* extern "C" */
+}// extern "C"
 
-/* reference-based equivalents for C++ */
+// reference-based equivalents for C++
 inline uint32_t pti_mget(const pti_tilemap_t &tilemap, int x, int y) { return pti_mget(&tilemap, x, y); }
 inline void pti_mset(pti_tilemap_t &tilemap, int x, int y, int value) { pti_mset(&tilemap, x, y, value); }
 inline short pti_fget(const pti_tilemap_t &tilemap, int x, int y) { return pti_fget(&tilemap, x, y); }
@@ -205,11 +212,10 @@ inline void pti_print(const pti_bitmap_t &font, const char *text, int x, int y) 
 #include <sys/mman.h>
 #endif
 
-#ifndef PTI_SIMD
+#if defined(PTI_SIMD)
 #include <emmintrin.h>
 #include <tmmintrin.h>
 #include <smmintrin.h>
-#define PTI_SIMD 1
 #endif
 
 typedef struct {
@@ -250,19 +256,19 @@ _PTI_PRIVATE inline void *map_pointer_to_bank(void *ptr) {
 
 _PTI_PRIVATE void *_pti__virtual_reserve(void *ptr, const uint32_t size) {
 #if defined(_WIN32)
-	/* Reserves a range of the process's virtual offsetess space without
-	* allocating any actual physical storage in memory or in the paging file on
-  * disk. */
-	/* Disables all access to the committed region of pages. An attempt to read
-   * from, write to, or execute the committed region results in an access
-   * violation.
-	 */
+	// Reserves a range of the process's virtual offsetess space without
+	// allocating any actual physical storage in memory or in the paging file on
+	// disk.
+	// Disables all access to the committed region of pages. An attempt to read
+	// from, write to, or execute the committed region results in an access
+	// violation.
+
 	ptr = VirtualAlloc(ptr, size, MEM_RESERVE, PAGE_NOACCESS);
 	PTI_ASSERT(ptr);
 #else
-	/* Create a private copy-on-write mapping. */
-	/* The mapping is not backed by any file; */
-	/* its contents are initialized to zero. */
+	// Create a private copy-on-write mapping.
+	// The mapping is not backed by any file;
+	// its contents are initialized to zero.
 	uint16_t flags = (MAP_PRIVATE | MAP_ANON);
 	uint16_t prot = (PROT_READ | PROT_WRITE);
 	ptr = mmap((void *) ptr, size, prot, flags, -1, 0);
@@ -274,17 +280,16 @@ _PTI_PRIVATE void *_pti__virtual_reserve(void *ptr, const uint32_t size) {
 
 _PTI_PRIVATE void *_pti__virtual_commit(void *ptr, const uint32_t size) {
 #if defined(_WIN32)
-	/* Enables read-only or read/write access to the committed region of pages. */
+	// Enables read-only or read/write access to the committed region of pages.
 	ptr = VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
 	PTI_ASSERT(ptr);
 #else
 	uint16_t flags = (MAP_FIXED | MAP_SHARED | MAP_ANON);
 	ptr = mmap(ptr, size, (PROT_READ | PROT_WRITE), flags, -1, 0);
 	PTI_ASSERT(ptr != MAP_FAILED);
-	/* Requests an update and waits for it to complete. */
-	/* Asks to invalidate other mappings of the same file (so
-   * that they can be updated with the fresh values just written).
-   */
+	// Requests an update and waits for it to complete.
+	// Asks to invalidate other mappings of the same file (so
+	// that they can be updated with the fresh values just written).
 	msync(ptr, size, (MS_SYNC | MS_INVALIDATE));
 #endif
 	return ptr;
@@ -310,7 +315,7 @@ _PTI_PRIVATE void _pti__virtual_free(void *ptr, const uint32_t size) {
 	_PTI_UNUSED(size);
 	VirtualFree((void *) ptr, 0, LMEM_RELEASE);
 #else
-	/* Requests an update and waits for it to complete. */
+	// Requests an update and waits for it to complete.
 	msync(ptr, size, MS_SYNC);
 	munmap(ptr, size);
 #endif
@@ -365,21 +370,21 @@ _PTI_PRIVATE void _pti__random_init(const pti_desc *desc) {
 
 // >>public
 void pti_init(const pti_desc *desc) {
-	/* cache description */
+	// cache description
 	_pti.desc = *desc;
 
 	_pti.vm.screen.width = desc->window.width;
 	_pti.vm.screen.height = desc->window.height;
 
-	/* calculate sizes */
+	// calculate sizes
 	const size_t vm_size = sizeof(_pti__vm_t);
 	const size_t vram_size = desc->window.width * desc->window.height * sizeof(uint32_t);
 	const size_t capacity = desc->memory_size + vram_size;
 
-	/* init memory */
+	// init memory
 	pti_bank_init(&_pti.ram, capacity);
 
-	/* allocate virtual machine */
+	// allocate virtual machine
 	_pti.screen = pti_alloc(&_pti.ram, vram_size);
 	_pti.data = pti_alloc(&_pti.ram, desc->memory_size);
 }
@@ -387,7 +392,7 @@ void pti_init(const pti_desc *desc) {
 // >>memory api
 
 void pti_bank_init(pti_bank_t *bank, uint32_t capacity) {
-	/* allocate memory */
+	// allocate memory
 	void *ptr = _pti__virtual_reserve(NULL, capacity);
 	bank->begin = ptr;
 	bank->it = ptr;
@@ -440,7 +445,7 @@ const uint16_t pti_peek2(const uint32_t offset, const uint32_t index) {
 	const uint8_t b0 = pti_peek(offset, index + 0);
 	const uint8_t b1 = pti_peek(offset, index + 1);
 
-	/* combine 16-bit value */
+	// combine 16-bit value
 	return (uint16_t) ((b0 << 8) | (b1 << 0));
 }
 
@@ -450,7 +455,7 @@ const uint32_t pti_peek4(const uint32_t offset, const uint32_t index) {
 	const uint8_t b2 = pti_peek(offset, index + 2);
 	const uint8_t b3 = pti_peek(offset, index + 3);
 
-	/* combine 32-bit value */
+	// combine 32-bit value
 	return (uint32_t) ((b0 << 24) | (b1 << 16) | (b2 << 8) | (b3 << 0));
 }
 
@@ -584,7 +589,7 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, in
 	uint32_t color_key = _pti.vm.draw.ckey;
 
 
-#if PTI_SIMD
+#if defined(PTI_SIMD)
 	__m128i key = _mm_set1_epi32(color_key);
 	for (int dst_y = dst_y1; dst_y <= dst_y2; dst_y++) {
 		for (int i = 0; i < clipped_width; i += 4) {
@@ -779,7 +784,7 @@ void pti_rectf(int x0, int y0, int x1, int y1, uint64_t color) {
 }
 
 void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, int y) {
-	PTI_PROFILE_ZONE();
+	// PTI_PROFILE_ZONE();
 	const int map_w = tilemap->width;
 	const int map_h = tilemap->height;
 	const int tile_w = tileset->width;
@@ -798,7 +803,7 @@ void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, 
 			_pti__plot(pixels, t, x + (i * tile_w), y + (j * tile_h), tile_w, tile_h, 0, 0, tile_w, tile_h, false, false);
 		}
 	}
-	PTI_PROFILE_ZONE_END();
+	// PTI_PROFILE_ZONE_END();
 }
 
 void pti_spr(const pti_bitmap_t *sprite, int n, int x, int y, bool flip_x, bool flip_y) {
