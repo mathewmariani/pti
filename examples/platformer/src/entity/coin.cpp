@@ -32,6 +32,8 @@ void Coin::Update() {
 
 void Coin::PostUpdate() {
 	if (flags & EntityFlags::MarkedForGarbage) {
+		Effect::Create({x, y});
+
 		RemoveEntity(this);
 		GetGameState().Coins++;
 	}
@@ -40,7 +42,6 @@ void Coin::PostUpdate() {
 void Coin::Render() {
 	auto frame = static_cast<int>(timer * kCoinFrameCount) % kCoinFrameMod;
 	pti_spr(bitmap_coin, frame, x, y, false, false);
-	pti_rect(x + bx, y + by, bw, bh, 0xff0000);
 }
 
 const EntityReaction Coin::Interact(const EntityInteraction interaction, EntityBase *const from, const CoordXY<int> &dir) {

@@ -7,6 +7,7 @@ set(PLATFORMER_HEADERS
 
     src/entity/base.h
     src/entity/coin.h
+    src/entity/effect.h
     src/entity/goomba.h
     src/entity/player.h
     src/entity/projectile.h
@@ -22,6 +23,7 @@ set(PLATFORMER_SRC
 
     src/entity/base.cpp
     src/entity/coin.cpp
+    src/entity/effect.cpp
     src/entity/goomba.cpp
     src/entity/player.cpp
     src/entity/projectile.cpp

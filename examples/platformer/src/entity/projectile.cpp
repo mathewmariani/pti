@@ -1,6 +1,7 @@
 #include "pti.h"
 
 #include "projectile.h"
+#include "effect.h"
 #include "registry.h"
 #include "../bank.h"
 
@@ -31,13 +32,13 @@ void Projectile::Update() {
 
 void Projectile::PostUpdate() {
 	if (flags & EntityFlags::MarkedForGarbage || IsTouching()) {
+		Effect::Create({x, y});
 		RemoveEntity(this);
 	}
 }
 
 void Projectile::Render() {
 	pti_spr(bitmap_bullet, 0, x, y, false, false);
-	pti_rect(x + bx, y + by, bw, bh, 0xff0000);
 }
 
 const EntityReaction Projectile::Interact(const EntityInteraction interaction, EntityBase *const from, const CoordXY<int> &dir) {

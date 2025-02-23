@@ -20,7 +20,6 @@ void Shooter::Update() {
 
 void Shooter::Render() {
 	pti_spr(bitmap_shooter, 0, x - kShooterOffsetX, y - kShooterOffsetY, false, false);
-	pti_rect(x + bx, y + by, bw, bh, 0xff0000ff);
 }
 
 void Shooter::HandleHorizontalMovement() {

@@ -1,4 +1,5 @@
 #include "player.h"
+#include "effect.h"
 #include "../bank.h"
 #include "pti.h"
 
@@ -38,7 +39,6 @@ void Player::Render() {
 	}
 
 	pti_spr(bitmap_player, frame, x - kPlayerOffsetX, y - kPlayerOffsetY, false, false);
-	pti_rect(x + bx, y + by, bw, bh, 0x00ff00);
 }
 
 bool Player::PreSolidCollisionWith(EntityBase *const other, const CoordXY<int> &dir) {
@@ -103,11 +103,14 @@ void Player::HandleJump() {
 		state = PlayerState::Jump;
 		flags &= ~EntityFlags::ENTITYFLAG_GROUNDED;
 		sy = -kPlayerPhysicsJumpStrength;
+
+		Effect::Create({x, y}, Effect::Type::JumpDust);
 	}
 
 	// Revert state
 	if (state == PlayerState::Jump && (flags & EntityFlags::ENTITYFLAG_GROUNDED)) {
 		state = PlayerState::Normal;
+		Effect::Create({x, y}, Effect::Type::LandDust);
 	}
 
 	// Variable jump

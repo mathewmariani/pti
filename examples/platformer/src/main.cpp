@@ -96,6 +96,10 @@ static void init(void) {
 	bitmap_shooter = assets::sprite("assets/goomba.ase");
 	bitmap_font = assets::sprite("assets/font.ase");
 
+	bitmap_fx_collect = assets::sprite("assets/collect.ase");
+	bitmap_fx_dust1 = assets::sprite("assets/dust1.ase");
+	bitmap_fx_dust2 = assets::sprite("assets/dust2.ase");
+
 	load();
 
 	/* graphics state: */

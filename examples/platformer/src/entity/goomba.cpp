@@ -1,6 +1,7 @@
 #include "pti.h"
 
 #include "goomba.h"
+#include "effect.h"
 #include "registry.h"
 #include "../bank.h"
 
@@ -37,6 +38,7 @@ void Goomba::Update() {
 
 void Goomba::PostUpdate() {
 	if (flags & EntityFlags::MarkedForGarbage) {
+		Effect::Create({x, y});
 		RemoveEntity(this);
 	}
 }
@@ -48,7 +50,6 @@ void Goomba::Render() {
 	}
 
 	pti_spr(bitmap_goomba, frame, x - kGoombaOffsetX, y - kGoombaOffsetY, false, false);
-	pti_rect(x + bx, y + by, bw, bh, 0xff0000ff);
 }
 
 const EntityReaction Goomba::Interact(const EntityInteraction interaction, EntityBase *const from, const CoordXY<int> &dir) {

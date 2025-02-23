@@ -7,6 +7,7 @@
 
 enum class EntityType : uint8_t {
 	Coin,
+	Effect,
 	Goomba,
 	Player,
 	Projectile,

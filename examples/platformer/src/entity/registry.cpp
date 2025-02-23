@@ -29,6 +29,7 @@ EntityBase *CreateEntity(EntityType type) {
 	EntityBase *entity;
 	switch (type) {
 		CASE_FOR(Coin);
+		CASE_FOR(Effect);
 		CASE_FOR(Goomba);
 		CASE_FOR(Player);
 		CASE_FOR(Projectile);
