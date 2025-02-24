@@ -41,9 +41,7 @@ endif()
 target_link_libraries(platformer engine)
 
 # assets
-add_custom_command(
-  TARGET platformer
-  POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_directory
+add_custom_command(TARGET platformer POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
   "${CMAKE_CURRENT_SOURCE_DIR}/assets"
   "$<TARGET_FILE_DIR:platformer>/assets")
