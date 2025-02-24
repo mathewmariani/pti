@@ -38,6 +38,7 @@ struct Player : EntityBase {
 	}
 
 	void Update() override;
+	void PostUpdate() override;
 	void Render() override;
 	bool PreSolidCollisionWith(EntityBase *const other, const CoordXY<int> &dir) override;
 

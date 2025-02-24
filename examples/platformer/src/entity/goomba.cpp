@@ -59,6 +59,9 @@ const EntityReaction Goomba::Interact(const EntityInteraction interaction, Entit
 			return EntityReaction::Bump;
 		}
 	}
+	if (interaction == EntityInteraction::Touch) {
+		return EntityReaction::Hurt;
+	}
 	return EntityReaction::None;
 }
 

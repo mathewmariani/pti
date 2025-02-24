@@ -1,5 +1,7 @@
 #include "player.h"
 #include "effect.h"
+#include "registry.h"
+#include "../gamestate.h"
 #include "../bank.h"
 #include "pti.h"
 
@@ -32,6 +34,15 @@ void Player::Update() {
 	pti_camera(cam_x, cam_y);
 }
 
+void Player::PostUpdate() {
+	if (flags & EntityFlags::MarkedForGarbage) {
+		Effect::Create({x, y});
+		RemoveEntity(this);
+		GetGameState().Deaths++;
+		GetGameState().PlayerIsDead = true;
+	}
+}
+
 void Player::Render() {
 	auto frame = static_cast<int>(timer * kPlayerFrameCount) % kPlayerFrameMod;
 	if (sx == 0 && IsGrounded()) {
@@ -53,6 +64,9 @@ bool Player::PreSolidCollisionWith(EntityBase *const other, const CoordXY<int> &
 
 		if (reaction == EntityReaction::Bump) {
 			bumped = true;
+			return true;
+		} else if (reaction == EntityReaction::Hurt) {
+			flags |= EntityFlags::MarkedForGarbage;
 			return true;
 		}
 	}

@@ -48,6 +48,9 @@ const EntityReaction Projectile::Interact(const EntityInteraction interaction, E
 			return EntityReaction::Bump;
 		}
 	}
+	if (interaction == EntityInteraction::Touch) {
+		return EntityReaction::Hurt;
+	}
 	return EntityReaction::None;
 }
 

@@ -46,6 +46,8 @@ namespace {
 	constexpr int EN_ROOM_WIDTH = 512;
 	constexpr int EN_ROOM_HEIGHT = 256;
 	constexpr int EN_GRID_SIZE = 8;
+
+	float resetTimer = 0.0f;
 }// namespace
 
 #define XPOS(x) (x * EN_GRID_SIZE)
@@ -89,6 +91,7 @@ static void init(void) {
 	assets::init();
 	tileset = assets::tileset("assets/tilemap.ase");
 	tilemap = assets::tilemap("assets/tilemap.ase");
+
 	bitmap_bullet = assets::sprite("assets/bullet.ase");
 	bitmap_coin = assets::sprite("assets/coin.ase");
 	bitmap_goomba = assets::sprite("assets/goomba.ase");
@@ -115,6 +118,17 @@ static void frame(void) {
 	auto &gameState = GetGameState();
 	if (pti_down(PTI_DBG)) {
 		load();
+		return;
+	}
+
+	if (gameState.PlayerIsDead) {
+		gameState.ResetTimer += PTI_DELTA;
+		if (gameState.ResetTimer >= kDeathResetTimer) {
+			gameState.PlayerIsDead = false;
+			gameState.ResetTimer = 0.0f;
+			load();
+			return;
+		}
 	}
 
 	GameStateTick();

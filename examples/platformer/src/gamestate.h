@@ -10,12 +10,17 @@
 
 #include <variant>
 
+constexpr float kDeathResetTimer = 5.0f;
+
 using EntityVariant = std::variant<EntityBase, Coin, Effect, Goomba, Player, Projectile, Shooter>;
 
 struct GameState_t {
-	EntityVariant Entities[kMaxEntities];
-	uint8_t Coins;
-	uint8_t Deaths;
+	EntityVariant Entities[kMaxEntities]{};
+	uint8_t Coins = 0;
+	uint8_t Deaths = 0;
+
+	bool PlayerIsDead = false;
+	float ResetTimer = 0.0f;
 };
 
 GameState_t &GetGameState();
