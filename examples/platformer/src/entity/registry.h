@@ -1,9 +1,11 @@
 #pragma once
 
-constexpr char kMaxEntities = 64;
-
 #include "base.h"
 #include "../world/coordinate.h"
+
+#include <cstdint>
+
+constexpr uint8_t kMaxEntities = 255;
 
 EntityBase *CreateEntity(EntityType type);
 

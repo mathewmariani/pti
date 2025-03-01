@@ -6,12 +6,11 @@
 
 #include <algorithm>
 
-constexpr int EN_COUNT = 64;
 constexpr int EN_ROOM_COLS = 64;
-constexpr int EN_ROOM_ROWS = 32;
-constexpr int EN_ROOM_WIDTH = 512;
-constexpr int EN_ROOM_HEIGHT = 256;
+constexpr int EN_ROOM_ROWS = 46;
 constexpr int EN_GRID_SIZE = 8;
+constexpr int EN_ROOM_WIDTH = 512;
+constexpr int EN_ROOM_HEIGHT = 368;
 
 template<>
 bool EntityBase::Is<EntityBase>() const {

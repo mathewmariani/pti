@@ -40,12 +40,12 @@ namespace {
 			0xff333c57,
 	};
 
-	constexpr int EN_COUNT = 64;
 	constexpr int EN_ROOM_COLS = 64;
-	constexpr int EN_ROOM_ROWS = 32;
-	constexpr int EN_ROOM_WIDTH = 512;
-	constexpr int EN_ROOM_HEIGHT = 256;
+	constexpr int EN_ROOM_ROWS = 46;
 	constexpr int EN_GRID_SIZE = 8;
+	constexpr int EN_ROOM_WIDTH = 512;
+	constexpr int EN_ROOM_HEIGHT = 368;
+
 
 	float resetTimer = 0.0f;
 }// namespace
@@ -89,8 +89,8 @@ static void load(void) {
 
 static void init(void) {
 	assets::init();
-	tileset = assets::tileset("assets/tilemap.ase");
-	tilemap = assets::tilemap("assets/tilemap.ase");
+	tileset = assets::tileset("assets/tilemap_2.ase");
+	tilemap = assets::tilemap("assets/tilemap_2.ase");
 
 	bitmap_bullet = assets::sprite("assets/bullet.ase");
 	bitmap_coin = assets::sprite("assets/coin.ase");
