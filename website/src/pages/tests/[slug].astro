@@ -31,7 +31,7 @@ const test = Astro.props;
 				<a class="game-menu-link" href={test.data.src}>src</a>
 			</span>
 		</div>
-		<Demo name={test.slug} />
+		<Demo dir="tests" name=`test_${test.slug}` />
 	</body>
 </html>
 <style>

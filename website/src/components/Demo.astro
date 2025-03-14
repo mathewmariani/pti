@@ -1,9 +1,10 @@
 ---
 interface Props {
+  dir: string;
   name: string;
 }
 
-const { name } = Astro.props;
+const { dir, name } = Astro.props;
 ---
 
 <canvas class="demo" id="canvas" oncontextmenu="event.preventDefault()"
@@ -41,8 +42,7 @@ const { name } = Astro.props;
     console.log("onerror: " + event.message);
   };
 </script>
-<script type="text/javascript" src=`samples/${name}.js` async is:inline
-></script>
+<script type="text/javascript" src=`${dir}/${name}.js` async is:inline></script>
 <style>
   .demo {
     margin-right: auto;
