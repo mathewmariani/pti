@@ -179,7 +179,6 @@ static void sokol_init_gfx(void) {
 }
 
 void sokol_gfx_draw() {
-	PTI_PROFILE_ZONE();
 	/* update image data */
 	const int screen_w = _pti.vm.screen.width;
 	const int screen_h = _pti.vm.screen.height;
@@ -198,7 +197,6 @@ void sokol_gfx_draw() {
 	sg_draw(0, 6, 1);
 	sg_end_pass();
 	sg_commit();
-	PTI_PROFILE_ZONE_END();
 }
 
 static void init(void) {
@@ -206,11 +204,9 @@ static void init(void) {
 	sokol_init_gfx();
 
 	/* initialize game */
-	PTI_PROFILE_ZONE();
 	if (_pti.desc.init_cb != NULL) {
 		_pti.desc.init_cb();
 	}
-	PTI_PROFILE_ZONE_END();
 }
 
 static void cleanup(void) {}
@@ -219,7 +215,6 @@ static void cleanup(void) {}
 #define TICK_TOLERANCE_NS (1000000)
 
 static void frame(void) {
-	PTI_PROFILE_FRAME();
 	uint32_t frame_time_ns = (uint32_t) (sapp_frame_duration() * 1000000000.0);
 	if (frame_time_ns > TICK_DURATION_NS) {
 		frame_time_ns = TICK_DURATION_NS;
@@ -230,11 +225,9 @@ static void frame(void) {
 		state.timing.tick_accum -= TICK_DURATION_NS;
 		state.timing.tick++;
 
-		PTI_PROFILE_ZONE();
 		if (_pti.desc.frame_cb != NULL) {
 			_pti.desc.frame_cb();
 		}
-		PTI_PROFILE_ZONE_END();
 
 		for (int i = 0; i < PTI_BUTTON_COUNT; i++) {
 			_pti.vm.hardware.btn_state[i] &= ~(_PTI_KEY_PRESSED | _PTI_KEY_RELEASED);
@@ -262,7 +255,6 @@ static inline void btn_up(int pti_key, int sapp_key, int sapp_alt, const sapp_ev
 }
 
 static void input(const sapp_event *ev) {
-	PTI_PROFILE_ZONE();
 	switch (ev->type) {
 		// keyboard:
 		case SAPP_EVENTTYPE_KEY_DOWN:
@@ -295,5 +287,4 @@ static void input(const sapp_event *ev) {
 		default:
 			break;
 	}
-	PTI_PROFILE_ZONE_END();
 }

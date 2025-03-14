@@ -12,21 +12,6 @@
 #include <stdint.h>
 #include <string.h>
 
-// >>profiling
-#if defined(PTI_USE_PROFILER)
-#include "tracy/TracyC.h"
-static TracyCZoneCtx __tracy_ctx;
-#define PTI_PROFILE() ZoneScoped
-#define PTI_PROFILE_FRAME() TracyCFrameMark
-#define PTI_PROFILE_ZONE() TracyCZoneN(__tracy_ctx, __FUNCTION__, true)
-#define PTI_PROFILE_ZONE_END() TracyCZoneEnd(__tracy_ctx)
-#else
-#define PTI_PROFILE()
-#define PTI_PROFILE_FRAME()
-#define PTI_PROFILE_ZONE()
-#define PTI_PROFILE_ZONE_END()
-#endif
-
 #define _pti_kilobytes(n) (1024 * (n))
 #define _pti_megabytes(n) (1024 * _pti_kilobytes(n))
 #define _pti_gigabytes(n) (1024 * _pti_megabytes(n))
@@ -784,7 +769,6 @@ void pti_rectf(int x0, int y0, int x1, int y1, uint64_t color) {
 }
 
 void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, int y) {
-	// PTI_PROFILE_ZONE();
 	const int map_w = tilemap->width;
 	const int map_h = tilemap->height;
 	const int tile_w = tileset->width;
@@ -803,7 +787,6 @@ void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, 
 			_pti__plot(pixels, t, x + (i * tile_w), y + (j * tile_h), tile_w, tile_h, 0, 0, tile_w, tile_h, false, false);
 		}
 	}
-	// PTI_PROFILE_ZONE_END();
 }
 
 void pti_spr(const pti_bitmap_t *sprite, int n, int x, int y, bool flip_x, bool flip_y) {
