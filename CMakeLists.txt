@@ -27,6 +27,7 @@ include("extra/cmake/tracy.cmake")
 
 include_directories(${THIRDPARTY_DIR})
 
-# include engine
 add_subdirectory(engine)
+add_subdirectory(tests)
+add_subdirectory(samples)
 add_subdirectory(examples)
