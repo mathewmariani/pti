@@ -1,14 +1,18 @@
 # visual studio project file
 .vscode/*
-!.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-!.vscode/*.code-snippets
+
+# cache
+.astro
 
 # build output
 build/
-website/
+dist/
+
+# symlinks
+website/public/samples
 
 # emscripten
 emsdk/
