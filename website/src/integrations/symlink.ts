@@ -1,11 +1,18 @@
-import { SYMLINK_SRC, SYMLINK_DST } from "../consts";
+import {
+  SYMLINK_SAMPLES_SRC,
+  SYMLINK_SAMPLES_DST,
+  SYMLINK_TESTS_SRC,
+  SYMLINK_TESTS_DST,
+} from "../consts";
+
 import type { AstroIntegration } from "astro";
 import fs from 'fs';
 import path from 'path';
 
 export const symlinkIntegration = () => {
   const symlinks = [
-    { source: SYMLINK_SRC, target: SYMLINK_DST },
+    { source: SYMLINK_SAMPLES_SRC, target: SYMLINK_SAMPLES_DST },
+    { source: SYMLINK_TESTS_SRC, target: SYMLINK_TESTS_DST },
   ] as const;
 
   let integration: AstroIntegration = {

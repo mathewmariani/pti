@@ -8,4 +8,12 @@ const samples = defineCollection({
 	}),
 });
 
-export const collections = { samples };
+const tests = defineCollection({
+	type: 'content',
+	schema: z.object({
+		title: z.string(),
+		src: z.string(),
+	}),
+});
+
+export const collections = { samples, tests };

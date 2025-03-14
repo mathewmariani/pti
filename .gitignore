@@ -13,6 +13,7 @@ dist/
 
 # symlinks
 website/public/samples
+website/public/tests
 
 # emscripten
 emsdk/

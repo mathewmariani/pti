@@ -6,15 +6,15 @@ import Meta from "../../components/Meta.astro";
 import Demo from "../../components/Demo.astro";
 
 export async function getStaticPaths() {
-	const samples = await getCollection("samples");
-	return samples.map((a) => ({
+	const tests = await getCollection("tests");
+	return tests.map((a) => ({
 		params: { slug: a.slug },
 		props: a,
 	}));
 }
-type Props = CollectionEntry<"samples">;
+type Props = CollectionEntry<"tests">;
 
-const sample = Astro.props;
+const test = Astro.props;
 ---
 
 <html lang="en" data-bs-theme="dark">
@@ -23,15 +23,15 @@ const sample = Astro.props;
 	</head>
 	<body>
 		<div class="game-title">
-			{sample.data.title}
+			{test.data.title}
 			<span class="game-menu-item">
 				<a class="game-menu-link" href={HomeLink()}>home</a>
 			</span>
 			<span class="game-menu-item">
-				<a class="game-menu-link" href={sample.data.src}>src</a>
+				<a class="game-menu-link" href={test.data.src}>src</a>
 			</span>
 		</div>
-		<Demo name={sample.slug} />
+		<Demo name={test.slug} />
 	</body>
 </html>
 <style>

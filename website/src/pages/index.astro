@@ -7,6 +7,14 @@ const samples = [
   { href: "samples/mosaic/index.html", name: "mosaic" },
   { href: "samples/rosecurve/index.html", name: "rosecurve" },
 ];
+
+const tests = [
+  { href: "tests/circ/index.html", name: "circ" },
+  { href: "tests/circf/index.html", name: "circf" },
+  { href: "tests/line/index.html", name: "line" },
+  { href: "tests/rect/index.html", name: "rect" },
+  { href: "tests/rectf/index.html", name: "rectf" },
+];
 ---
 
 <html lang="en" data-bs-theme="dark">
@@ -16,9 +24,12 @@ const samples = [
 
   <body class="container" id="top">
     <main>
+      <h1 class="display-2"><b>pti 👋</b></h1>
+      <div class="highlight"></div>
+
+      <!-- samples -->
       <section>
-        <h1 class="display-2"><b>pti 👋</b></h1>
-        <div class="highlight"></div>
+        <h2>Samples</h2>
         <div class="row row-cols-1 row-cols-sm-4 g-4">
           {
             samples.map(({ href, name }) => (
@@ -42,10 +53,39 @@ const samples = [
           }
         </div>
       </section>
+
+      <!-- tests -->
+      <section>
+        <h2>Tests</h2>
+        <div class="row row-cols-1 row-cols-sm-4 g-4">
+          {
+            tests.map(({ href, name }) => (
+              <div class="col">
+                <div class="card h-100">
+                  <a href={href}>
+                    <img
+                      src={`/c99-engine/images/256x256.png`}
+                      class="card-img-top"
+                      alt={name}
+                      width={128}
+                      height={128}
+                    />
+                  </a>
+                  <div class="card-footer">
+                    <small class="text-body-secondary">{name}</small>
+                  </div>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </section>
     </main>
+
     <Footer />
   </body>
 </html>
+
 <style>
   .card {
     width: 128px;
