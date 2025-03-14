@@ -43,3 +43,13 @@ jobs:
         run: |
           cmake --preset Release -B build
           cmake --build build --preset Release
+
+      - name: Building Website 🔧
+        run: |
+          npm run build
+
+      - name: Deploy 🚀
+        if: github.ref == 'refs/heads/main'
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dist
