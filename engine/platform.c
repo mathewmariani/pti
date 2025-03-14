@@ -64,50 +64,36 @@ static void sokol_init_gfx(void) {
 			.logger.func = slog_func,
 	});
 
-	const char *display_vs_src = 0;
-	const char *display_fs_src = 0;
-	switch (sg_query_backend()) {
-		case SG_BACKEND_GLCORE:
-			display_vs_src =
-					"#version 410\n"
-					"layout(location=0) in vec2 pos;\n"
-					"out vec2 uv;\n"
-					"void main() {\n"
-					"  gl_Position = vec4((pos.xy - 0.5) * 2.0, 0.0, 1.0);\n"
-					"  uv = vec2(pos.x, 1.0 - pos.y);\n"
-					"}\n";
-			display_fs_src =
-					"#version 410\n"
-					"uniform sampler2D tex;\n"
-					"in vec2 uv;\n"
-					"out vec4 frag_color;\n"
-					"void main() {\n"
-					"  vec4 texel = texture(tex, uv);\n"
-					"  frag_color = texel;\n"
-					"}\n";
-			break;
-		case SG_BACKEND_GLES3:
-			display_vs_src =
-					"#version 300 es\n"
-					"attribute vec2 pos;\n"
-					"varying vec2 uv;\n"
-					"void main() {\n"
-					"  gl_Position = vec4((pos.xy - 0.5) * 2.0, 0.0, 1.0);\n"
-					"  uv = vec2(pos.x, 1.0 - pos.y);\n"
-					"}\n";
-			display_fs_src =
-					"#version 300 es\n"
-					"precision mediump float;\n"
-					"uniform sampler2D tex;\n"
-					"varying vec2 uv;\n"
-					"void main() {\n"
-					"  vec4 texel = texture(tex, uv);\n"
-					"  frag_color = texel;\n"
-					"}\n";
-			break;
-		default:
-			break;
-	}
+	const char *display_vs_src =
+#if defined(SOKOL_GLCORE)
+			"#version 410\n"
+#elif defined(SOKOL_GLES3)
+			"#version 300 es\n"
+			"precision mediump float;\n"
+#endif
+			"layout(location=0) in vec2 pos;\n"
+			"out vec2 uv;\n"
+			"void main() {\n"
+			"  gl_Position = vec4((pos.xy - 0.5) * 2.0, 0.0, 1.0);\n"
+			"  uv = vec2(pos.x, 1.0 - pos.y);\n"
+			"}\n";
+
+	const char *display_fs_src =
+#if defined(SOKOL_GLCORE)
+			"#version 410\n"
+#elif defined(SOKOL_GLES3)
+			"#version 300 es\n"
+			"precision mediump float;\n"
+#endif
+			"uniform sampler2D tex;\n"
+			"in vec2 uv;\n"
+			"out vec4 frag_color;\n"
+			"void main() {\n"
+			"  vec4 texel = texture(tex, uv);\n"
+			"  frag_color = texel;\n"
+			"}\n";
+
+	// "precision mediump float;\n"
 
 	state.gfx.pass = (sg_pass) {
 			.action = (sg_pass_action) {
