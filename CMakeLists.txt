@@ -19,14 +19,10 @@ add_compile_options(-Wno-reorder-init-list)
 include("extra/cmake/macros.cmake")
 
 # thirdparty
-# include("extra/cmake/dbgui.cmake")
-include("extra/cmake/imgui.cmake")
 include("extra/cmake/sokol.cmake")
-include("extra/cmake/tracy.cmake")
 
 include_directories(${THIRDPARTY_DIR})
 
 add_subdirectory(engine)
 add_subdirectory(tests)
 add_subdirectory(samples)
-# add_subdirectory(examples)
