@@ -1,6 +1,10 @@
 macro(emscripten target)
   if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
-    set(CMAKE_EXECUTABLE_SUFFIX ".js")
+    if (CMAKE_BUILD_TYPE STREQUAL "Release")
+      set(CMAKE_EXECUTABLE_SUFFIX ".js")
+    else()
+      set(CMAKE_EXECUTABLE_SUFFIX ".html")
+    endif()
     target_link_options(${target} PRIVATE
       --shell-file ../../extra/shell.html
       -sINITIAL_MEMORY=50MB
@@ -13,7 +17,6 @@ macro(emscripten target)
 endmacro()
 
 macro(copy_assets target)
-  # assets
   add_custom_command(TARGET ${target} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E create_symlink
     "${CMAKE_CURRENT_SOURCE_DIR}/assets"

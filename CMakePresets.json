@@ -7,43 +7,42 @@
     },
     "configurePresets": [
         {
-            "name": "desktop",
-            "displayName": "Desktop",
-            "generator": "Ninja Multi-Config",
-            "binaryDir": "build/desktop"
-        },
-        {
-            "name": "web",
-            "displayName": "Web",
-            "generator": "Ninja Multi-Config",
-            "binaryDir": "build/web",
-            "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
-        }
-    ],
-    "buildPresets": [
-        {
             "name": "desktop-debug",
             "displayName": "Desktop Debug",
-            "configurePreset": "desktop",
-            "configuration": "Debug"
+            "generator": "Ninja Multi-Config",
+            "binaryDir": "build/desktop-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
         },
         {
             "name": "desktop-release",
             "displayName": "Desktop Release",
-            "configurePreset": "desktop",
-            "configuration": "Release"
+            "generator": "Ninja Multi-Config",
+            "binaryDir": "build/desktop-release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
         },
         {
             "name": "web-debug",
             "displayName": "Web Debug",
-            "configurePreset": "web",
-            "configuration": "Debug"
+            "generator": "Ninja Multi-Config",
+            "binaryDir": "build/web-debug",
+            "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
         },
         {
             "name": "web-release",
             "displayName": "Web Release",
-            "configurePreset": "web",
-            "configuration": "Release"
+            "generator": "Ninja Multi-Config",
+            "binaryDir": "build/web-release",
+            "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
         }
     ]
 }

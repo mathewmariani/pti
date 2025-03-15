@@ -41,8 +41,8 @@ jobs:
 
       - name: Build with Cmake 🔧
         run: |
-          cmake --preset Release -B build
-          cmake --build build --preset Release
+          cmake --preset web-release -B build
+          cmake --build build --preset web-release
 
       - name: Building Website 🔧
         run: |
