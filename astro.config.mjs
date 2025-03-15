@@ -6,7 +6,7 @@ import { symlinkIntegration } from './website/src/integrations/symlink';
 export default defineConfig({
     integrations: [symlinkIntegration()],
     site: 'https://www.mathewmariani.com',
-    base: '/c99-engine/',
+    base: '/pti/',
     srcDir: './website/src',
     publicDir: './website/public',
     vite: {

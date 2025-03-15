@@ -1,4 +1,4 @@
 ---
 title: Rect Outline Test
-src: https://github.com/mathewmariani/c99-engine/blob/main/tests/test_rect.c
+src: https://github.com/mathewmariani/pti/blob/main/tests/test_rect.c
 ---
