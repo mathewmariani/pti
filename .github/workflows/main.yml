@@ -44,13 +44,3 @@ jobs:
           source ./emsdk/emsdk_env.sh
           cmake --preset web-release
           cmake --build --preset web-release
-
-      - name: Building Website 🔧
-        run: |
-          npm run build
-
-      - name: Deploy 🚀
-        if: github.ref == 'refs/heads/main'
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          folder: dist

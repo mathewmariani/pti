@@ -93,8 +93,6 @@ static void sokol_init_gfx(void) {
 			"  frag_color = texel;\n"
 			"}\n";
 
-	// "precision mediump float;\n"
-
 	state.gfx.pass = (sg_pass) {
 			.action = (sg_pass_action) {
 					.colors[0] = {
