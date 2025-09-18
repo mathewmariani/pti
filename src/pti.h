@@ -67,22 +67,22 @@ typedef struct pti_window {
 } pti_window;
 
 typedef struct pti_bitmap_t {
-	int32_t frames;
-	int32_t width;
-	int32_t height;
+	uint32_t frames;
+	uint32_t width;
+	uint32_t height;
 	void *pixels;// (width) x (height x frames)
 } pti_bitmap_t;
 
 typedef struct pti_tileset_t {
-	int32_t count;
-	int16_t width;
-	int16_t height;
+	uint32_t count;
+	uint16_t width;
+	uint16_t height;
 	void *pixels;// (width) x (height x count)
 } pti_tileset_t;
 
 typedef struct pti_tilemap_t {
-	int16_t width;
-	int16_t height;
+	uint16_t width;
+	uint16_t height;
 	int *tiles;
 } pti_tilemap_t;
 
@@ -134,7 +134,7 @@ bool pti_released(pti_button btn);
 //>> map api
 uint32_t pti_mget(const pti_tilemap_t *tilemap, int x, int y);
 void pti_mset(pti_tilemap_t *tilemap, int x, int y, int value);
-short pti_fget(const pti_tilemap_t *tilemap, int x, int y);
+uint16_t pti_fget(const pti_tilemap_t *tilemap, int x, int y);
 
 uint16_t pti_prand(void);
 
@@ -161,7 +161,7 @@ void pti_print(const pti_bitmap_t *font, const char *text, int x, int y);
 // reference-based equivalents for C++
 inline uint32_t pti_mget(const pti_tilemap_t &tilemap, int x, int y) { return pti_mget(&tilemap, x, y); }
 inline void pti_mset(pti_tilemap_t &tilemap, int x, int y, int value) { pti_mset(&tilemap, x, y, value); }
-inline short pti_fget(const pti_tilemap_t &tilemap, int x, int y) { return pti_fget(&tilemap, x, y); }
+inline uint16_t pti_fget(const pti_tilemap_t &tilemap, int x, int y) { return pti_fget(&tilemap, x, y); }
 inline void pti_map(const pti_tilemap_t &tilemap, const pti_tileset_t &tileset, int x, int y) { pti_map(&tilemap, &tileset, x, y); }
 inline void pti_spr(const pti_bitmap_t &bitmap, int n, int x, int y, bool flip_x, bool flip_y) { pti_spr(&bitmap, n, x, y, flip_x, flip_y); }
 inline void pti_print(const pti_bitmap_t &font, const char *text, int x, int y) { pti_print(&font, text, x, y); }
@@ -521,8 +521,8 @@ void pti_mset(pti_tilemap_t *tilemap, int x, int y, int value) {
 	*(tiles + x + y * tilemap->width) = value;
 }
 
-short pti_fget(const pti_tilemap_t *tilemap, int x, int y) {
-	return (short) pti_mget(tilemap, x, y);
+uint16_t pti_fget(const pti_tilemap_t *tilemap, int x, int y) {
+	return (uint16_t) pti_mget(tilemap, x, y);
 }
 
 _PTI_PRIVATE inline bool _pti__get_dither_bit(const int x, const int y) {
@@ -536,6 +536,15 @@ _PTI_PRIVATE inline void _pti__transform(int *x, int *y) {
 }
 
 _PTI_PRIVATE inline void _pti__set_pixel(int x, int y, uint64_t c) {
+	const int16_t clip_x0 = _pti.vm.draw.clip_x0;
+	const int16_t clip_y0 = _pti.vm.draw.clip_y0;
+	const int16_t clip_x1 = _pti.vm.draw.clip_x1;
+	const int16_t clip_y1 = _pti.vm.draw.clip_y1;
+
+	if ((x >= clip_x1 || x < clip_x0) || (y >= clip_y1 || y < clip_y0)) {
+		return;
+	}
+
 	*(_pti.screen + (x + y * _pti.vm.screen.width)) = _pti__get_dither_bit(x, y) ? (c >> 32) & 0xffffffff : (c >> 0) & 0xffffffff;
 }
 
@@ -686,6 +695,7 @@ void pti_circ(const int x, const int y, const int r, uint64_t color) {
 		_pti__set_pixel(-dx + x, dy + y, color);
 		_pti__set_pixel(dx + x, -dy + y, color);
 		_pti__set_pixel(-dx + x, -dy + y, color);
+
 		_pti__set_pixel(dy + x, dx + y, color);
 		_pti__set_pixel(-dy + x, dx + y, color);
 		_pti__set_pixel(dy + x, -dx + y, color);

@@ -5,6 +5,8 @@ macro(pti_executable target files)
   target_include_directories(${target} PRIVATE ${THIRDPARTY_DIR})
   target_link_libraries(${target} PRIVATE sokol)
 
+  copy_assets(${target})
+
   emscripten(${target})
 endmacro()
 
