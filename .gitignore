@@ -4,16 +4,9 @@
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# cache
-.astro
-
 # build output
 build/
 dist/
-
-# symlinks
-website/public/samples
-website/public/tests
 
 # emscripten
 emsdk/
