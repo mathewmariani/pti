@@ -173,6 +173,24 @@ inline void pti_print(const pti_bitmap_t &font, const char *text, int x, int y) 
 #ifdef PTI_API_IMPL
 #define PTI_API_IMPL_INCLUDED (1)
 
+#include <stdlib.h>// malloc, free
+
+#if defined(__APPLE__)
+// apple
+#define _PTI_APPLE (1)
+#elif defined(__EMSCRIPTEN__)
+// emscripten (asm.js or wasm)
+#define _PTI_EMSCRIPTEN (1)
+#elif defined(_WIN32)
+// Windows
+#define _PTI_WIN32 (1)
+#elif defined(__linux__) || defined(__unix__)
+// Linux
+#define _PTI_LINUX (1)
+#else
+#error "pti.h: Unknown platform"
+#endif
+
 // >>implementation
 
 #ifndef _PTI_PRIVATE
@@ -191,9 +209,9 @@ inline void pti_print(const pti_bitmap_t &font, const char *text, int x, int y) 
 #define PTI_ASSERT(c) assert(c)
 #endif
 
-#if defined(_WIN32)
+#if defined(_PTI_WINDOWS)
 #include <memoryapi.h>
-#else
+#elif defined(_PTI_LINUX)
 #include <sys/mman.h>
 #endif
 
@@ -240,7 +258,10 @@ _PTI_PRIVATE inline void *map_pointer_to_bank(void *ptr) {
 }
 
 _PTI_PRIVATE void *_pti__virtual_reserve(void *ptr, const uint32_t size) {
-#if defined(_WIN32)
+#if defined(_PTI_EMSCRIPTEN)
+	ptr = malloc(size);
+	PTI_ASSERT(ptr);
+#elif defined(_PTI_WIN32)
 	// Reserves a range of the process's virtual offsetess space without
 	// allocating any actual physical storage in memory or in the paging file on
 	// disk.
@@ -250,7 +271,7 @@ _PTI_PRIVATE void *_pti__virtual_reserve(void *ptr, const uint32_t size) {
 
 	ptr = VirtualAlloc(ptr, size, MEM_RESERVE, PAGE_NOACCESS);
 	PTI_ASSERT(ptr);
-#else
+#elif defined(_PTI_LINUX)
 	// Create a private copy-on-write mapping.
 	// The mapping is not backed by any file;
 	// its contents are initialized to zero.
@@ -264,11 +285,16 @@ _PTI_PRIVATE void *_pti__virtual_reserve(void *ptr, const uint32_t size) {
 }
 
 _PTI_PRIVATE void *_pti__virtual_commit(void *ptr, const uint32_t size) {
-#if defined(_WIN32)
+#if defined(_PTI_EMSCRIPTEN)
+	if (!ptr) {
+		ptr = malloc(size);
+		PTI_ASSERT(ptr);
+	}
+#elif defined(_PTI_WIN32)
 	// Enables read-only or read/write access to the committed region of pages.
 	ptr = VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
 	PTI_ASSERT(ptr);
-#else
+#elif defined(_PTI_LINUX)
 	uint16_t flags = (MAP_FIXED | MAP_SHARED | MAP_ANON);
 	ptr = mmap(ptr, size, (PROT_READ | PROT_WRITE), flags, -1, 0);
 	PTI_ASSERT(ptr != MAP_FAILED);
@@ -281,9 +307,12 @@ _PTI_PRIVATE void *_pti__virtual_commit(void *ptr, const uint32_t size) {
 }
 
 _PTI_PRIVATE void *_pti__virtual_decommit(void *ptr, const uint32_t size) {
-#if defined(_WIN32)
+#if defined(_PTI_EMSCRIPTEN)
+	(void) ptr;
+	(void) size;
+#elif defined(_PTI_WIN32)
 	VirtualFree(ptr, size, LMEM_DECOMMIT);
-#else
+#elif defined(_PTI_LINUX)
 	uint16_t flags = (MAP_FIXED | MAP_SHARED | MAP_ANON);
 	mmap(ptr, size, PROT_NONE, flags, -1, 0);
 	msync(ptr, size, (MS_SYNC | MS_INVALIDATE));
@@ -292,14 +321,18 @@ _PTI_PRIVATE void *_pti__virtual_decommit(void *ptr, const uint32_t size) {
 }
 
 _PTI_PRIVATE void *_pti__virtual_alloc(void *ptr, const uint32_t size) {
-	return _pti__virtual_commit(_pti__virtual_reserve(ptr, size), size);
+	void *data = _pti__virtual_reserve(ptr, size);
+	return _pti__virtual_commit(data, size);
 }
 
 _PTI_PRIVATE void _pti__virtual_free(void *ptr, const uint32_t size) {
-#if defined(_WIN32)
+#if defined(_PTI_EMSCRIPTEN)
+	free(ptr);
+	(void) size;
+#elif defined(_PTI_WIN32)
 	_PTI_UNUSED(size);
 	VirtualFree((void *) ptr, 0, LMEM_RELEASE);
-#else
+#elif defined(_PTI_LINUX)
 	// Requests an update and waits for it to complete.
 	msync(ptr, size, MS_SYNC);
 	munmap(ptr, size);
@@ -740,17 +773,15 @@ void pti_line(int x0, int y0, int x1, int y1, uint64_t c) {
 void pti_rect(int x, int y, int w, int h, uint64_t color) {
 	_pti__transform(&x, &y);
 
-	const int l = _pti_max(_pti.vm.draw.clip_x0, x);
-	const int t = _pti_max(_pti.vm.draw.clip_y0, y);
-	const int r = _pti_min(_pti.vm.draw.clip_x1, x + w);
-	const int b = _pti_min(_pti.vm.draw.clip_y1, y + h);
+	int x0 = _pti_max(_pti.vm.draw.clip_x0, x);
+	int y0 = _pti_max(_pti.vm.draw.clip_y0, y);
+	int x1 = _pti_min(_pti.vm.draw.clip_x1, x + w - 1);
+	int y1 = _pti_min(_pti.vm.draw.clip_y1, y + h - 1);
 
-	int px, py;
-	for (py = t; py < b; py++) {
-		for (px = l; px < r; px++) {
-			_pti__set_pixel(px, py, color);
-		}
-	}
+	pti_line(x0, y0, x1, y0, color);
+	pti_line(x0, y1, x1, y1, color);
+	pti_line(x0, y0, x0, y1, color);
+	pti_line(x1, y0, x1, y1, color);
 }
 
 void pti_rectf(int x0, int y0, int x1, int y1, uint64_t color) {
