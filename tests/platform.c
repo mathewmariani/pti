@@ -107,12 +107,14 @@ static void sokol_init_gfx(void) {
 			.shader = sg_make_shader(&(sg_shader_desc) {
 					.vertex_func.source = display_vs_src,
 					.fragment_func.source = display_fs_src,
-					.images[0] = {.stage = SG_SHADERSTAGE_FRAGMENT, .image_type = SG_IMAGETYPE_2D},
+					.views = {
+							[0].texture = {.stage = SG_SHADERSTAGE_FRAGMENT, .wgsl_group1_binding_n = 0},
+					},
 					.samplers[0] = {.stage = SG_SHADERSTAGE_FRAGMENT, .sampler_type = SG_SAMPLERTYPE_FILTERING},
-					.image_sampler_pairs[0] = {
+					.texture_sampler_pairs[0] = {
 							.stage = SG_SHADERSTAGE_FRAGMENT,
 							.glsl_name = "tex",
-							.image_slot = 0,
+							.view_slot = 0,
 							.sampler_slot = 0,
 					},
 			}),
@@ -134,23 +136,30 @@ static void sokol_init_gfx(void) {
 	const uint16_t indices[] = {0, 1, 2, 0, 2, 3};
 
 	/* bindings */
+	state.gfx.target = sg_make_image(&(sg_image_desc) {
+			.width = _pti.desc.window.width,
+			.height = _pti.desc.window.height,
+			.pixel_format = SG_PIXELFORMAT_RGBA8,
+			.usage = {.stream_update = true},
+			.label = "screen-image",
+	});
 	state.gfx.binding = (sg_bindings) {
 			.vertex_buffers[0] = sg_make_buffer(&(sg_buffer_desc) {
+					.usage = {
+							.vertex_buffer = true,
+					},
 					.data = SG_RANGE(vertices),
 					.label = "quad-vertices",
 			}),
 			.index_buffer = sg_make_buffer(&(sg_buffer_desc) {
-					.type = SG_BUFFERTYPE_INDEXBUFFER,
+					.usage = {
+							.index_buffer = true,
+					},
 					.data = SG_RANGE(indices),
 					.label = "quad-indices",
 			}),
-			.images[0] = sg_make_image(&(sg_image_desc) {
-					.render_target = false,
-					.width = _pti.desc.window.width,
-					.height = _pti.desc.window.height,
-					.pixel_format = SG_PIXELFORMAT_RGBA8,
-					.usage = SG_USAGE_STREAM,
-					.label = "screen-image",
+			.views[0] = sg_make_view(&(sg_view_desc) {
+					.texture.image = state.gfx.target,
 			}),
 			.samplers[0] = sg_make_sampler(&(sg_sampler_desc) {
 					.min_filter = SG_FILTER_NEAREST,
@@ -167,13 +176,13 @@ void sokol_gfx_draw() {
 	const int screen_w = _pti.vm.screen.width;
 	const int screen_h = _pti.vm.screen.height;
 	const size_t size = screen_w * screen_h * sizeof(uint32_t);
-	sg_update_image(state.gfx.binding.images[0],
-					&(sg_image_data) {
-							.subimage[0][0] = (sg_range) {
-									.ptr = _pti.screen,
-									.size = size,
-							},
-					});
+
+	sg_update_image(state.gfx.target, &(sg_image_data) {
+											  .mip_levels[0] = (sg_range) {
+													  .ptr = _pti.screen,
+													  .size = size,
+											  },
+									  });
 
 	sg_begin_pass(&state.gfx.pass);
 	sg_apply_pipeline(state.gfx.pipeline);
@@ -193,19 +202,26 @@ static void init(void) {
 	}
 }
 
-static void cleanup(void) {}
+static void cleanup(void) {
+	sg_destroy_pipeline(state.gfx.pipeline);
+	sg_destroy_image(state.gfx.target);
+	sg_destroy_buffer(state.gfx.binding.vertex_buffers[0]);
+	sg_destroy_buffer(state.gfx.binding.index_buffer);
+	sg_destroy_sampler(state.gfx.binding.samplers[0]);
+	sg_shutdown();
+}
 
 #define TICK_DURATION_NS (PTI_DELTA * 1e9)
 #define TICK_TOLERANCE_NS (1000000)
 
 static void frame(void) {
-	uint32_t frame_time_ns = (uint32_t) (sapp_frame_duration() * 1000000000.0);
+	double frame_time_ns = sapp_frame_duration() * 1000000000.0;
 	if (frame_time_ns > TICK_DURATION_NS) {
 		frame_time_ns = TICK_DURATION_NS;
 	}
 
 	state.timing.tick_accum += frame_time_ns;
-	while (state.timing.tick_accum > -TICK_TOLERANCE_NS) {
+	while (state.timing.tick_accum + TICK_TOLERANCE_NS >= TICK_DURATION_NS) {
 		state.timing.tick_accum -= TICK_DURATION_NS;
 		state.timing.tick++;
 
