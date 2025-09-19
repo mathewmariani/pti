@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Build
 
 on:
   push:
@@ -19,17 +19,10 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v3
 
-      - name: Update Submodules 🛎️
-        run: git submodule update --init --recursive
-
       - name: Setup Ninja 📦
         uses: ashutoshvarma/setup-ninja@master
         with:
           version: 1.10.0
-
-      - name: Install Packages 📦
-        run: |
-          npm ci
 
       - name: Install and Activate Emscripten 🔧
         run: |
@@ -41,15 +34,6 @@ jobs:
 
       - name: Build with Cmake 🔧
         run: |
-          cmake --preset web-release -B build
-          cmake --build build --preset web-release
-
-      - name: Building Website 🔧
-        run: |
-          npm run build
-
-      - name: Deploy 🚀
-        if: github.ref == 'refs/heads/main'
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          folder: dist
+          source ./emsdk/emsdk_env.sh
+          cmake --preset web-release
+          cmake --build --preset web-release-build

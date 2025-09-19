@@ -47,26 +47,26 @@
     ],
     "buildPresets": [
         {
-            "name": "desktop-debug",
-            "displayName": "Desktop Debug",
+            "name": "desktop-debug-build",
+            "displayName": "Build Desktop Debug",
             "configurePreset": "desktop-debug",
             "configuration": "Debug"
         },
         {
-            "name": "desktop-release",
-            "displayName": "Desktop Release",
+            "name": "desktop-release-build",
+            "displayName": "Build Desktop Release",
             "configurePreset": "desktop-release",
             "configuration": "Release"
         },
         {
-            "name": "web-debug",
-            "displayName": "Web Debug",
+            "name": "web-debug-build",
+            "displayName": "Build Web Debug",
             "configurePreset": "web-debug",
             "configuration": "Debug"
         },
         {
-            "name": "web-release",
-            "displayName": "Web Release",
+            "name": "web-release-build",
+            "displayName": "Build Web Release",
             "configurePreset": "web-release",
             "configuration": "Release"
         }

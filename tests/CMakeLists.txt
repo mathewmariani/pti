@@ -1,3 +1,15 @@
+macro(pti_executable target files)
+  add_executable(${target} platform.c ${files})
+
+  target_include_directories(${target} PRIVATE ${PTI_DIR})
+  target_include_directories(${target} PRIVATE ${THIRDPARTY_DIR})
+  target_link_libraries(${target} PRIVATE sokol)
+
+  copy_assets(${target})
+
+  emscripten(${target})
+endmacro()
+
 pti_executable(test_setup test_setup.c)
 pti_executable(test_pset test_pset.c)
 pti_executable(test_line test_line.c)
