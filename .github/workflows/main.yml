@@ -24,7 +24,16 @@ jobs:
         with:
           version: 1.10.0
 
+      - name: Install and Activate Emscripten 🔧
+        run: |
+          git clone https://github.com/emscripten-core/emsdk
+          cd emsdk
+          ./emsdk install latest
+          ./emsdk activate --embedded latest
+          cd ..
+
       - name: Build with Cmake 🔧
         run: |
-          cmake --preset desktop-release
-          cmake --build --preset desktop-release-build
+          source ./emsdk/emsdk_env.sh
+          cmake --preset web-release
+          cmake --build --preset web-release-build
