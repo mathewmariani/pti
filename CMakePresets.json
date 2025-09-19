@@ -44,5 +44,31 @@
                 "CMAKE_BUILD_TYPE": "Release"
             }
         }
+    ],
+    "buildPresets": [
+        {
+            "name": "desktop-debug-build",
+            "displayName": "Build Desktop Debug",
+            "configurePreset": "desktop-debug",
+            "configuration": "Debug"
+        },
+        {
+            "name": "desktop-release-build",
+            "displayName": "Build Desktop Release",
+            "configurePreset": "desktop-release",
+            "configuration": "Release"
+        },
+        {
+            "name": "web-debug-build",
+            "displayName": "Build Web Debug",
+            "configurePreset": "web-debug",
+            "configuration": "Debug"
+        },
+        {
+            "name": "web-release-build",
+            "displayName": "Build Web Release",
+            "configurePreset": "web-release",
+            "configuration": "Release"
+        }
     ]
 }

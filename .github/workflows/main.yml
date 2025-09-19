@@ -27,4 +27,4 @@ jobs:
       - name: Build with Cmake 🔧
         run: |
           cmake --preset desktop-release
-          cmake --build --preset desktop-release
+          cmake --build --preset desktop-release-build
