@@ -1,11 +1,4 @@
-#if defined(PTI_IMPL) && !defined(PTI_API_IMPL)
-#define PTI_API_IMPL
-#endif
-#ifndef PTI_INCLUDED
-/*
-    pti.h -- docs
-*/
-#define PTI_INCLUDED (1)
+#pragma once
 
 // >>includes
 #include <stdbool.h>
@@ -168,10 +161,7 @@ inline void pti_print(const pti_bitmap_t &font, const char *text, int x, int y) 
 
 #endif
 
-#endif// PTI_INCLUDED
-
-#ifdef PTI_API_IMPL
-#define PTI_API_IMPL_INCLUDED (1)
+#ifdef PTI_IMPL
 
 #include <stdlib.h>// malloc, free
 
@@ -903,4 +893,4 @@ void pti_print(const pti_bitmap_t *font, const char *text, int x, int y) {
 	}
 }
 
-#endif// PTI_API_IMPL
+#endif// PTI_IMPL
