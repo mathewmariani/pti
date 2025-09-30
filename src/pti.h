@@ -539,9 +539,6 @@ _PTI_PRIVATE inline void _pti__set_pixel(int x, int y, uint64_t c) {
 }
 
 _PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, int sx, int sy, int sw, int sh, bool flip_x, bool flip_y) {
-	// adjust camera:
-	_pti__transform(&x, &y);
-
 	int src_x = sx;
 	int src_y = sy;
 	int dst_x1 = x;
@@ -811,6 +808,8 @@ void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, 
 	int *tiles = (int *) _pti__ptr_to_bank((void *) tilemap->tiles);
 	void *pixels = (void *) _pti__ptr_to_bank((void *) tileset->pixels);
 
+	_pti__transform(&x, &y);
+
 	int i, j, t;
 	for (j = 0; j < map_h; j++) {
 		for (i = 0; i < map_w; i++) {
@@ -827,6 +826,7 @@ void pti_spr(const pti_bitmap_t *sprite, int n, int x, int y, bool flip_x, bool 
 	const int bmp_w = sprite->width;
 	const int bmp_h = sprite->height;
 	void *pixels = (void *) _pti__ptr_to_bank((void *) sprite->pixels);
+	_pti__transform(&x, &y);
 	_pti__plot(pixels, n, x, y, bmp_w, bmp_h, 0, 0, bmp_w, bmp_h, flip_x, flip_y);
 }
 
