@@ -210,6 +210,8 @@ static void cleanup(void) {
 	sg_shutdown();
 }
 
+#define PTI_FRAMERATE (30.0)
+#define PTI_DELTA (1.0 / PTI_FRAMERATE)
 #define TICK_DURATION_NS (PTI_DELTA * 1e9)
 #define TICK_TOLERANCE_NS (1000000)
 
