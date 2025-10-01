@@ -42,12 +42,9 @@ pti_desc pti_main(int argc, char *argv[]) {
 			.frame_cb = frame,
 			.cleanup_cb = cleanup,
 			.memory_size = _pti_kilobytes(256),
-			.window =
-					(pti_window) {
-							.width = 128,
-							.height = 128,
-							.flags = PTI_SCALE3X,
-					}};
+			.width = 128,
+			.height = 128,
+	};
 }
 
 static pti_bitmap_t bitmap;

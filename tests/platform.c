@@ -18,11 +18,10 @@ int main(int argc, char *argv[]) {
 
 	pti_init(&desc);
 
-	int width = desc.window.width;
-	int height = desc.window.height;
-	_pti__scale_size_by_flags(&width, &height, desc.window.flags);
+	int width = desc.width * 3;
+	int height = desc.height * 3;
 
-	const char *name = desc.window.name ? desc.window.name : "pti";
+	const char *name = "pti";
 	sapp_run(&(sapp_desc) {
 			.gl_major_version = 4,
 			.gl_minor_version = 2,

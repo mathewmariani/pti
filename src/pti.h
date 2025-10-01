@@ -30,17 +30,6 @@
 extern "C" {
 #endif
 
-enum {
-	PTI_SCALE2X = (1 << 0),
-	PTI_SCALE3X = (1 << 1),
-	PTI_SCALE4X = (1 << 2),
-	PTI_HIDECURSOR = (1 << 3),
-	PTI_FPS30 = (1 << 4),
-	PTI_FPS60 = (1 << 5),
-	PTI_FPS144 = (1 << 6),
-	PTI_FPSINF = (1 << 7),
-};
-
 typedef enum pti_button {
 	PTI_LEFT,
 	PTI_RIGHT,
@@ -54,13 +43,6 @@ typedef enum pti_button {
 	// always last.
 	PTI_BUTTON_COUNT
 } pti_button;
-
-typedef struct pti_window {
-	const char *name;
-	int width;
-	int height;
-	int flags;
-} pti_window;
 
 typedef struct pti_bitmap_t {
 	uint32_t frames;
@@ -95,7 +77,8 @@ typedef struct pti_desc {
 	void (*cleanup_cb)(void);
 
 	int memory_size;
-	pti_window window;
+	int width;
+	int height;
 } pti_desc;
 
 // user-provided function
@@ -361,19 +344,6 @@ bool pti_released(pti_button btn) {
 // >>random
 
 // >>internals
-_PTI_PRIVATE void _pti__scale_size_by_flags(int *w, int *h, int flags) {
-	if (flags & PTI_SCALE2X) {
-		*w *= 2;
-		*h *= 2;
-	} else if (flags & PTI_SCALE3X) {
-		*w *= 3;
-		*h *= 3;
-	} else if (flags & PTI_SCALE4X) {
-		*w *= 4;
-		*h *= 4;
-	}
-}
-
 _PTI_PRIVATE void _pti__random_init(const pti_desc *desc) {
 	for (int i = 0; i < 4; ++i) {
 		_pti.vm.hardware.rnd_reg[i] = 0x0;
@@ -385,12 +355,12 @@ void pti_init(const pti_desc *desc) {
 	// cache description
 	_pti.desc = *desc;
 
-	_pti.vm.screen.width = desc->window.width;
-	_pti.vm.screen.height = desc->window.height;
+	_pti.vm.screen.width = desc->width;
+	_pti.vm.screen.height = desc->height;
 
 	// calculate sizes
 	const size_t vm_size = sizeof(_pti__vm_t);
-	const size_t vram_size = desc->window.width * desc->window.height * sizeof(uint32_t);
+	const size_t vram_size = desc->width * desc->height * sizeof(uint32_t);
 	const size_t capacity = desc->memory_size + vram_size;
 
 	// init memory
@@ -591,7 +561,7 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, in
 	uint32_t *src = pixels + size * n;
 	uint32_t *dst = _pti.screen;
 
-	const int dst_width = _pti.desc.window.width;
+	const int dst_width = _pti.desc.width;
 	const int src_width = sw;
 
 	const int clipped_width = dst_x2 - dst_x1 + 1;

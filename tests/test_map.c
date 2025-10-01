@@ -63,13 +63,8 @@ pti_desc pti_main(int argc, char *argv[]) {
 			.frame_cb = frame,
 			.cleanup_cb = cleanup,
 			.memory_size = _pti_kilobytes(1024),
-			.window =
-					(pti_window) {
-							.name = "pti - tilemap",
-							.width = 240 * 2,
-							.height = 136 * 2,
-							.flags = PTI_SCALE2X,
-					},
+			.width = 240 * 2,
+			.height = 136 * 2,
 	};
 }
 
