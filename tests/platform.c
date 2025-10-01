@@ -136,8 +136,8 @@ static void sokol_init_gfx(void) {
 
 	/* bindings */
 	state.gfx.target = sg_make_image(&(sg_image_desc) {
-			.width = _pti.desc.window.width,
-			.height = _pti.desc.window.height,
+			.width = _pti.desc.width,
+			.height = _pti.desc.height,
 			.pixel_format = SG_PIXELFORMAT_RGBA8,
 			.usage = {.stream_update = true},
 			.label = "screen-image",
