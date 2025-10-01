@@ -1,4 +1,7 @@
 #pragma once
+/*
+    pti.h -- docs
+*/
 
 // >>includes
 #include <stdbool.h>
@@ -129,6 +132,7 @@ uint32_t pti_mget(const pti_tilemap_t *tilemap, int x, int y);
 void pti_mset(pti_tilemap_t *tilemap, int x, int y, int value);
 uint16_t pti_fget(const pti_tilemap_t *tilemap, int x, int y);
 
+//>> random api
 uint16_t pti_prand(void);
 
 //>> gfx api
@@ -137,10 +141,10 @@ void pti_get_camera(int *x, int *y);
 void pti_cls(const uint32_t color);
 void pti_colorkey(const uint32_t color);
 void pti_dither(const uint16_t bstr);
-void pti_clip(const int x0, const int y0, const int x1, const int y1);
-void pti_pset(const int x, const int y, uint64_t color);
-void pti_circ(const int x, const int y, const int r, uint64_t color);
-void pti_circf(const int x, const int y, const int r, uint64_t color);
+void pti_clip(int x0, int y0, int x1, int y1);
+void pti_pset(int x, int y, uint64_t color);
+void pti_circ(int x, int y, int r, uint64_t color);
+void pti_circf(int x, int y, int r, uint64_t color);
 void pti_line(int x0, int y0, int x1, int y1, uint64_t color);
 void pti_rect(int x, int y, int w, int h, uint64_t color);
 void pti_rectf(int x0, int y0, int x1, int y1, uint64_t color);
@@ -662,18 +666,18 @@ void pti_dither(const uint16_t bstr) {
 	_pti.vm.draw.dither = bstr;
 }
 
-void pti_clip(const int x0, const int y0, const int x1, const int y1) {
+void pti_clip(int x0, int y0, int x1, int y1) {
 	_pti.vm.draw.clip_x0 = x0;
 	_pti.vm.draw.clip_y0 = y0;
 	_pti.vm.draw.clip_x1 = x1;
 	_pti.vm.draw.clip_y1 = y1;
 }
 
-void pti_pset(const int x, const int y, uint64_t color) {
+void pti_pset(int x, int y, uint64_t color) {
 	_pti__set_pixel(x, y, color);
 }
 
-void pti_circ(const int x, const int y, const int r, uint64_t color) {
+void pti_circ(int x, int y, int r, uint64_t color) {
 	// adjust camera:
 	_pti__transform(&x, &y);
 	int32_t dx = r;
@@ -699,7 +703,7 @@ void pti_circ(const int x, const int y, const int r, uint64_t color) {
 	}
 }
 
-void pti_circf(const int x, const int y, const int r, uint64_t color) {
+void pti_circf(int x, int y, int r, uint64_t color) {
 	// adjust camera:
 	_pti__transform(&x, &y);
 	int32_t dx = r;
