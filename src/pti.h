@@ -23,9 +23,6 @@
 #define _pti_sign(x) ((x) > 0 ? 1 : ((x) < 0 ? -1 : 0))
 #define _pti_swap(a, b) (((a) ^= (b)), ((b) ^= (a)), ((a) ^= (b)))
 
-#define PTI_FRAMERATE (30.0f)
-#define PTI_DELTA (1.0f / PTI_FRAMERATE)
-
 #ifdef __cplusplus
 extern "C" {
 #endif
