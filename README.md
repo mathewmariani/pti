@@ -2,20 +2,21 @@
 
 [![Build](/../../actions/workflows/main.yml/badge.svg)](/../../actions/workflows/main.yml)
 
-This projects a work in progress.
+This project is a work in progress.
+
+pti is a \*small\* framework for making retro games with chunky pixels.
 
 ## Repository Layout
 
-*   `engine/` – The main source for the engine and platfom code.
-*   `examples/` – Example projects using the engine.
 *   `build/` - Intermediate files and other build output. 
 *   `extra/` - Files used during the build process.
-*   `libs/` - Required external libraries.
-*   `resources/` – Scripts and resources used for building the website.
+*   `libs/` - Required external libraries for platform.
+*   `src/` – The main source for the framework.
+*   `tests/` – API tests and example platform using sokol.
+*   `website/` – Scripts and resources used for building the website.
 
 
 ## License
 
-This project is free software; you can redistribute it and/or modify it under
-the terms of the MIT license.
+This project is free software; you can redistribute it and/or modify it under the terms of the MIT license.
 See [LICENSE](LICENSE) for details.
