@@ -341,11 +341,6 @@ bool pti_released(pti_button btn) {
 // >>random
 
 // >>internals
-_PTI_PRIVATE void _pti__random_init(const pti_desc *desc) {
-	for (int i = 0; i < 4; ++i) {
-		_pti.vm.hardware.rnd_reg[i] = 0x0;
-	}
-}
 
 // >>public
 void pti_init(const pti_desc *desc) {
@@ -366,6 +361,11 @@ void pti_init(const pti_desc *desc) {
 	// allocate virtual machine
 	_pti.screen = pti_alloc(&_pti.ram, vram_size);
 	_pti.data = pti_alloc(&_pti.ram, desc->memory_size);
+
+	// init random
+	for (int i = 0; i < 4; ++i) {
+		_pti.vm.hardware.rnd_reg[i] = 0x0;
+	}
 }
 
 // >>memory api
