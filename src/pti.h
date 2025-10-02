@@ -3,7 +3,7 @@
     pti.h -- docs
 */
 
-// >>includes
+//>> includes
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -88,13 +88,13 @@ void pti_init(const pti_desc *desc);
 
 //>> virutal machine api
 void pti_bank_init(pti_bank_t *bank, uint32_t capacity);
-
-//>> memory api
-void *pti_alloc(pti_bank_t *bank, const uint32_t size);
 void pti_load_bank(pti_bank_t *bank);
+void *pti_alloc(pti_bank_t *bank, const uint32_t size);
 void pti_reload(void);
 void pti_memcpy(void *dst, const void *src, size_t len);
 void pti_memset(void *dst, const int value, size_t len);
+
+//>> memory api
 const uint8_t pti_peek(const uint32_t offset, const uint32_t index);
 const uint16_t pti_peek2(const uint32_t offset, const uint32_t index);
 const uint32_t pti_peek4(const uint32_t offset, const uint32_t index);
@@ -115,7 +115,7 @@ uint16_t pti_fget(const pti_tilemap_t *tilemap, int x, int y);
 //>> random api
 uint16_t pti_prand(void);
 
-//>> gfx api
+//>> graphics api
 void pti_camera(int x, int y);
 void pti_get_camera(int *x, int *y);
 void pti_cls(const uint32_t color);
@@ -165,7 +165,7 @@ inline void pti_print(const pti_bitmap_t &font, const char *text, int x, int y) 
 #error "pti.h: Unknown platform"
 #endif
 
-// >>implementation
+//>> implementation
 
 #ifndef _PTI_PRIVATE
 #if defined(__GNUC__) || defined(__clang__)
@@ -215,8 +215,6 @@ typedef struct {
 	} hardware;
 } _pti__vm_t;
 
-// <<< new stuff
-
 typedef struct {
 	pti_desc desc;
 	pti_bank_t ram;
@@ -226,6 +224,8 @@ typedef struct {
 	void *data;
 } _pti__t;
 static _pti__t _pti;
+
+//>> internals
 
 _PTI_PRIVATE inline void *_pti__ptr_to_bank(void *ptr) {
 	return (void *) ((uintptr_t) ptr + ((uintptr_t) _pti.data - (uintptr_t) _pti.cart.begin));
@@ -313,36 +313,6 @@ _PTI_PRIVATE void _pti__virtual_free(void *ptr, const uint32_t size) {
 #endif
 }
 
-// >>input
-enum {
-	_PTI_KEY_STATE = (1 << 0),
-	_PTI_KEY_PRESSED = (1 << 1),
-	_PTI_KEY_RELEASED = (1 << 2),
-};
-
-_PTI_PRIVATE inline bool _pti__check_input_flag(uint32_t idx, int flag) {
-	return _pti.vm.hardware.btn_state[idx] & flag ? true : false;
-}
-
-bool pti_down(pti_button btn) {
-	return _pti__check_input_flag(btn, _PTI_KEY_STATE);
-}
-
-bool pti_pressed(pti_button btn) {
-	return _pti__check_input_flag(btn, _PTI_KEY_PRESSED);
-}
-
-bool pti_released(pti_button btn) {
-	return _pti__check_input_flag(btn, _PTI_KEY_RELEASED);
-}
-
-// >>graphics
-
-// >>random
-
-// >>internals
-
-// >>public
 void pti_init(const pti_desc *desc) {
 	// cache description
 	_pti.desc = *desc;
@@ -368,7 +338,9 @@ void pti_init(const pti_desc *desc) {
 	}
 }
 
-// >>memory api
+// api functions
+
+//>> virutal machine
 
 void pti_bank_init(pti_bank_t *bank, uint32_t capacity) {
 	// allocate memory
@@ -377,6 +349,11 @@ void pti_bank_init(pti_bank_t *bank, uint32_t capacity) {
 	bank->it = ptr;
 	bank->end = ptr;
 	bank->cap = ptr + capacity;
+}
+
+void pti_load_bank(pti_bank_t *bank) {
+	_pti.cart = *bank;
+	pti_reload();
 }
 
 void *pti_alloc(pti_bank_t *bank, const uint32_t size) {
@@ -398,11 +375,6 @@ _PTI_PRIVATE void pti_free(pti_bank_t *bank) {
 	memset(bank, 0, sizeof(pti_bank_t));
 }
 
-void pti_load_bank(pti_bank_t *bank) {
-	_pti.cart = *bank;
-	pti_reload();
-}
-
 void pti_reload(void) {
 	pti_memcpy(_pti.data, _pti.cart.begin, (uint32_t) (_pti.cart.cap - _pti.cart.begin));
 }
@@ -414,6 +386,8 @@ void pti_memcpy(void *dst, const void *src, size_t len) {
 void pti_memset(void *dst, const int value, size_t len) {
 	memset(dst, value, len);
 }
+
+//>> memory api
 
 const uint8_t pti_peek(const uint32_t offset, const uint32_t index) {
 	const void *dst = (void *) _pti.ram.begin;
@@ -455,6 +429,48 @@ void pti_poke4(const uint32_t offset, const uint32_t index, const uint32_t value
 	pti_poke(offset, index + 3, (uint8_t) (value >> 24));
 }
 
+//>> input
+
+enum {
+	_PTI_KEY_STATE = (1 << 0),
+	_PTI_KEY_PRESSED = (1 << 1),
+	_PTI_KEY_RELEASED = (1 << 2),
+};
+
+_PTI_PRIVATE inline bool _pti__check_input_flag(uint32_t idx, int flag) {
+	return _pti.vm.hardware.btn_state[idx] & flag ? true : false;
+}
+
+bool pti_down(pti_button btn) {
+	return _pti__check_input_flag(btn, _PTI_KEY_STATE);
+}
+
+bool pti_pressed(pti_button btn) {
+	return _pti__check_input_flag(btn, _PTI_KEY_PRESSED);
+}
+
+bool pti_released(pti_button btn) {
+	return _pti__check_input_flag(btn, _PTI_KEY_RELEASED);
+}
+
+//>> map
+
+uint32_t pti_mget(const pti_tilemap_t *tilemap, int x, int y) {
+	int *tiles = (int *) _pti__ptr_to_bank((void *) tilemap->tiles);
+	return *(tiles + x + y * tilemap->width);
+}
+
+void pti_mset(pti_tilemap_t *tilemap, int x, int y, int value) {
+	int *tiles = (int *) _pti__ptr_to_bank((void *) tilemap->tiles);
+	*(tiles + x + y * tilemap->width) = value;
+}
+
+uint16_t pti_fget(const pti_tilemap_t *tilemap, int x, int y) {
+	return (uint16_t) pti_mget(tilemap, x, y);
+}
+
+//>> random
+
 _PTI_PRIVATE void _pti__random_tick(int i) {
 	uint8_t *reg = &_pti.vm.hardware.rnd_reg[0];
 	*(reg + 0) = 5 * *(reg + 0) + 1;
@@ -472,19 +488,7 @@ uint16_t pti_prand(void) {
 	return ((uint16_t) *(reg + 2) << 0x8) | *(reg + 3);
 }
 
-uint32_t pti_mget(const pti_tilemap_t *tilemap, int x, int y) {
-	int *tiles = (int *) _pti__ptr_to_bank((void *) tilemap->tiles);
-	return *(tiles + x + y * tilemap->width);
-}
-
-void pti_mset(pti_tilemap_t *tilemap, int x, int y, int value) {
-	int *tiles = (int *) _pti__ptr_to_bank((void *) tilemap->tiles);
-	*(tiles + x + y * tilemap->width) = value;
-}
-
-uint16_t pti_fget(const pti_tilemap_t *tilemap, int x, int y) {
-	return (uint16_t) pti_mget(tilemap, x, y);
-}
+//>> graphics
 
 _PTI_PRIVATE inline bool _pti__get_dither_bit(const int x, const int y) {
 	const uint8_t i = 0xf - ((x & 0x3) + 0x4 * (y & 0x3));
@@ -645,7 +649,6 @@ void pti_pset(int x, int y, uint64_t color) {
 }
 
 void pti_circ(int x, int y, int r, uint64_t color) {
-	// adjust camera:
 	_pti__transform(&x, &y);
 	int32_t dx = r;
 	int32_t dy = 0;
@@ -671,7 +674,6 @@ void pti_circ(int x, int y, int r, uint64_t color) {
 }
 
 void pti_circf(int x, int y, int r, uint64_t color) {
-	// adjust camera:
 	_pti__transform(&x, &y);
 	int32_t dx = r;
 	int32_t dy = 0;
@@ -759,7 +761,6 @@ void pti_rectf(int x0, int y0, int x1, int y1, uint64_t color) {
 		_pti_swap(y0, y1);
 	}
 
-	// adjust camera:
 	_pti__transform(&x0, &y0);
 	_pti__transform(&x1, &y1);
 
