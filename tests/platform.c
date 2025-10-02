@@ -23,8 +23,15 @@ int main(int argc, char *argv[]) {
 
 	const char *name = "pti";
 	sapp_run(&(sapp_desc) {
+#if defined(SOKOL_GLCORE)
+#if defined(_PTI_APPLE)
+			.gl_major_version = 4,
+			.gl_minor_version = 1,
+#else
 			.gl_major_version = 4,
 			.gl_minor_version = 2,
+#endif
+#endif
 			.init_cb = init,
 			.frame_cb = frame,
 			.cleanup_cb = cleanup,
@@ -127,10 +134,14 @@ static void sokol_init_gfx(void) {
 	});
 
 	const float vertices[] = {
-			-1.0f, 1.0f,  /* top-left */
-			1.0f, 1.0f,   /* top-right */
-			1.0f, -1.0f,  /* bottom-right */
-			-1.0f, -1.0f, /* bottom-left */
+			-1.0f,
+			1.0f, /* top-left */
+			1.0f,
+			1.0f, /* top-right */
+			1.0f,
+			-1.0f, /* bottom-right */
+			-1.0f,
+			-1.0f, /* bottom-left */
 	};
 	const uint16_t indices[] = {0, 1, 2, 0, 2, 3};
 

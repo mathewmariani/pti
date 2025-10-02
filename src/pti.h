@@ -232,10 +232,7 @@ _PTI_PRIVATE inline void *_pti__ptr_to_bank(void *ptr) {
 }
 
 _PTI_PRIVATE void *_pti__virtual_reserve(void *ptr, const uint32_t size) {
-#if defined(_PTI_EMSCRIPTEN)
-	ptr = malloc(size);
-	PTI_ASSERT(ptr);
-#elif defined(_PTI_WIN32)
+#if defined(_PTI_WIN32)
 	// Reserves a range of the process's virtual offsetess space without
 	// allocating any actual physical storage in memory or in the paging file on
 	// disk.
@@ -254,17 +251,15 @@ _PTI_PRIVATE void *_pti__virtual_reserve(void *ptr, const uint32_t size) {
 	ptr = mmap((void *) ptr, size, prot, flags, -1, 0);
 	PTI_ASSERT(ptr != MAP_FAILED);
 	msync(ptr, size, (MS_SYNC | MS_INVALIDATE));
+#else
+	ptr = malloc(size);
+	PTI_ASSERT(ptr);
 #endif
 	return ptr;
 }
 
 _PTI_PRIVATE void *_pti__virtual_commit(void *ptr, const uint32_t size) {
-#if defined(_PTI_EMSCRIPTEN)
-	if (!ptr) {
-		ptr = malloc(size);
-		PTI_ASSERT(ptr);
-	}
-#elif defined(_PTI_WIN32)
+#if defined(_PTI_WIN32)
 	// Enables read-only or read/write access to the committed region of pages.
 	ptr = VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
 	PTI_ASSERT(ptr);
@@ -276,20 +271,25 @@ _PTI_PRIVATE void *_pti__virtual_commit(void *ptr, const uint32_t size) {
 	// Asks to invalidate other mappings of the same file (so
 	// that they can be updated with the fresh values just written).
 	msync(ptr, size, (MS_SYNC | MS_INVALIDATE));
+#else
+	if (!ptr) {
+		ptr = malloc(size);
+		PTI_ASSERT(ptr);
+	}
 #endif
 	return ptr;
 }
 
 _PTI_PRIVATE void *_pti__virtual_decommit(void *ptr, const uint32_t size) {
-#if defined(_PTI_EMSCRIPTEN)
-	(void) ptr;
-	(void) size;
-#elif defined(_PTI_WIN32)
+#if defined(_PTI_WIN32)
 	VirtualFree(ptr, size, LMEM_DECOMMIT);
 #elif defined(_PTI_LINUX)
 	uint16_t flags = (MAP_FIXED | MAP_SHARED | MAP_ANON);
 	mmap(ptr, size, PROT_NONE, flags, -1, 0);
 	msync(ptr, size, (MS_SYNC | MS_INVALIDATE));
+#else
+	(void) ptr;
+	(void) size;
 #endif
 	return ptr;
 }
@@ -300,16 +300,16 @@ _PTI_PRIVATE void *_pti__virtual_alloc(void *ptr, const uint32_t size) {
 }
 
 _PTI_PRIVATE void _pti__virtual_free(void *ptr, const uint32_t size) {
-#if defined(_PTI_EMSCRIPTEN)
-	free(ptr);
-	(void) size;
-#elif defined(_PTI_WIN32)
+#if defined(_PTI_WIN32)
 	_PTI_UNUSED(size);
 	VirtualFree((void *) ptr, 0, LMEM_RELEASE);
 #elif defined(_PTI_LINUX)
 	// Requests an update and waits for it to complete.
 	msync(ptr, size, MS_SYNC);
 	munmap(ptr, size);
+#else
+	free(ptr);
+	(void) size;
 #endif
 }
 
