@@ -5,8 +5,6 @@ macro(pti_executable target files)
   target_include_directories(${target} PRIVATE ${THIRDPARTY_DIR})
   target_link_libraries(${target} PRIVATE sokol)
 
-  copy_assets(${target})
-
   emscripten(${target})
 endmacro()
 
@@ -20,3 +18,10 @@ pti_executable(test_circf test_circf.c)
 pti_executable(test_print test_print.c)
 pti_executable(test_spr test_spr.c)
 pti_executable(test_map test_map.c)
+
+# Make sure the tests build dir always has assets/
+add_custom_target(tests_assets_symlink ALL
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+    "${CMAKE_CURRENT_BINARY_DIR}/assets"
+)
