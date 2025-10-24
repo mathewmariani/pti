@@ -35,6 +35,8 @@ typedef enum pti_button {
 	PTI_DOWN,
 	PTI_A,
 	PTI_B,
+	PTI_X,
+	PTI_Y,
 
 	PTI_DBG,
 
