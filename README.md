@@ -13,7 +13,6 @@ pti is a \*small\* framework for making retro games with chunky pixels.
 *   `libs/` - Required external libraries for platform.
 *   `src/` – The main source for the framework.
 *   `tests/` – API tests and example platform using sokol.
-*   `website/` – Scripts and resources used for building the website.
 
 
 ## License
