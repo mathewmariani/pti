@@ -133,16 +133,14 @@ static void sokol_init_gfx(void) {
 			.label = "quad-pipeline",
 	});
 
+	// clang-format off
 	const float vertices[] = {
-			-1.0f,
-			1.0f, /* top-left */
-			1.0f,
-			1.0f, /* top-right */
-			1.0f,
-			-1.0f, /* bottom-right */
-			-1.0f,
-			-1.0f, /* bottom-left */
+			-1.0f, 1.0f,  /* top-left */
+			1.0f, 1.0f,   /* top-right */
+			1.0f, -1.0f,  /* bottom-right */
+			-1.0f, -1.0f, /* bottom-left */
 	};
+	// clang-format on
 	const uint16_t indices[] = {0, 1, 2, 0, 2, 3};
 
 	/* bindings */
@@ -250,7 +248,6 @@ static void frame(void) {
 	sokol_gfx_draw();
 }
 
-// Inline function for button down event
 static inline void btn_down(int pti_key, int sapp_key, int sapp_alt, const sapp_event *ev) {
 	if (ev->key_code == sapp_key || ev->key_code == sapp_alt) {
 		_pti.vm.hardware.btn_state[pti_key] |= (_PTI_KEY_STATE | _PTI_KEY_PRESSED);
@@ -258,7 +255,6 @@ static inline void btn_down(int pti_key, int sapp_key, int sapp_alt, const sapp_
 	}
 }
 
-// Inline function for button up event
 static inline void btn_up(int pti_key, int sapp_key, int sapp_alt, const sapp_event *ev) {
 	if (ev->key_code == sapp_key || ev->key_code == sapp_alt) {
 		_pti.vm.hardware.btn_state[pti_key] &= ~(_PTI_KEY_STATE | _PTI_KEY_PRESSED);
@@ -268,31 +264,35 @@ static inline void btn_up(int pti_key, int sapp_key, int sapp_alt, const sapp_ev
 
 static void input(const sapp_event *ev) {
 	switch (ev->type) {
-		// keyboard:
+		/* keyboard: */
 		case SAPP_EVENTTYPE_KEY_DOWN:
 			if (ev->key_repeat) {
 				break;
 			}
-			btn_down(PTI_RIGHT, SAPP_KEYCODE_RIGHT, SAPP_KEYCODE_D, ev);
-			btn_down(PTI_LEFT, SAPP_KEYCODE_LEFT, SAPP_KEYCODE_A, ev);
-			btn_down(PTI_UP, SAPP_KEYCODE_UP, SAPP_KEYCODE_W, ev);
-			btn_down(PTI_DOWN, SAPP_KEYCODE_DOWN, SAPP_KEYCODE_S, ev);
-			btn_down(PTI_A, SAPP_KEYCODE_Z, SAPP_KEYCODE_Z, ev);
-			btn_down(PTI_B, SAPP_KEYCODE_X, SAPP_KEYCODE_X, ev);
+			btn_down(PTI_RIGHT, SAPP_KEYCODE_RIGHT, SAPP_KEYCODE_RIGHT, ev);
+			btn_down(PTI_LEFT, SAPP_KEYCODE_LEFT, SAPP_KEYCODE_LEFT, ev);
+			btn_down(PTI_UP, SAPP_KEYCODE_UP, SAPP_KEYCODE_UP, ev);
+			btn_down(PTI_DOWN, SAPP_KEYCODE_DOWN, SAPP_KEYCODE_DOWN, ev);
+			btn_down(PTI_A, SAPP_KEYCODE_D, SAPP_KEYCODE_D, ev);
+			btn_down(PTI_B, SAPP_KEYCODE_S, SAPP_KEYCODE_S, ev);
+			btn_down(PTI_X, SAPP_KEYCODE_W, SAPP_KEYCODE_W, ev);
+			btn_down(PTI_Y, SAPP_KEYCODE_A, SAPP_KEYCODE_A, ev);
 			btn_down(PTI_DBG, SAPP_KEYCODE_C, SAPP_KEYCODE_C, ev);
 			break;
 
 		case SAPP_EVENTTYPE_KEY_UP:
-			btn_up(PTI_RIGHT, SAPP_KEYCODE_RIGHT, SAPP_KEYCODE_D, ev);
-			btn_up(PTI_LEFT, SAPP_KEYCODE_LEFT, SAPP_KEYCODE_A, ev);
-			btn_up(PTI_UP, SAPP_KEYCODE_UP, SAPP_KEYCODE_W, ev);
-			btn_up(PTI_DOWN, SAPP_KEYCODE_DOWN, SAPP_KEYCODE_S, ev);
-			btn_up(PTI_A, SAPP_KEYCODE_Z, SAPP_KEYCODE_Z, ev);
-			btn_up(PTI_B, SAPP_KEYCODE_X, SAPP_KEYCODE_X, ev);
+			btn_up(PTI_RIGHT, SAPP_KEYCODE_RIGHT, SAPP_KEYCODE_RIGHT, ev);
+			btn_up(PTI_LEFT, SAPP_KEYCODE_LEFT, SAPP_KEYCODE_LEFT, ev);
+			btn_up(PTI_UP, SAPP_KEYCODE_UP, SAPP_KEYCODE_UP, ev);
+			btn_up(PTI_DOWN, SAPP_KEYCODE_DOWN, SAPP_KEYCODE_DOWN, ev);
+			btn_up(PTI_A, SAPP_KEYCODE_D, SAPP_KEYCODE_D, ev);
+			btn_up(PTI_B, SAPP_KEYCODE_S, SAPP_KEYCODE_S, ev);
+			btn_up(PTI_X, SAPP_KEYCODE_W, SAPP_KEYCODE_W, ev);
+			btn_up(PTI_Y, SAPP_KEYCODE_A, SAPP_KEYCODE_A, ev);
 			btn_up(PTI_DBG, SAPP_KEYCODE_C, SAPP_KEYCODE_C, ev);
 			break;
 
-		// mouse:
+		/* mouse: */
 		case SAPP_EVENTTYPE_MOUSE_MOVE:
 			break;
 
