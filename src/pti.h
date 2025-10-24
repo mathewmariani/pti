@@ -16,7 +16,8 @@
 #define _pti_min(x, y) ((x) < (y) ? (x) : (y))
 #define _pti_max(x, y) ((x) > (y) ? (x) : (y))
 #define _pti_clamp(x, a, b) (_pti_max(a, _pti_min(x, b)))
-#define _pti_abs(n) ((n < 0) ? (-n) : (n))
+#define _pti_round(x) ((int) ((x) + ((x) >= 0 ? 0.5f : -0.5f)))
+#define _pti_abs(x) ((x < 0) ? (-x) : (x))
 #define _pti_appr(val, tar, delta)                   \
 	(val = (val > (tar) ? _pti_max(tar, val - delta) \
 						: _pti_min(tar, val + delta)))
@@ -127,7 +128,7 @@ void pti_circ(int x, int y, int r, uint64_t color);
 void pti_circf(int x, int y, int r, uint64_t color);
 void pti_line(int x0, int y0, int x1, int y1, uint64_t color);
 void pti_rect(int x, int y, int w, int h, uint64_t color);
-void pti_rectf(int x0, int y0, int x1, int y1, uint64_t color);
+void pti_rectf(int x, int y, int w, int h, uint64_t color);
 void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, int y);
 void pti_spr(const pti_bitmap_t *bitmap, int n, int x, int y, bool flip_x, bool flip_y);
 void pti_print(const pti_bitmap_t *font, const char *text, int x, int y);
@@ -746,27 +747,21 @@ void pti_line(int x0, int y0, int x1, int y1, uint64_t c) {
 	}
 }
 
-void pti_rect(int x0, int y0, int x1, int y1, uint64_t color) {
-	pti_line(x0, y0, x1, y0, color);
-	pti_line(x0, y1, x1, y1, color);
-	pti_line(x0, y0, x0, y1, color);
-	pti_line(x1, y0, x1, y1, color);
+void pti_rect(int x, int y, int w, int h, uint64_t color) {
+	pti_line(x, y, x + w, y, color);
+	pti_line(x, y + h, x + w, y + h, color);
+	pti_line(x, y, x, y + h, color);
+	pti_line(x + w, y, x + w, y + h, color);
 }
 
-void pti_rectf(int x0, int y0, int x1, int y1, uint64_t color) {
-	if (x0 > x1) {
-		_pti_swap(x0, x1);
-	}
-	if (y0 > y1) {
-		_pti_swap(y0, y1);
-	}
+void pti_rectf(int x, int y, int w, int h, uint64_t color) {
+	_pti__transform(&x, &y);
+	int x2 = x + w;
+	int y2 = y + h;
 
-	_pti__transform(&x0, &y0);
-	_pti__transform(&x1, &y1);
-
-	for (int y = y0; y <= y1; y++) {
-		for (int x = x0; x <= x1; x++) {
-			_pti__set_pixel(x, y, color);
+	for (int i = y; i <= y2; i++) {
+		for (int j = x; j <= x2; j++) {
+			_pti__set_pixel(j, i, color);
 		}
 	}
 }
