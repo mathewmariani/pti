@@ -142,10 +142,9 @@ void pti_print(const char *text, int x, int y);
 }// extern "C"
 
 // reference-based equivalents for C++
-inline void pti_set_tilemap(const pti_tilemap_t &tilemap) { pti_set_tilemap(&ptr); }
-inline void pti_set_tileset(const pti_tileset_t &tileset) { pti_set_tileset(&ptr); }
-inline void pti_set_font(const pti_bitmap_t &bitmap) { pti_set_font(&ptr); }
-
+inline void pti_set_tilemap(pti_tilemap_t &tilemap) { pti_set_tilemap(&tilemap); }
+inline void pti_set_tileset(pti_tileset_t &tileset) { pti_set_tileset(&tileset); }
+inline void pti_set_font(pti_bitmap_t &bitmap) { pti_set_font(&bitmap); }
 inline void pti_spr(const pti_bitmap_t &bitmap, int n, int x, int y, bool flip_x, bool flip_y) { pti_spr(&bitmap, n, x, y, flip_x, flip_y); }
 
 #endif
