@@ -75,6 +75,9 @@ static void init(void) {
 	pti_bank_init(&bank, _pti_kilobytes(256));
 	tilemap = __create_tilemap("assets/tilemap.ase");
 	tileset = __create_tileset("assets/tilemap.ase");
+
+	pti_set_tilemap(&tilemap);
+	pti_set_tileset(&tileset);
 	pti_load_bank(&bank);
 
 	pti_clip(0, 0, 240 * 2, 136 * 2);
@@ -89,5 +92,5 @@ static void frame(void) {
 	t += (1 / 60.0f);
 	pti_camera((int) (100.0f * sinf(t)), 0);
 	pti_cls(0x00000000);
-	pti_map(&tilemap, &tileset, 0, 0);
+	pti_map(0, 0);
 }

@@ -96,6 +96,9 @@ void *pti_alloc(pti_bank_t *bank, const uint32_t size);
 void pti_reload(void);
 void pti_memcpy(void *dst, const void *src, size_t len);
 void pti_memset(void *dst, const int value, size_t len);
+void pti_set_tilemap(pti_tilemap_t *ptr);
+void pti_set_tileset(pti_tileset_t *ptr);
+void pti_set_font(pti_bitmap_t *ptr);
 
 //>> memory api
 const uint8_t pti_peek(const uint32_t offset, const uint32_t index);
@@ -111,9 +114,9 @@ bool pti_pressed(pti_button btn);
 bool pti_released(pti_button btn);
 
 //>> map api
-uint32_t pti_mget(const pti_tilemap_t *tilemap, int x, int y);
-void pti_mset(pti_tilemap_t *tilemap, int x, int y, int value);
-uint16_t pti_fget(const pti_tilemap_t *tilemap, int x, int y);
+uint32_t pti_mget(int x, int y);
+void pti_mset(int x, int y, int value);
+uint16_t pti_fget(int x, int y);
 
 //>> random api
 uint16_t pti_prand(void);
@@ -131,20 +134,19 @@ void pti_circf(int x, int y, int r, uint64_t color);
 void pti_line(int x0, int y0, int x1, int y1, uint64_t color);
 void pti_rect(int x, int y, int w, int h, uint64_t color);
 void pti_rectf(int x, int y, int w, int h, uint64_t color);
-void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, int y);
+void pti_map(int x, int y);
 void pti_spr(const pti_bitmap_t *bitmap, int n, int x, int y, bool flip_x, bool flip_y);
-void pti_print(const pti_bitmap_t *font, const char *text, int x, int y);
+void pti_print(const char *text, int x, int y);
 
 #ifdef __cplusplus
 }// extern "C"
 
 // reference-based equivalents for C++
-inline uint32_t pti_mget(const pti_tilemap_t &tilemap, int x, int y) { return pti_mget(&tilemap, x, y); }
-inline void pti_mset(pti_tilemap_t &tilemap, int x, int y, int value) { pti_mset(&tilemap, x, y, value); }
-inline uint16_t pti_fget(const pti_tilemap_t &tilemap, int x, int y) { return pti_fget(&tilemap, x, y); }
-inline void pti_map(const pti_tilemap_t &tilemap, const pti_tileset_t &tileset, int x, int y) { pti_map(&tilemap, &tileset, x, y); }
+inline void pti_set_tilemap(const pti_tilemap_t &tilemap) { pti_set_tilemap(&ptr); }
+inline void pti_set_tileset(const pti_tileset_t &tileset) { pti_set_tileset(&ptr); }
+inline void pti_set_font(const pti_bitmap_t &bitmap) { pti_set_font(&ptr); }
+
 inline void pti_spr(const pti_bitmap_t &bitmap, int n, int x, int y, bool flip_x, bool flip_y) { pti_spr(&bitmap, n, x, y, flip_x, flip_y); }
-inline void pti_print(const pti_bitmap_t &font, const char *text, int x, int y) { pti_print(&font, text, x, y); }
 
 #endif
 
@@ -204,7 +206,11 @@ typedef struct {
 		uint16_t height;
 	} screen;
 
+	pti_tilemap_t *tilemap;
+
 	struct {
+		pti_tileset_t *tileset;
+		pti_bitmap_t *font;
 		int16_t clip_x0, clip_y0;
 		int16_t clip_x1, clip_y1;
 		int16_t cam_x, cam_y;
@@ -390,6 +396,18 @@ void pti_memset(void *dst, const int value, size_t len) {
 	memset(dst, value, len);
 }
 
+void pti_set_tilemap(pti_tilemap_t *ptr) {
+	_pti.vm.tilemap = ptr;
+}
+
+void pti_set_tileset(pti_tileset_t *ptr) {
+	_pti.vm.draw.tileset = ptr;
+}
+
+void pti_set_font(pti_bitmap_t *ptr) {
+	_pti.vm.draw.font = ptr;
+}
+
 //>> memory api
 
 const uint8_t pti_peek(const uint32_t offset, const uint32_t index) {
@@ -458,18 +476,18 @@ bool pti_released(pti_button btn) {
 
 //>> map
 
-uint32_t pti_mget(const pti_tilemap_t *tilemap, int x, int y) {
-	int *tiles = (int *) _pti__ptr_to_bank((void *) tilemap->tiles);
-	return *(tiles + x + y * tilemap->width);
+uint32_t pti_mget(int x, int y) {
+	int *tiles = (int *) _pti__ptr_to_bank((void *) _pti.vm.tilemap->tiles);
+	return *(tiles + x + y * _pti.vm.tilemap->width);
 }
 
-void pti_mset(pti_tilemap_t *tilemap, int x, int y, int value) {
-	int *tiles = (int *) _pti__ptr_to_bank((void *) tilemap->tiles);
-	*(tiles + x + y * tilemap->width) = value;
+void pti_mset(int x, int y, int value) {
+	int *tiles = (int *) _pti__ptr_to_bank((void *) _pti.vm.tilemap->tiles);
+	*(tiles + x + y * _pti.vm.tilemap->width) = value;
 }
 
-uint16_t pti_fget(const pti_tilemap_t *tilemap, int x, int y) {
-	return (uint16_t) pti_mget(tilemap, x, y);
+uint16_t pti_fget(int x, int y) {
+	return (uint16_t) pti_mget(x, y);
 }
 
 //>> random
@@ -768,14 +786,15 @@ void pti_rectf(int x, int y, int w, int h, uint64_t color) {
 	}
 }
 
-void pti_map(const pti_tilemap_t *tilemap, const pti_tileset_t *tileset, int x, int y) {
-	const int map_w = tilemap->width;
-	const int map_h = tilemap->height;
-	const int tile_w = tileset->width;
-	const int tile_h = tileset->height;
+void pti_map(int x, int y) {
+	const int map_w = _pti.vm.tilemap->width;
+	const int map_h = _pti.vm.tilemap->height;
+	const int tile_w = _pti.vm.draw.tileset->width;
+	const int tile_h = _pti.vm.draw.tileset->height;
 
-	int *tiles = (int *) _pti__ptr_to_bank((void *) tilemap->tiles);
-	void *pixels = (void *) _pti__ptr_to_bank((void *) tileset->pixels);
+	const int *tiles = (int *) _pti__ptr_to_bank((void *) _pti.vm.tilemap->tiles);
+	const void *pixels = (void *) _pti__ptr_to_bank((void *) _pti.vm.draw.tileset->pixels);
+
 
 	_pti__transform(&x, &y);
 
@@ -828,8 +847,8 @@ uint32_t _pti__next_utf8_code_point(const char *data, uint32_t *index, uint32_t 
 #define FONT_GLYPHS_PER_ROW (96 / FONT_GLYPH_WIDTH)
 #define FONT_TAB_SIZE (3)
 
-void pti_print(const pti_bitmap_t *font, const char *text, int x, int y) {
-	void *pixels = (void *) _pti__ptr_to_bank((void *) font->pixels);
+void pti_print(const char *text, int x, int y) {
+	void *pixels = (void *) _pti__ptr_to_bank((void *) _pti.vm.draw.font->pixels);
 	int cursor_x = x;
 	int cursor_y = y;
 	uint32_t text_length = strlen(text);
@@ -856,7 +875,9 @@ void pti_print(const pti_bitmap_t *font, const char *text, int x, int y) {
 		glyph_x *= FONT_GLYPH_WIDTH;
 		glyph_y *= FONT_GLYPH_HEIGHT;
 
-		_pti__plot(pixels, 0, cursor_x, cursor_y, FONT_GLYPH_WIDTH, FONT_GLYPH_HEIGHT, glyph_x, glyph_y, font->width, font->height, false, false);
+		int width = _pti.vm.draw.font->width;
+		int height = _pti.vm.draw.font->height;
+		_pti__plot(pixels, 0, cursor_x, cursor_y, FONT_GLYPH_WIDTH, FONT_GLYPH_HEIGHT, glyph_x, glyph_y, width, height, false, false);
 
 		cursor_x += FONT_GLYPH_WIDTH;
 	}
