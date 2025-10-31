@@ -52,6 +52,8 @@ static pti_bitmap_t bitmap;
 static void init(void) {
 	pti_bank_init(&bank, _pti_kilobytes(256));
 	bitmap = __create_bitmap("assets/font.ase");
+
+	pti_set_font(&bitmap);
 	pti_load_bank(&bank);
 
 	pti_clip(0, 0, 128, 128);
@@ -61,9 +63,9 @@ static void cleanup(void) {}
 
 static void frame(void) {
 	// pti_cls(0xff5d275d);
-	pti_print(&bitmap, "0123456789", 0, 0);
-	pti_print(&bitmap, "HelloWorld", 0, 16);
-	pti_print(&bitmap, "Quick brown fox", 0, 32);
-	pti_print(&bitmap, "jumps over the", 0, 48);
-	pti_print(&bitmap, "lazy dog", 0, 64);
+	pti_print("0123456789", 0, 0);
+	pti_print("HelloWorld", 0, 16);
+	pti_print("Quick brown fox", 0, 32);
+	pti_print("jumps over the", 0, 48);
+	pti_print("lazy dog", 0, 64);
 }
