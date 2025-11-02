@@ -19,6 +19,8 @@ add_compile_options(-Wno-reorder-init-list)
 include("extra/cmake/macros.cmake")
 
 # thirdparty
+include("extra/cmake/imgui.cmake")
+include("extra/cmake/dbgui.cmake")
 include("extra/cmake/sokol.cmake")
 
 include_directories(${PTI_DIR})
