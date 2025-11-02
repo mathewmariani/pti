@@ -75,6 +75,7 @@ typedef struct pti_desc {
 	void (*init_cb)(void);
 	void (*frame_cb)(void);
 	void (*cleanup_cb)(void);
+	void (*debug_cb)(void);
 
 	int memory_size;
 	int width;
