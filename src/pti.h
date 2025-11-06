@@ -91,9 +91,9 @@ void pti_init(const pti_desc *desc);
 // api functions
 
 //>> virutal machine api
-void pti_bank_init(pti_bank_t *bank, uint32_t capacity);
+void pti_bank_init(pti_bank_t *bank, const size_t capacity);
 void pti_load_bank(pti_bank_t *bank);
-void *pti_alloc(pti_bank_t *bank, const uint32_t size);
+void *pti_alloc(pti_bank_t *bank, const size_t size);
 void pti_reload(void);
 void pti_memcpy(void *dst, const void *src, size_t len);
 void pti_memset(void *dst, const int value, size_t len);
@@ -240,7 +240,7 @@ _PTI_PRIVATE inline void *_pti__ptr_to_bank(void *ptr) {
 	return (void *) ((uintptr_t) ptr + ((uintptr_t) _pti.data - (uintptr_t) _pti.cart.begin));
 }
 
-_PTI_PRIVATE void *_pti__virtual_reserve(void *ptr, const uint32_t size) {
+_PTI_PRIVATE void *_pti__virtual_reserve(void *ptr, const size_t size) {
 #if defined(_PTI_WIN32)
 	// Reserves a range of the process's virtual offsetess space without
 	// allocating any actual physical storage in memory or in the paging file on
@@ -338,7 +338,7 @@ void pti_init(const pti_desc *desc) {
 	pti_bank_init(&_pti.ram, capacity);
 
 	// allocate virtual machine
-	_pti.screen = pti_alloc(&_pti.ram, vram_size);
+	_pti.screen = (uint32_t *) pti_alloc(&_pti.ram, vram_size);
 	_pti.data = pti_alloc(&_pti.ram, desc->memory_size);
 
 	// init random
@@ -351,9 +351,9 @@ void pti_init(const pti_desc *desc) {
 
 //>> virutal machine
 
-void pti_bank_init(pti_bank_t *bank, uint32_t capacity) {
+void pti_bank_init(pti_bank_t *bank, const size_t capacity) {
 	// allocate memory
-	void *ptr = _pti__virtual_reserve(NULL, capacity);
+	uint8_t *ptr = (uint8_t *) _pti__virtual_reserve(NULL, capacity);
 	bank->begin = ptr;
 	bank->it = ptr;
 	bank->end = ptr;
@@ -365,11 +365,11 @@ void pti_load_bank(pti_bank_t *bank) {
 	pti_reload();
 }
 
-void *pti_alloc(pti_bank_t *bank, const uint32_t size) {
+void *pti_alloc(pti_bank_t *bank, const size_t size) {
 	void *ptr;
 	if ((bank->end - bank->it) < size) {
 		PTI_ASSERT((bank->cap - bank->it) >= size);
-		uint32_t additional_size = size - (uint32_t) (bank->end - bank->it);
+		size_t additional_size = size - (bank->end - bank->it);
 		additional_size = _pti_min((bank->cap - bank->it), _pti_align_to(additional_size, 4096));
 		ptr = _pti__virtual_commit(bank->end, additional_size);
 		bank->end += additional_size;
@@ -380,7 +380,7 @@ void *pti_alloc(pti_bank_t *bank, const uint32_t size) {
 }
 
 _PTI_PRIVATE void pti_free(pti_bank_t *bank) {
-	_pti__virtual_free(bank, (uint32_t) (bank->cap - bank->begin));
+	_pti__virtual_free(bank, (bank->cap - bank->begin));
 	memset(bank, 0, sizeof(pti_bank_t));
 }
 
@@ -411,8 +411,7 @@ void pti_set_font(pti_bitmap_t *ptr) {
 //>> memory api
 
 const uint8_t pti_peek(const uint32_t offset, const uint32_t index) {
-	const void *dst = (void *) _pti.ram.begin;
-	return *(const uint8_t *) (dst + offset + index);
+	return *(_pti.ram.begin + offset + index);
 }
 
 const uint16_t pti_peek2(const uint32_t offset, const uint32_t index) {
@@ -434,8 +433,7 @@ const uint32_t pti_peek4(const uint32_t offset, const uint32_t index) {
 }
 
 void pti_poke(const uint32_t offset, const uint32_t index, const uint8_t value) {
-	const void *dst = (void *) _pti.ram.begin;
-	*(uint8_t *) (dst + offset + index) = value;
+	*(_pti.ram.begin + offset + index) = value;
 }
 
 void pti_poke2(const uint32_t offset, const uint32_t index, const uint16_t value) {
@@ -580,7 +578,7 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, in
 	}
 
 	const size_t size = w * h * sizeof(int);
-	uint32_t *src = pixels + size * n;
+	uint32_t *src = (uint32_t *) ((uint8_t *) pixels + size * n);
 	uint32_t *dst = _pti.screen;
 
 	const int dst_width = _pti.desc.width;
@@ -793,8 +791,7 @@ void pti_map(int x, int y) {
 	const int tile_h = _pti.vm.draw.tileset->height;
 
 	const int *tiles = (int *) _pti__ptr_to_bank((void *) _pti.vm.tilemap->tiles);
-	const void *pixels = (void *) _pti__ptr_to_bank((void *) _pti.vm.draw.tileset->pixels);
-
+	void *pixels = (void *) _pti__ptr_to_bank((void *) _pti.vm.draw.tileset->pixels);
 
 	_pti__transform(&x, &y);
 
