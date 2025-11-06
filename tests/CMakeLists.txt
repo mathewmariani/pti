@@ -1,5 +1,5 @@
 macro(pti_executable target files)
-  add_executable(${target} platform.c ${files})
+  add_executable(${target} platform_gl.c ${files})
 
   target_include_directories(${target} PRIVATE ${PTI_DIR})
   target_include_directories(${target} PRIVATE ${THIRDPARTY_DIR})

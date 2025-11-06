@@ -1,4 +1,4 @@
-// sokol
+/* sokol */
 #include "sokol/sokol_app.h"
 #include "sokol/sokol_gfx.h"
 #include "sokol/sokol_glue.h"
@@ -7,24 +7,36 @@
 #define PTI_IMPL
 #include "pti.h"
 
-// forward declarations
+/* forward declarations */
 static void init(void);
 static void frame(void);
 static void cleanup(void);
-static void input(const sapp_event *);
+static void event(const sapp_event *);
 
-int main(int argc, char *argv[]) {
+/* main entry point */
+sapp_desc sokol_main(int argc, char *argv[]) {
+	(void) argc;
+	(void) argv;
+
 	pti_desc desc = pti_main(argc, argv);
-
 	pti_init(&desc);
 
 	int width = desc.width * 3;
 	int height = desc.height * 3;
 
-	const char *name = "pti";
-	sapp_run(&(sapp_desc) {
+	return (sapp_desc) {
+			.init_cb = init,
+			.frame_cb = frame,
+			.cleanup_cb = cleanup,
+			.event_cb = event,
+			.width = width,
+			.height = height,
+			.window_title = "pti (sokol)",
+			.logger = {
+					.func = slog_func,
+			},
 #if defined(SOKOL_GLCORE)
-#if defined(_PTI_APPLE)
+#if defined(__APPLE__)
 			.gl_major_version = 4,
 			.gl_minor_version = 1,
 #else
@@ -32,16 +44,7 @@ int main(int argc, char *argv[]) {
 			.gl_minor_version = 2,
 #endif
 #endif
-			.init_cb = init,
-			.frame_cb = frame,
-			.cleanup_cb = cleanup,
-			.event_cb = input,
-			.width = width,
-			.height = height,
-			.window_title = name,
-			.logger.func = slog_func,
-	});
-	return 0;
+	};
 }
 
 static struct {
@@ -295,7 +298,7 @@ static inline void btn_up(int pti_key, int sapp_key, int sapp_alt, const sapp_ev
 	}
 }
 
-static void input(const sapp_event *ev) {
+static void event(const sapp_event *ev) {
 	switch (ev->type) {
 		/* keyboard: */
 		case SAPP_EVENTTYPE_KEY_DOWN:
