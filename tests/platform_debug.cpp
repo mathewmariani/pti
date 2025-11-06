@@ -270,8 +270,16 @@ void sokol_gfx_draw() {
 void imgui_debug_draw() {
 	ImGui::Begin("PTI", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
+	const auto width = _pti.vm.screen.width;
+	const auto height = _pti.vm.screen.height;
+
+	const ImVec2 uv_min(0.0f, 0.0f);
+	const ImVec2 uv_max(1.0f, 1.0f);
+	ImGui::Image((ImTextureID) (intptr_t) state.gl.color0, ImVec2(width, height), uv_min, uv_max);
+
 	if (ImGui::CollapsingHeader("Screen")) {
 		ImGui::Text("Dimensions: (%d, %d)", _pti.vm.screen.width, _pti.vm.screen.height);
+		ImGui::Text("Location: %p", _pti.screen);
 	}
 
 	// virtual machine
@@ -308,6 +316,21 @@ void imgui_debug_draw() {
 
 	ImGui::Text("Random [3]: %p", _pti.vm.tilemap);
 
+	// ram
+	if (ImGui::CollapsingHeader("Ram")) {
+		const size_t used_bytes = (size_t) (_pti.ram.it - _pti.ram.begin);
+		const size_t capacity_bytes = (size_t) (_pti.ram.cap - _pti.ram.begin);
+
+		const float used_kb = used_bytes / 1024.0f;
+		const float capacity_kb = capacity_bytes / 1024.0f;
+
+		ImGui::Text("Usage: %.2f KB / %.2f KB (%.2f%%)\n", used_kb, capacity_kb, (used_kb / capacity_kb) * 100.0);
+		ImGui::Text("begin: %p", _pti.ram.begin);
+		ImGui::Text("cap: %p", _pti.ram.cap);
+		ImGui::Text("end: %p", _pti.ram.end);
+		ImGui::Text("it: %p", _pti.ram.it);
+	}
+
 	// cart
 	if (ImGui::CollapsingHeader("Cart")) {
 		const size_t used_bytes = (size_t) (_pti.cart.it - _pti.cart.begin);
@@ -317,19 +340,11 @@ void imgui_debug_draw() {
 		const float capacity_kb = capacity_bytes / 1024.0f;
 
 		ImGui::Text("Usage: %.2f KB / %.2f KB (%.2f%%)\n", used_kb, capacity_kb, (used_kb / capacity_kb) * 100.0);
-
 		ImGui::Text("begin: %p", _pti.cart.begin);
 		ImGui::Text("cap: %p", _pti.cart.cap);
 		ImGui::Text("end: %p", _pti.cart.end);
 		ImGui::Text("it: %p", _pti.cart.it);
 	}
-
-	ImVec2 uv_min(0.0f, 0.0f);
-	ImVec2 uv_max(1.0f, 1.0f);
-
-	const auto width = _pti.vm.screen.width;
-	const auto height = _pti.vm.screen.height;
-	ImGui::Image((ImTextureID) (intptr_t) state.gl.color0, ImVec2(width, height), uv_min, uv_max);
 
 	ImGui::End();
 }
@@ -379,8 +394,12 @@ static void frame(void) {
 	/* draw graphics */
 	sokol_gfx_draw();
 
+	/* debug ui */
 	__dbgui_begin();
 	imgui_debug_draw();
+	if (_pti.desc.debug_cb != NULL) {
+		_pti.desc.debug_cb();
+	}
 	__dbgui_end();
 }
 
