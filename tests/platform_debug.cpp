@@ -307,20 +307,25 @@ void imgui_debug_draw() {
 	}
 
 	ImGui::Text("Random [3]: %p", _pti.vm.tilemap);
-	ImGui::Text("Random [3]: %d", _pti.vm.screen.width);
-	ImGui::Text("Random [3]: %d", _pti.vm.screen.height);
 
 	// cart
 	if (ImGui::CollapsingHeader("Cart")) {
+		const size_t used_bytes = (size_t) (_pti.cart.it - _pti.cart.begin);
+		const size_t capacity_bytes = (size_t) (_pti.cart.cap - _pti.cart.begin);
+
+		const float used_kb = used_bytes / 1024.0f;
+		const float capacity_kb = capacity_bytes / 1024.0f;
+
+		ImGui::Text("Usage: %.2f KB / %.2f KB (%.2f%%)\n", used_kb, capacity_kb, (used_kb / capacity_kb) * 100.0);
+
 		ImGui::Text("begin: %p", _pti.cart.begin);
 		ImGui::Text("cap: %p", _pti.cart.cap);
 		ImGui::Text("end: %p", _pti.cart.end);
 		ImGui::Text("it: %p", _pti.cart.it);
 	}
 
-
-	ImVec2 uv_min(0.0f, 1.0f);
-	ImVec2 uv_max(1.0f, 0.0f);
+	ImVec2 uv_min(0.0f, 0.0f);
+	ImVec2 uv_max(1.0f, 1.0f);
 
 	const auto width = _pti.vm.screen.width;
 	const auto height = _pti.vm.screen.height;
