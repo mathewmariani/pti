@@ -247,9 +247,6 @@ static void init(void) {
 	/* initialize graphics */
 	gl_init_gfx();
 
-	/* initialize debug ui */
-	__dbgui_setup();
-
 	/* initialize game */
 	if (_pti.desc.init_cb != NULL) {
 		_pti.desc.init_cb();
@@ -257,7 +254,10 @@ static void init(void) {
 }
 
 static void cleanup(void) {
-	__dbgui_shutdown();
+	glDeleteVertexArrays(1, &state.gl.vao);
+	glDeleteBuffers(1, &state.gl.vbo);
+	glDeleteTextures(1, &state.gl.color0);
+	glDeleteProgram(state.gl.program);
 }
 
 #define PTI_FRAMERATE (30.0)
