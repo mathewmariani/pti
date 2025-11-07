@@ -6,6 +6,7 @@ macro(pti_executable target files)
   target_link_libraries(${target} PRIVATE sokol)
   target_link_libraries(${target} PRIVATE dbgui)
   target_link_libraries(${target} PRIVATE imgui)
+  target_link_libraries(${target} PRIVATE tracy)
 
   emscripten(${target})
 endmacro()

@@ -28,6 +28,19 @@
 #error ("opengl.h: unknown 3D API selected; must be SOKOL_GLCORE or SOKOL_GLES3")
 #endif
 
+// tracy
+#include "Tracy.hpp"
+
+#define PTI_PROFILE ZoneScoped
+#define PTI_PROFILE_FRAME(x) FrameMark
+#define PTI_PROFILE_SECTION(x) ZoneScopedN(x)
+#define PTI_PROFILE_TAG(y, x) ZoneText(x, strlen(x))
+#define PTI_PROFILE_LOG(text, size) TracyMessage(text, size)
+#define PTI_PROFILE_VALUE(text, value) TracyPlot(text, value)
+
+#include "TracyOpenGL.hpp"
+#define LUXE_PROFILE_GPU(x) TracyGpuZone(x)
+
 // forward declarations
 static void init(void);
 static void frame(void);
@@ -174,7 +187,6 @@ static void sokol_init_gfx(void) {
 	};
 	// clang-format on
 
-	;
 	// initialize fullscreen quad, buffer object
 	glGenVertexArrays(1, &state.gl.vao);
 	glGenBuffers(1, &state.gl.vbo);
@@ -352,6 +364,8 @@ void imgui_debug_draw() {
 static void init(void) {
 	/* initialize graphics */
 	sokol_init_gfx();
+
+	TracyGpuContext;
 
 	/* initialize debug ui */
 	__dbgui_setup();

@@ -22,6 +22,7 @@ include("extra/cmake/macros.cmake")
 include("extra/cmake/imgui.cmake")
 include("extra/cmake/dbgui.cmake")
 include("extra/cmake/sokol.cmake")
+include("extra/cmake/tracy.cmake")
 
 include_directories(${PTI_DIR})
 include_directories(${THIRDPARTY_DIR})
