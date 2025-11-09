@@ -76,7 +76,13 @@ static struct {
 		GLuint vbo;
 		GLuint color0;
 		GLuint program;
+		GLuint tileset;
+		GLuint font;
 	} gl;
+
+#if defined(PTI_TRACE_HOOKS)
+	pti_trace_hooks hooks;
+#endif
 } state;
 
 static unsigned int createShader(GLenum shaderType, const char *sourceCode) {
@@ -276,6 +282,7 @@ void imgui_debug_draw() {
 	const ImVec2 uv_min(0.0f, 0.0f);
 	const ImVec2 uv_max(1.0f, 1.0f);
 	ImGui::Image((ImTextureID) (intptr_t) state.gl.color0, ImVec2(width, height), uv_min, uv_max);
+	ImGui::Image((ImTextureID) (intptr_t) state.gl.tileset, ImVec2(width, height), uv_min, uv_max);
 
 	if (ImGui::CollapsingHeader("Screen")) {
 		ImGui::Text("Dimensions: (%d, %d)", _pti.vm.screen.width, _pti.vm.screen.height);
@@ -349,12 +356,45 @@ void imgui_debug_draw() {
 	ImGui::End();
 }
 
+static void _pti_set_font(pti_bitmap_t *ptr) {
+	glGenTextures(1, &state.gl.font);
+	glBindTexture(GL_TEXTURE_2D, state.gl.font);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ptr->width, ptr->height, GL_RGBA, GL_UNSIGNED_BYTE, ptr->pixels);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+static void _pti_set_tilemap(pti_tilemap_t *ptr) {
+	// create texture (tileset)
+}
+static void _pti_set_tileset(pti_tileset_t *ptr) {
+	// create texture (tileset)
+	glGenTextures(1, &state.gl.tileset);
+	glBindTexture(GL_TEXTURE_2D, state.gl.tileset);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ptr->width, ptr->height, GL_RGBA, GL_UNSIGNED_BYTE, ptr->pixels);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 static void init(void) {
 	/* initialize graphics */
 	sokol_init_gfx();
 
 	/* initialize debug ui */
 	__dbgui_setup();
+
+#if defined(PTI_TRACE_HOOKS)
+	pti_trace_hooks hooks;
+	hooks.set_font = _pti_set_font;
+	hooks.set_tilemap = _pti_set_tilemap;
+	hooks.set_tileset = _pti_set_tileset;
+	pti_install_trace_hooks(&hooks);
+#endif
 
 	/* initialize game */
 	if (_pti.desc.init_cb != NULL) {

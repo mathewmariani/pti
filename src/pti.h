@@ -71,6 +71,12 @@ typedef struct {
 	uint8_t *cap;
 } pti_bank_t;
 
+typedef struct pti_trace_hooks {
+	void (*set_tilemap)(pti_tilemap_t *ptr);
+	void (*set_tileset)(pti_tileset_t *ptr);
+	void (*set_font)(pti_bitmap_t *ptr);
+} pti_trace_hooks;
+
 typedef struct pti_desc {
 	void (*init_cb)(void);
 	void (*frame_cb)(void);
@@ -87,6 +93,7 @@ extern pti_desc pti_main(int argc, char *argv[]);
 
 // public functions
 void pti_init(const pti_desc *desc);
+void pti_install_trace_hooks(const pti_trace_hooks *trace_hooks);
 
 // api functions
 
@@ -194,6 +201,16 @@ inline void pti_spr(const pti_bitmap_t &bitmap, int n, int x, int y, bool flip_x
 #include <sys/mman.h>
 #endif
 
+#if defined(PTI_TRACE_HOOKS)
+#define _PTI_TRACE_ARGS(fn, ...) \
+	if (_pti.hooks.fn) { _pti.hooks.fn(__VA_ARGS__); }
+#define _PTI_TRACE_NOARGS(fn) \
+	if (_pti.hooks.fn) { _pti.hooks.fn(); }
+#else
+#define _PTI_TRACE_ARGS(fn, ...)
+#define _PTI_TRACE_NOARGS(fn)
+#endif
+
 #if defined(PTI_SIMD)
 #include <emmintrin.h>
 #include <tmmintrin.h>
@@ -231,6 +248,9 @@ typedef struct {
 	_pti__vm_t vm;
 	uint32_t *screen;
 	void *data;
+#if defined(PTI_TRACE_HOOKS)
+	pti_trace_hooks hooks;
+#endif
 } _pti__t;
 static _pti__t _pti;
 
@@ -347,6 +367,14 @@ void pti_init(const pti_desc *desc) {
 	}
 }
 
+void pti_install_trace_hooks(const pti_trace_hooks *trace_hooks) {
+#if defined(PTI_TRACE_HOOKS)
+	_pti.hooks = *trace_hooks;
+#else
+#warning "pti.h: PTI_TRACE_HOOKS not defined."
+#endif
+}
+
 // api functions
 
 //>> virutal machine
@@ -397,14 +425,17 @@ void pti_memset(void *dst, const int value, size_t len) {
 }
 
 void pti_set_tilemap(pti_tilemap_t *ptr) {
+	_PTI_TRACE_ARGS(set_tilemap, ptr);
 	_pti.vm.tilemap = ptr;
 }
 
 void pti_set_tileset(pti_tileset_t *ptr) {
+	_PTI_TRACE_ARGS(set_tileset, ptr);
 	_pti.vm.draw.tileset = ptr;
 }
 
 void pti_set_font(pti_bitmap_t *ptr) {
+	_PTI_TRACE_ARGS(set_font, ptr);
 	_pti.vm.draw.font = ptr;
 }
 

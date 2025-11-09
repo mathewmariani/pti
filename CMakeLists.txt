@@ -11,10 +11,6 @@ project(pti)
 set(PTI_DIR src)
 set(THIRDPARTY_DIR libs)
 
-# suppress warnings
-add_compile_options(-Wno-c99-designator)
-add_compile_options(-Wno-reorder-init-list)
-
 # macros
 include("extra/cmake/macros.cmake")
 
