@@ -1,5 +1,5 @@
 macro(pti_executable target files)
-  add_executable(${target} platform_debug.cpp ${files})
+  add_executable(${target} platform_debug.cpp assets.c ${files})
 
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_definitions(-DPTI_TRACE_HOOKS)
