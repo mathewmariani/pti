@@ -605,7 +605,7 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int dst_x, int dst_y, int dst_
 		src_y += (dst_y2 - dst_y1);
 	}
 
-	uint32_t *src = (uint32_t *) pixels;
+	uint32_t *src = (uint32_t *) pixels + n * (src_w * src_h);
 	uint32_t *dst = _pti.screen;
 	uint32_t color_key = _pti.vm.draw.ckey;
 
@@ -626,7 +626,6 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int dst_x, int dst_y, int dst_
 		}
 	}
 }
-
 
 void pti_camera(int x, int y) {
 	_pti.vm.draw.cam_x = x;
@@ -809,7 +808,7 @@ void pti_map(int x, int y) {
 			int src_y = (t / tiles_per_row) * tileset->tile_h;
 
 			_pti__plot(
-					tileset->pixels, t,
+					tileset->pixels, 0,
 					x + i * tileset->tile_w,
 					y + j * tileset->tile_h,
 					tileset->tile_w, tileset->tile_h,

@@ -42,13 +42,16 @@ sapp_desc sokol_main(int argc, char *argv[]) {
 	pti_desc desc = pti_main(argc, argv);
 	pti_init(&desc);
 
+	int width = desc.width * 3;
+	int height = desc.height * 3;
+
 	return (sapp_desc) {
 			.init_cb = init,
 			.frame_cb = frame,
 			.cleanup_cb = cleanup,
 			.event_cb = event,
-			.width = 800,
-			.height = 600,
+			.width = width,
+			.height = height,
 			.window_title = "pti (debug)",
 			.logger = {
 					.func = slog_func,
