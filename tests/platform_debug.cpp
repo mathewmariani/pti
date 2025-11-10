@@ -79,6 +79,7 @@ static struct {
 		GLuint vbo;
 		GLuint color0;
 		GLuint program;
+		GLuint crt;
 		GLuint tileset;
 		GLuint font;
 	} gl;
@@ -88,8 +89,8 @@ static struct {
 #endif
 } state;
 
-static unsigned int create_shader(GLenum shaderType, const char *sourceCode) {
-	unsigned int shader = glCreateShader(shaderType);
+static GLuint create_shader(GLenum stage, const char *sourceCode) {
+	unsigned int shader = glCreateShader(stage);
 	glShaderSource(shader, 1, &sourceCode, NULL);
 	glCompileShader(shader);
 	int success;
@@ -102,8 +103,25 @@ static unsigned int create_shader(GLenum shaderType, const char *sourceCode) {
 	return shader;
 }
 
+static GLuint create_program(GLuint vs, GLuint fs) {
+	GLuint program = glCreateProgram();
+	//Attach each stage
+	glAttachShader(program, vs);
+	glAttachShader(program, fs);
+	//Link all the stages together
+	glLinkProgram(program);
+	int success;
+	glGetProgramiv(program, GL_LINK_STATUS, &success);
+	if (!success) {
+		char infoLog[512];
+		glGetProgramInfoLog(program, 512, NULL, infoLog);
+		printf("Failed to link shader program: %s", infoLog);
+	}
+	return program;
+}
+
 static void sokol_init_gfx(void) {
-	const char *display_vs_src =
+	const char *default_vs_src =
 #if defined(SOKOL_GLCORE)
 			"#version 410\n"
 #elif defined(SOKOL_GLES3)
@@ -117,7 +135,22 @@ static void sokol_init_gfx(void) {
 			"  vs_texcoord = vec2(pos.x, 1.0 - pos.y);\n"
 			"}\n";
 
-	const char *display_fs_src =
+	const char *default_fs_src =
+#if defined(SOKOL_GLCORE)
+			"#version 410\n"
+#elif defined(SOKOL_GLES3)
+			"#version 300 es\n"
+			"precision mediump float;\n"
+#endif
+			"uniform sampler2D screen;\n"
+			"in vec2 vs_texcoord;\n"
+			"out vec4 frag_color;\n"
+			"void main() {\n"
+			"  vec4 texel = texture(screen, vs_texcoord);\n"
+			"  frag_color = texel;\n"
+			"}\n";
+
+	const char *crt_fs_src =
 #if defined(SOKOL_GLCORE)
 			"#version 410\n"
 #elif defined(SOKOL_GLES3)
@@ -210,25 +243,15 @@ static void sokol_init_gfx(void) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	auto vert_stage = create_shader(GL_VERTEX_SHADER, display_vs_src);
-	auto frag_stage = create_shader(GL_FRAGMENT_SHADER, display_fs_src);
+	auto default_vs_stage = create_shader(GL_VERTEX_SHADER, default_vs_src);
+	auto default_fs_stage = create_shader(GL_FRAGMENT_SHADER, default_fs_src);
+	auto crt_fs_stage = create_shader(GL_FRAGMENT_SHADER, crt_fs_src);
 
-	state.gl.program = glCreateProgram();
-	//Attach each stage
-	glAttachShader(state.gl.program, vert_stage);
-	glAttachShader(state.gl.program, frag_stage);
-	//Link all the stages together
-	glLinkProgram(state.gl.program);
-	int success;
-	glGetProgramiv(state.gl.program, GL_LINK_STATUS, &success);
-	if (!success) {
-		char infoLog[512];
-		glGetProgramInfoLog(state.gl.program, 512, NULL, infoLog);
-		printf("Failed to link shader program: %s", infoLog);
-	}
+	state.gl.program = create_program(default_vs_stage, default_fs_stage);
+	state.gl.crt = create_program(default_vs_stage, crt_fs_stage);
 
-	glDeleteShader(vert_stage);
-	glDeleteShader(frag_stage);
+	glDeleteShader(default_vs_stage);
+	glDeleteShader(default_fs_stage);
 }
 
 void sokol_gfx_draw() {
@@ -412,6 +435,11 @@ static void init(void) {
 }
 
 static void cleanup(void) {
+	glDeleteVertexArrays(1, &state.gl.vao);
+	glDeleteBuffers(1, &state.gl.vbo);
+	glDeleteTextures(1, &state.gl.color0);
+	glDeleteProgram(state.gl.program);
+	glDeleteProgram(state.gl.crt);
 	__dbgui_shutdown();
 }
 
