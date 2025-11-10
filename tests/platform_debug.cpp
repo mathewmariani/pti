@@ -84,6 +84,8 @@ static struct {
 		GLuint font;
 	} gl;
 
+	bool crt = false;
+
 #if defined(PTI_TRACE_HOOKS)
 	pti_trace_hooks hooks;
 #endif
@@ -268,7 +270,8 @@ void sokol_gfx_draw() {
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, _pti.screen);
 
 	// bind shader
-	glUseProgram(state.gl.program);
+	auto program = state.crt ? state.gl.crt : state.gl.program;
+	glUseProgram(program);
 	glUniform1i(glGetUniformLocation(state.gl.program, "screen"), 0);
 
 	// draw fullscreen quad
@@ -281,6 +284,7 @@ void sokol_gfx_draw() {
 void imgui_debug_draw() {
 	ImGui::Begin("PTI", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
+	ImGui::Checkbox("CRT: ", &state.crt);
 
 	const ImVec2 uv_min(0.0f, 0.0f);
 	const ImVec2 uv_max(1.0f, 1.0f);
