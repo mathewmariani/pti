@@ -12,6 +12,13 @@
 			"visibility": "hidden"
 		},
 	},
+	"C_Cpp.files.exclude": {
+		"**/build": true,
+		"**/dist": true,
+		"**/extra": true,
+		"**/node_modules": true,
+		"**/website": true,
+	},
 	"debug.showInStatusBar": "always",
 	"editor.formatOnSave": true,
 	"editor.tabSize": 2,
@@ -36,6 +43,13 @@
 		"string_view": "cpp",
 		"unordered_map": "cpp",
 		"atomic": "cpp",
-		"utility": "cpp"
+		"utility": "cpp",
+		"*.inc": "cpp",
+		"forward_list": "cpp",
+		"list": "cpp",
+		"regex": "cpp",
+		"set": "cpp",
+		"unordered_set": "cpp",
+		"ranges": "cpp"
 	}
 }
