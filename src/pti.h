@@ -580,7 +580,6 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int dst_x, int dst_y, int dst_
 		return;
 	}
 
-	// Clip left/top
 	if (dst_x1 < clip_x0) {
 		src_x += (clip_x0 - dst_x1);
 		dst_x1 = clip_x0;
@@ -590,11 +589,13 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int dst_x, int dst_y, int dst_
 		dst_y1 = clip_y0;
 	}
 
-	// Clip right/bottom
-	if (dst_x2 >= clip_x1) { dst_x2 = clip_x1 - 1; }
-	if (dst_y2 >= clip_y1) { dst_y2 = clip_y1 - 1; }
+	if (dst_x2 >= clip_x1) {
+		dst_x2 = clip_x1 - 1;
+	}
+	if (dst_y2 >= clip_y1) {
+		dst_y2 = clip_y1 - 1;
+	}
 
-	// Flip adjustments
 	int ix = flip_x ? -1 : 1;
 	int iy = flip_y ? -1 : 1;
 	if (flip_x) {

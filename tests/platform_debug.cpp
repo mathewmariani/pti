@@ -85,24 +85,19 @@ static struct {
 #endif
 } state;
 
-static unsigned int createShader(GLenum shaderType, const char *sourceCode) {
-	//Create a new vertex shader object
+static unsigned int create_shader(GLenum shaderType, const char *sourceCode) {
 	unsigned int shader = glCreateShader(shaderType);
-	//Supply the shader object with source code
 	glShaderSource(shader, 1, &sourceCode, NULL);
-	//Compile the shader object
 	glCompileShader(shader);
 	int success;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
 	if (!success) {
-		//512 is an arbitrary length, but should be plenty of characters for our error message.
 		char infoLog[512];
 		glGetShaderInfoLog(shader, 512, NULL, infoLog);
 		printf("Failed to compile shader: %s", infoLog);
 	}
 	return shader;
 }
-
 
 static void sokol_init_gfx(void) {
 	const char *display_vs_src =
@@ -180,7 +175,6 @@ static void sokol_init_gfx(void) {
 	};
 	// clang-format on
 
-	;
 	// initialize fullscreen quad, buffer object
 	glGenVertexArrays(1, &state.gl.vao);
 	glGenBuffers(1, &state.gl.vbo);
@@ -213,23 +207,8 @@ static void sokol_init_gfx(void) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	// create shader
-	auto createShader = [](GLenum type, const char *src) -> GLuint {
-		auto shader = glCreateShader(type);
-		glShaderSource(shader, 1, &src, NULL);
-		glCompileShader(shader);
-		int success;
-		glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-		if (!success) {
-			char infoLog[512];
-			glGetShaderInfoLog(shader, 512, NULL, infoLog);
-			printf("Failed to compile shader: %s", infoLog);
-		}
-		return shader;
-	};
-
-	auto vert_stage = createShader(GL_VERTEX_SHADER, display_vs_src);
-	auto frag_stage = createShader(GL_FRAGMENT_SHADER, display_fs_src);
+	auto vert_stage = create_shader(GL_VERTEX_SHADER, display_vs_src);
+	auto frag_stage = create_shader(GL_FRAGMENT_SHADER, display_fs_src);
 
 	state.gl.program = glCreateProgram();
 	//Attach each stage
@@ -276,17 +255,16 @@ void sokol_gfx_draw() {
 void imgui_debug_draw() {
 	ImGui::Begin("PTI", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
-	const auto width = _pti.vm.screen.width;
-	const auto height = _pti.vm.screen.height;
 
 	const ImVec2 uv_min(0.0f, 0.0f);
 	const ImVec2 uv_max(1.0f, 1.0f);
-	ImGui::Image((ImTextureID) (intptr_t) state.gl.color0, ImVec2(width, height), uv_min, uv_max);
-	ImGui::Image((ImTextureID) (intptr_t) state.gl.tileset, ImVec2(width, height), uv_min, uv_max);
 
 	if (ImGui::CollapsingHeader("Screen")) {
 		ImGui::Text("Dimensions: (%d, %d)", _pti.vm.screen.width, _pti.vm.screen.height);
 		ImGui::Text("Location: %p", _pti.screen);
+
+		const ImVec2 color0_vec2{(float) _pti.vm.screen.width, (float) _pti.vm.screen.height};
+		ImGui::Image((ImTextureID) (intptr_t) state.gl.color0, color0_vec2, uv_min, uv_max);
 	}
 
 	// virtual machine
@@ -295,9 +273,28 @@ void imgui_debug_draw() {
 		ImGui::Text("Clip: ((%d, %d), (%d, %d))", _pti.vm.draw.clip_x0, _pti.vm.draw.clip_y0, _pti.vm.draw.clip_x1, _pti.vm.draw.clip_y1);
 		ImGui::Text("Color Key: %d", _pti.vm.draw.ckey);
 		ImGui::Text("Dither: %d", _pti.vm.draw.dither);
-		ImGui::Text("Font: %p", _pti.vm.draw.font);
-		ImGui::Text("Tileset: %p", _pti.vm.draw.tileset);
-		ImGui::Text("Tilemap: %p", _pti.vm.tilemap);
+	}
+
+	// tileset
+	if (ImGui::CollapsingHeader("Tileset")) {
+		ImGui::Text("Width: %d", _pti.vm.draw.tileset->width);
+		ImGui::Text("Height: %d", _pti.vm.draw.tileset->height);
+		ImGui::Text("Tile Width: %d", _pti.vm.draw.tileset->tile_w);
+		ImGui::Text("Tile Height: %d", _pti.vm.draw.tileset->tile_h);
+		ImGui::Text("Pixels: %p", _pti.vm.draw.tileset->pixels);
+
+		const ImVec2 tileset_vec2{(float) _pti.vm.draw.tileset->width, (float) _pti.vm.draw.tileset->height};
+		ImGui::Image((ImTextureID) (intptr_t) state.gl.tileset, tileset_vec2, uv_min, uv_max);
+	}
+
+	// font
+	if (ImGui::CollapsingHeader("Font")) {
+		ImGui::Text("Width: %d", _pti.vm.draw.font->width);
+		ImGui::Text("Height: %d", _pti.vm.draw.font->height);
+		ImGui::Text("Pixels: %p", _pti.vm.draw.font->pixels);
+
+		const ImVec2 font_vec2{(float) _pti.vm.draw.font->width, (float) _pti.vm.draw.font->height};
+		ImGui::Image((ImTextureID) (intptr_t) state.gl.font, font_vec2, uv_min, uv_max);
 	}
 
 	// buttons
@@ -321,7 +318,12 @@ void imgui_debug_draw() {
 		ImGui::Text("Random [3]: %d", _pti.vm.hardware.rnd_reg[3]);
 	}
 
-	ImGui::Text("Random [3]: %p", _pti.vm.tilemap);
+	// buttons
+	if (ImGui::CollapsingHeader("Tilemap")) {
+		ImGui::Text("Width: %d", _pti.vm.tilemap->width);
+		ImGui::Text("Height: %d", _pti.vm.tilemap->height);
+		ImGui::Text("Tiles: %p", _pti.vm.tilemap->tiles);
+	}
 
 	// ram
 	if (ImGui::CollapsingHeader("Ram")) {
@@ -359,21 +361,25 @@ void imgui_debug_draw() {
 static void _pti_set_font(pti_bitmap_t *ptr) {
 	glGenTextures(1, &state.gl.font);
 	glBindTexture(GL_TEXTURE_2D, state.gl.font);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ptr->width, ptr->height, GL_RGBA, GL_UNSIGNED_BYTE, ptr->pixels);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, ptr->width, ptr->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, ptr->pixels);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
+
 static void _pti_set_tilemap(pti_tilemap_t *ptr) {
 	// create texture (tileset)
 }
+
 static void _pti_set_tileset(pti_tileset_t *ptr) {
 	// create texture (tileset)
+	auto width = 64;
+	auto height = 56;
 	glGenTextures(1, &state.gl.tileset);
 	glBindTexture(GL_TEXTURE_2D, state.gl.tileset);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, ptr->width, ptr->height, GL_RGBA, GL_UNSIGNED_BYTE, ptr->pixels);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, ptr->pixels);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
