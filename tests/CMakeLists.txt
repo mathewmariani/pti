@@ -1,15 +1,17 @@
 macro(pti_executable target files)
-  add_executable(${target} platform_debug.cpp assets.c ${files})
-
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  add_definitions(-DPTI_TRACE_HOOKS)
-  endif()
+  add_executable(${target} platform_gl.cpp assets.c ${files})
 
   target_include_directories(${target} PRIVATE ${PTI_DIR})
   target_include_directories(${target} PRIVATE ${THIRDPARTY_DIR})
   target_link_libraries(${target} PRIVATE sokol)
-  target_link_libraries(${target} PRIVATE dbgui)
-  target_link_libraries(${target} PRIVATE imgui)
+
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_definitions(-DPTI_TRACE_HOOKS)
+    add_definitions(-DPTI_DEBUG)
+
+    target_link_libraries(${target} PRIVATE dbgui)
+    target_link_libraries(${target} PRIVATE imgui)
+  endif()
 
   emscripten(${target})
 endmacro()

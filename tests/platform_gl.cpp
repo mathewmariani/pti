@@ -5,9 +5,10 @@
 #include "sokol/sokol_app.h"
 #include "sokol/sokol_log.h"
 
-// libs
+#if defined(PTI_DEBUG)
 #include "dbgui/dbgui.h"
 #include "imgui/imgui.h"
+#endif
 
 #include <iostream>
 
@@ -232,22 +233,22 @@ static void sokol_init_gfx(void) {
 
 	glBindVertexArray(0);
 
-	const auto width = _pti.vm.screen.width;
-	const auto height = _pti.vm.screen.height;
+	const int width = _pti.vm.screen.width;
+	const int height = _pti.vm.screen.height;
 
 	// create texture
 	glGenTextures(1, &state.gl.color0);
 	glBindTexture(GL_TEXTURE_2D, state.gl.color0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	auto default_vs_stage = create_shader(GL_VERTEX_SHADER, default_vs_src);
-	auto default_fs_stage = create_shader(GL_FRAGMENT_SHADER, default_fs_src);
-	auto crt_fs_stage = create_shader(GL_FRAGMENT_SHADER, crt_fs_src);
+	GLuint default_vs_stage = create_shader(GL_VERTEX_SHADER, default_vs_src);
+	GLuint default_fs_stage = create_shader(GL_FRAGMENT_SHADER, default_fs_src);
+	GLuint crt_fs_stage = create_shader(GL_FRAGMENT_SHADER, crt_fs_src);
 
 	state.gl.program = create_program(default_vs_stage, default_fs_stage);
 	state.gl.crt = create_program(default_vs_stage, crt_fs_stage);
@@ -257,8 +258,8 @@ static void sokol_init_gfx(void) {
 }
 
 void sokol_gfx_draw() {
-	const auto width = _pti.vm.screen.width;
-	const auto height = _pti.vm.screen.height;
+	const int width = _pti.vm.screen.width;
+	const int height = _pti.vm.screen.height;
 
 	// clear default buffer
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -270,7 +271,7 @@ void sokol_gfx_draw() {
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, _pti.screen);
 
 	// bind shader
-	auto program = state.crt ? state.gl.crt : state.gl.program;
+	GLuint program = state.crt ? state.gl.crt : state.gl.program;
 	glUseProgram(program);
 	glUniform1i(glGetUniformLocation(state.gl.program, "screen"), 0);
 
@@ -281,8 +282,9 @@ void sokol_gfx_draw() {
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
+#if defined(PTI_DEBUG)
 void imgui_debug_draw() {
-	ImGui::Begin("PTI", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::Begin("PTI", NULL, ImGuiWindowFlags_AlwaysAutoResize);
 
 	ImGui::Checkbox("CRT: ", &state.crt);
 
@@ -387,6 +389,7 @@ void imgui_debug_draw() {
 
 	ImGui::End();
 }
+#endif
 
 static void _pti_set_font(pti_bitmap_t *ptr) {
 	glGenTextures(1, &state.gl.font);
@@ -404,9 +407,8 @@ static void _pti_set_tilemap(pti_tilemap_t *ptr) {
 }
 
 static void _pti_set_tileset(pti_tileset_t *ptr) {
-	// create texture (tileset)
-	auto width = 64;
-	auto height = 56;
+	const uint16_t width = ptr->width;
+	const uint16_t height = ptr->height;
 	glGenTextures(1, &state.gl.tileset);
 	glBindTexture(GL_TEXTURE_2D, state.gl.tileset);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, ptr->pixels);
@@ -421,10 +423,13 @@ static void init(void) {
 	/* initialize graphics */
 	sokol_init_gfx();
 
+#if defined(PTI_DEBUG)
 	/* initialize debug ui */
 	__dbgui_setup();
+#endif
 
 #if defined(PTI_TRACE_HOOKS)
+	/* install tracehooks */
 	pti_trace_hooks hooks;
 	hooks.set_font = _pti_set_font;
 	hooks.set_tilemap = _pti_set_tilemap;
@@ -444,7 +449,9 @@ static void cleanup(void) {
 	glDeleteTextures(1, &state.gl.color0);
 	glDeleteProgram(state.gl.program);
 	glDeleteProgram(state.gl.crt);
+#if defined(PTI_DEBUG)
 	__dbgui_shutdown();
+#endif
 }
 
 #define PTI_FRAMERATE (30.0)
@@ -475,6 +482,7 @@ static void frame(void) {
 	/* draw graphics */
 	sokol_gfx_draw();
 
+#if defined(PTI_DEBUG)
 	/* debug ui */
 	__dbgui_begin();
 	imgui_debug_draw();
@@ -482,6 +490,7 @@ static void frame(void) {
 		_pti.desc.debug_cb();
 	}
 	__dbgui_end();
+#endif
 }
 
 static inline void btn_down(int pti_key, int sapp_key, int sapp_alt, const sapp_event *ev) {
@@ -499,9 +508,11 @@ static inline void btn_up(int pti_key, int sapp_key, int sapp_alt, const sapp_ev
 }
 
 static void event(const sapp_event *ev) {
+#if defined(PTI_DEBUG)
 	if (__dbgui_event(ev)) {
 		return;
 	}
+#endif
 	switch (ev->type) {
 		/* keyboard: */
 		case SAPP_EVENTTYPE_KEY_DOWN:
