@@ -732,11 +732,10 @@ void pti_circf(int x, int y, int r, uint64_t color) {
 }
 
 void pti_line(int x0, int y0, int x1, int y1, uint64_t c) {
-	bool steep = false;
-	if (_pti_abs(x1 - x0) < _pti_abs(y1 - y0)) {
+	bool steep = _pti_abs(x1 - x0) < _pti_abs(y1 - y0);
+	if (steep) {
 		_pti_swap(x0, y0);
 		_pti_swap(x1, y1);
-		steep = true;
 	}
 
 	if (x0 > x1) {
@@ -751,13 +750,12 @@ void pti_line(int x0, int y0, int x1, int y1, uint64_t c) {
 	int y = y0;
 
 	for (int x = x0; x <= x1; x++) {
-		if (steep) {
-			_pti__transform(&y, &x);
-			_pti__set_pixel(y, x, c);
-		} else {
-			_pti__transform(&x, &y);
-			_pti__set_pixel(x, y, c);
-		}
+		int px = steep ? y : x;
+		int py = steep ? x : y;
+
+		_pti__transform(&px, &py);
+		_pti__set_pixel(px, py, c);
+
 		err += de;
 		if (err > dx) {
 			y += y1 > y0 ? 1 : -1;
