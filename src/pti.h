@@ -55,6 +55,8 @@ typedef struct pti_tileset_t {
 	uint32_t count;
 	uint16_t width;
 	uint16_t height;
+	uint16_t tile_w;
+	uint16_t tile_h;
 	void *pixels;// (width) x (height x count)
 } pti_tileset_t;
 
@@ -64,17 +66,24 @@ typedef struct pti_tilemap_t {
 	int *tiles;
 } pti_tilemap_t;
 
-typedef struct {
+typedef struct pti_bank_t {
 	uint8_t *begin;
 	uint8_t *end;
 	uint8_t *it;
 	uint8_t *cap;
 } pti_bank_t;
 
+typedef struct pti_trace_hooks {
+	void (*set_tilemap)(pti_tilemap_t *ptr);
+	void (*set_tileset)(pti_tileset_t *ptr);
+	void (*set_font)(pti_bitmap_t *ptr);
+} pti_trace_hooks;
+
 typedef struct pti_desc {
 	void (*init_cb)(void);
 	void (*frame_cb)(void);
 	void (*cleanup_cb)(void);
+	void (*debug_cb)(void);
 
 	int memory_size;
 	int width;
@@ -86,13 +95,14 @@ extern pti_desc pti_main(int argc, char *argv[]);
 
 // public functions
 void pti_init(const pti_desc *desc);
+void pti_install_trace_hooks(const pti_trace_hooks *trace_hooks);
 
 // api functions
 
 //>> virutal machine api
-void pti_bank_init(pti_bank_t *bank, uint32_t capacity);
+void pti_bank_init(pti_bank_t *bank, const size_t capacity);
 void pti_load_bank(pti_bank_t *bank);
-void *pti_alloc(pti_bank_t *bank, const uint32_t size);
+void *pti_alloc(pti_bank_t *bank, const size_t size);
 void pti_reload(void);
 void pti_memcpy(void *dst, const void *src, size_t len);
 void pti_memset(void *dst, const int value, size_t len);
@@ -193,6 +203,16 @@ inline void pti_spr(const pti_bitmap_t &bitmap, int n, int x, int y, bool flip_x
 #include <sys/mman.h>
 #endif
 
+#if defined(PTI_TRACE_HOOKS)
+#define _PTI_TRACE_ARGS(fn, ...) \
+	if (_pti.hooks.fn) { _pti.hooks.fn(__VA_ARGS__); }
+#define _PTI_TRACE_NOARGS(fn) \
+	if (_pti.hooks.fn) { _pti.hooks.fn(); }
+#else
+#define _PTI_TRACE_ARGS(fn, ...)
+#define _PTI_TRACE_NOARGS(fn)
+#endif
+
 #if defined(PTI_SIMD)
 #include <emmintrin.h>
 #include <tmmintrin.h>
@@ -230,6 +250,9 @@ typedef struct {
 	_pti__vm_t vm;
 	uint32_t *screen;
 	void *data;
+#if defined(PTI_TRACE_HOOKS)
+	pti_trace_hooks hooks;
+#endif
 } _pti__t;
 static _pti__t _pti;
 
@@ -239,7 +262,7 @@ _PTI_PRIVATE inline void *_pti__ptr_to_bank(void *ptr) {
 	return (void *) ((uintptr_t) ptr + ((uintptr_t) _pti.data - (uintptr_t) _pti.cart.begin));
 }
 
-_PTI_PRIVATE void *_pti__virtual_reserve(void *ptr, const uint32_t size) {
+_PTI_PRIVATE void *_pti__virtual_reserve(void *ptr, const size_t size) {
 #if defined(_PTI_WIN32)
 	// Reserves a range of the process's virtual offsetess space without
 	// allocating any actual physical storage in memory or in the paging file on
@@ -337,7 +360,7 @@ void pti_init(const pti_desc *desc) {
 	pti_bank_init(&_pti.ram, capacity);
 
 	// allocate virtual machine
-	_pti.screen = pti_alloc(&_pti.ram, vram_size);
+	_pti.screen = (uint32_t *) pti_alloc(&_pti.ram, vram_size);
 	_pti.data = pti_alloc(&_pti.ram, desc->memory_size);
 
 	// init random
@@ -346,13 +369,21 @@ void pti_init(const pti_desc *desc) {
 	}
 }
 
+void pti_install_trace_hooks(const pti_trace_hooks *trace_hooks) {
+#if defined(PTI_TRACE_HOOKS)
+	_pti.hooks = *trace_hooks;
+#else
+#warning "pti.h: PTI_TRACE_HOOKS not defined."
+#endif
+}
+
 // api functions
 
 //>> virutal machine
 
-void pti_bank_init(pti_bank_t *bank, uint32_t capacity) {
+void pti_bank_init(pti_bank_t *bank, const size_t capacity) {
 	// allocate memory
-	void *ptr = _pti__virtual_reserve(NULL, capacity);
+	uint8_t *ptr = (uint8_t *) _pti__virtual_reserve(NULL, capacity);
 	bank->begin = ptr;
 	bank->it = ptr;
 	bank->end = ptr;
@@ -364,11 +395,11 @@ void pti_load_bank(pti_bank_t *bank) {
 	pti_reload();
 }
 
-void *pti_alloc(pti_bank_t *bank, const uint32_t size) {
+void *pti_alloc(pti_bank_t *bank, const size_t size) {
 	void *ptr;
 	if ((bank->end - bank->it) < size) {
 		PTI_ASSERT((bank->cap - bank->it) >= size);
-		uint32_t additional_size = size - (uint32_t) (bank->end - bank->it);
+		size_t additional_size = size - (bank->end - bank->it);
 		additional_size = _pti_min((bank->cap - bank->it), _pti_align_to(additional_size, 4096));
 		ptr = _pti__virtual_commit(bank->end, additional_size);
 		bank->end += additional_size;
@@ -379,7 +410,7 @@ void *pti_alloc(pti_bank_t *bank, const uint32_t size) {
 }
 
 _PTI_PRIVATE void pti_free(pti_bank_t *bank) {
-	_pti__virtual_free(bank, (uint32_t) (bank->cap - bank->begin));
+	_pti__virtual_free(bank, (bank->cap - bank->begin));
 	memset(bank, 0, sizeof(pti_bank_t));
 }
 
@@ -396,22 +427,24 @@ void pti_memset(void *dst, const int value, size_t len) {
 }
 
 void pti_set_tilemap(pti_tilemap_t *ptr) {
+	_PTI_TRACE_ARGS(set_tilemap, ptr);
 	_pti.vm.tilemap = ptr;
 }
 
 void pti_set_tileset(pti_tileset_t *ptr) {
+	_PTI_TRACE_ARGS(set_tileset, ptr);
 	_pti.vm.draw.tileset = ptr;
 }
 
 void pti_set_font(pti_bitmap_t *ptr) {
+	_PTI_TRACE_ARGS(set_font, ptr);
 	_pti.vm.draw.font = ptr;
 }
 
 //>> memory api
 
 const uint8_t pti_peek(const uint32_t offset, const uint32_t index) {
-	const void *dst = (void *) _pti.ram.begin;
-	return *(const uint8_t *) (dst + offset + index);
+	return *(_pti.ram.begin + offset + index);
 }
 
 const uint16_t pti_peek2(const uint32_t offset, const uint32_t index) {
@@ -433,8 +466,7 @@ const uint32_t pti_peek4(const uint32_t offset, const uint32_t index) {
 }
 
 void pti_poke(const uint32_t offset, const uint32_t index, const uint8_t value) {
-	const void *dst = (void *) _pti.ram.begin;
-	*(uint8_t *) (dst + offset + index) = value;
+	*(_pti.ram.begin + offset + index) = value;
 }
 
 void pti_poke2(const uint32_t offset, const uint32_t index, const uint16_t value) {
@@ -533,37 +565,30 @@ _PTI_PRIVATE inline void _pti__set_pixel(int x, int y, uint64_t c) {
 	*(_pti.screen + (x + y * _pti.vm.screen.width)) = _pti__get_dither_bit(x, y) ? (c >> 32) & 0xffffffff : (c >> 0) & 0xffffffff;
 }
 
-_PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, int sx, int sy, int sw, int sh, bool flip_x, bool flip_y) {
-	int src_x = sx;
-	int src_y = sy;
-	int dst_x1 = x;
-	int dst_y1 = y;
-	int dst_x2 = x + w - 1;
-	int dst_y2 = y + h - 1;
-	int src_x1 = src_x;
-	int src_y1 = src_y;
-
-	const int ix = flip_x ? -1 : 1;
-	const int iy = flip_y ? -1 : 1;
-
-	// clip:
+_PTI_PRIVATE void _pti__plot(void *pixels, int n, int dst_x, int dst_y, int dst_w, int dst_h, int src_x, int src_y, int src_w, int src_h, bool flip_x, bool flip_y) {
 	const int16_t clip_x0 = _pti.vm.draw.clip_x0;
 	const int16_t clip_y0 = _pti.vm.draw.clip_y0;
 	const int16_t clip_x1 = _pti.vm.draw.clip_x1;
 	const int16_t clip_y1 = _pti.vm.draw.clip_y1;
 
-	if ((dst_x1 >= clip_x1 || dst_x2 < clip_x0) || (dst_y1 >= clip_y1 || dst_y2 < clip_y0)) {
+	int dst_x1 = dst_x;
+	int dst_y1 = dst_y;
+	int dst_x2 = dst_x + dst_w - 1;
+	int dst_y2 = dst_y + dst_h - 1;
+
+	if ((dst_x2 < clip_x0 || dst_x1 >= clip_x1) || (dst_y2 < clip_y0 || dst_y1 >= clip_y1)) {
 		return;
 	}
 
 	if (dst_x1 < clip_x0) {
-		src_x1 -= dst_x1;
+		src_x += (clip_x0 - dst_x1);
 		dst_x1 = clip_x0;
 	}
 	if (dst_y1 < clip_y0) {
-		src_y1 -= dst_y1;
+		src_y += (clip_y0 - dst_y1);
 		dst_y1 = clip_y0;
 	}
+
 	if (dst_x2 >= clip_x1) {
 		dst_x2 = clip_x1 - 1;
 	}
@@ -571,61 +596,35 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int x, int y, int w, int h, in
 		dst_y2 = clip_y1 - 1;
 	}
 
+	int ix = flip_x ? -1 : 1;
+	int iy = flip_y ? -1 : 1;
 	if (flip_x) {
-		src_x1 += w - 1;
+		src_x += (dst_x2 - dst_x1);
 	}
 	if (flip_y) {
-		src_y1 += h - 1;
+		src_y += (dst_y2 - dst_y1);
 	}
 
-	const size_t size = w * h * sizeof(int);
-	uint32_t *src = pixels + size * n;
+	uint32_t *src = (uint32_t *) pixels + n * (src_w * src_h);
 	uint32_t *dst = _pti.screen;
-
-	const int dst_width = _pti.desc.width;
-	const int src_width = sw;
-
-	const int clipped_width = dst_x2 - dst_x1 + 1;
-	const int dst_next_row = dst_width - clipped_width;
-	const int src_next_row = (flip_x && flip_y)
-									 ? (src_width - clipped_width)
-							 : (flip_x || flip_y)
-									 ? (src_width + clipped_width)
-									 : (src_width - clipped_width);
-
-	uint32_t *dst_pixel = dst + dst_y1 * dst_width + dst_x1;
-	uint32_t *src_pixel = src + src_y1 * src_width + src_x1;
 	uint32_t color_key = _pti.vm.draw.ckey;
 
+	const int dst_width = _pti.desc.width;
+	const int clipped_width = dst_x2 - dst_x1 + 1;
 
-#if defined(PTI_SIMD)
-	__m128i key = _mm_set1_epi32(color_key);
-	for (int dst_y = dst_y1; dst_y <= dst_y2; dst_y++) {
-		for (int i = 0; i < clipped_width; i += 4) {
-			__m128i src_vals = _mm_loadu_si128((__m128i *) src_pixel);
-			__m128i dst_vals = _mm_loadu_si128((__m128i *) dst_pixel);
-			__m128i mask = _mm_cmpeq_epi32(src_vals, key);
-			__m128i final = _mm_blendv_epi8(dst_vals, src_vals, _mm_andnot_si128(mask, _mm_set1_epi32(-1)));
-			_mm_storeu_si128((__m128i *) dst_pixel, final);
-			src_pixel += 4 * ix;
-			dst_pixel += 4;
-		}
-		src_pixel += src_next_row * iy;
-		dst_pixel += dst_next_row;
-	}
-#else
-	for (int dst_y = dst_y1; dst_y <= dst_y2; dst_y++) {
-		for (int i = 0; i < clipped_width; i++) {
-			uint32_t src_color = *src_pixel;
-			uint32_t dst_color = *dst_pixel;
-			*dst_pixel = src_color != color_key ? src_color : dst_color;
+	for (int y = dst_y1; y <= dst_y2; y++) {
+		uint32_t *dst_pixel = dst + y * dst_width + dst_x1;
+		int src_row = src_y + (y - dst_y1) * iy;
+		uint32_t *src_pixel = src + src_row * src_w + src_x;
+
+		for (int x = 0; x < clipped_width; x++) {
+			uint32_t color = *src_pixel;
+			if (color != color_key) {
+				dst_pixel[x] = color;
+			}
 			src_pixel += ix;
-			dst_pixel++;
 		}
-		dst_pixel += dst_next_row;
-		src_pixel += src_next_row * iy;
 	}
-#endif
 }
 
 void pti_camera(int x, int y) {
@@ -786,23 +785,36 @@ void pti_rectf(int x, int y, int w, int h, uint64_t color) {
 void pti_map(int x, int y) {
 	const int map_w = _pti.vm.tilemap->width;
 	const int map_h = _pti.vm.tilemap->height;
-	const int tile_w = _pti.vm.draw.tileset->width;
-	const int tile_h = _pti.vm.draw.tileset->height;
+
+	const pti_tileset_t *tileset = _pti.vm.draw.tileset;
+	const int tile_w = tileset->tile_w;
+	const int tile_h = tileset->tile_h;
+
+	const int tiles_per_row = tileset->width / tile_w;
 
 	const int *tiles = (int *) _pti__ptr_to_bank((void *) _pti.vm.tilemap->tiles);
-	const void *pixels = (void *) _pti__ptr_to_bank((void *) _pti.vm.draw.tileset->pixels);
-
+	void *pixels = (void *) _pti__ptr_to_bank((void *) tileset->pixels);
 
 	_pti__transform(&x, &y);
 
-	int i, j, t;
-	for (j = 0; j < map_h; j++) {
-		for (i = 0; i < map_w; i++) {
-			t = *(tiles + i + j * map_w);
-			if (t == 0) {
+	for (int j = 0; j < map_h; j++) {
+		for (int i = 0; i < map_w; i++) {
+			int t = tiles[i + j * map_w];
+			if (t <= 0) {
 				continue;
 			}
-			_pti__plot(pixels, t, x + (i * tile_w), y + (j * tile_h), tile_w, tile_h, 0, 0, tile_w, tile_h, false, false);
+
+			int src_x = (t % tiles_per_row) * tileset->tile_w;
+			int src_y = (t / tiles_per_row) * tileset->tile_h;
+
+			_pti__plot(
+					tileset->pixels, 0,
+					x + i * tileset->tile_w,
+					y + j * tileset->tile_h,
+					tileset->tile_w, tileset->tile_h,
+					src_x, src_y,
+					tileset->width, tileset->height,
+					false, false);
 		}
 	}
 }
