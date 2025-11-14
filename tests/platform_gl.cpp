@@ -284,110 +284,169 @@ void sokol_gfx_draw() {
 
 #if defined(PTI_DEBUG)
 void imgui_debug_draw() {
-	ImGui::Begin("PTI", NULL, ImGuiWindowFlags_AlwaysAutoResize);
+	static const ImVec2 uv_min(0.0f, 0.0f);
+	static const ImVec2 uv_max(1.0f, 1.0f);
 
-	ImGui::Checkbox("CRT: ", &state.crt);
+	static bool show_display_window = false;
+	static bool show_graphics_window = false;
+	static bool show_hardware_window = false;
+	static bool show_memory_window = false;
+	static bool show_cart_window = false;
+	static bool show_tileset_window = false;
+	static bool show_font_window = false;
+	static bool show_tilemap_window = false;
 
-	const ImVec2 uv_min(0.0f, 0.0f);
-	const ImVec2 uv_max(1.0f, 1.0f);
-
-	if (ImGui::CollapsingHeader("Screen")) {
-		ImGui::Text("Dimensions: (%d, %d)", _pti.vm.screen.width, _pti.vm.screen.height);
-		ImGui::Text("Location: %p", _pti.screen);
-
-		const ImVec2 color0_vec2{(float) _pti.vm.screen.width, (float) _pti.vm.screen.height};
-		ImGui::Image((ImTextureID) (intptr_t) state.gl.color0, color0_vec2, uv_min, uv_max);
+	if (ImGui::BeginMainMenuBar()) {
+		if (ImGui::BeginMenu("pti")) {
+			if (ImGui::MenuItem("Display")) {
+				show_display_window = true;
+			}
+			if (ImGui::MenuItem("Graphics")) {
+				show_graphics_window = true;
+			}
+			if (ImGui::MenuItem("Hardware")) {
+				show_hardware_window = true;
+			}
+			if (ImGui::MenuItem("Memory")) {
+				show_memory_window = true;
+			}
+			if (ImGui::MenuItem("Cart")) {
+				show_cart_window = true;
+			}
+			if (ImGui::MenuItem("Tileset")) {
+				show_tileset_window = true;
+			}
+			if (ImGui::MenuItem("Font")) {
+				show_font_window = true;
+			}
+			if (ImGui::MenuItem("Tilemap")) {
+				show_tilemap_window = true;
+			}
+			ImGui::EndMenu();
+		}
+		ImGui::EndMainMenuBar();
 	}
 
-	// virtual machine
-	if (ImGui::CollapsingHeader("Draw")) {
-		ImGui::Text("Camera: (%d, %d)", _pti.vm.draw.cam_x, _pti.vm.draw.cam_y);
-		ImGui::Text("Clip: ((%d, %d), (%d, %d))", _pti.vm.draw.clip_x0, _pti.vm.draw.clip_y0, _pti.vm.draw.clip_x1, _pti.vm.draw.clip_y1);
-		ImGui::Text("Color Key: %d", _pti.vm.draw.ckey);
-		ImGui::Text("Dither: %d", _pti.vm.draw.dither);
+	if (show_display_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Display", &show_display_window)) {
+			ImGui::Text("Dimensions: (%d, %d)", _pti.vm.screen.width, _pti.vm.screen.height);
+			ImGui::Text("Location: %p", _pti.screen);
+			ImGui::Checkbox("CRT: ", &state.crt);
+
+			const ImVec2 color0_vec2{(float) _pti.vm.screen.width, (float) _pti.vm.screen.height};
+			ImGui::Image((ImTextureID) (intptr_t) state.gl.color0, color0_vec2, uv_min, uv_max);
+		}
+		ImGui::End();
 	}
 
-	// tileset
-	if (ImGui::CollapsingHeader("Tileset")) {
-		ImGui::Text("Width: %d", _pti.vm.draw.tileset->width);
-		ImGui::Text("Height: %d", _pti.vm.draw.tileset->height);
-		ImGui::Text("Tile Width: %d", _pti.vm.draw.tileset->tile_w);
-		ImGui::Text("Tile Height: %d", _pti.vm.draw.tileset->tile_h);
-		ImGui::Text("Pixels: %p", _pti.vm.draw.tileset->pixels);
-
-		const ImVec2 tileset_vec2{(float) _pti.vm.draw.tileset->width, (float) _pti.vm.draw.tileset->height};
-		ImGui::Image((ImTextureID) (intptr_t) state.gl.tileset, tileset_vec2, uv_min, uv_max);
+	if (show_graphics_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Graphics", &show_graphics_window)) {
+			ImGui::Text("Camera: (%d, %d)", _pti.vm.draw.cam_x, _pti.vm.draw.cam_y);
+			ImGui::Text("Clip: ((%d, %d), (%d, %d))", _pti.vm.draw.clip_x0, _pti.vm.draw.clip_y0, _pti.vm.draw.clip_x1, _pti.vm.draw.clip_y1);
+			ImGui::Text("Color Key: %d", _pti.vm.draw.ckey);
+			ImGui::Text("Dither: %d", _pti.vm.draw.dither);
+		}
+		ImGui::End();
 	}
 
-	// font
-	if (ImGui::CollapsingHeader("Font")) {
-		ImGui::Text("Width: %d", _pti.vm.draw.font->width);
-		ImGui::Text("Height: %d", _pti.vm.draw.font->height);
-		ImGui::Text("Pixels: %p", _pti.vm.draw.font->pixels);
+	if (show_hardware_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Hardware", &show_hardware_window)) {
+			// buttons
+			ImGui::Text("Botton [Left]: %d", _pti.vm.hardware.btn_state[0]);
+			ImGui::Text("Botton [Right]: %d", _pti.vm.hardware.btn_state[1]);
+			ImGui::Text("Botton [Up]: %d", _pti.vm.hardware.btn_state[2]);
+			ImGui::Text("Botton [Down]: %d", _pti.vm.hardware.btn_state[3]);
+			ImGui::Text("Botton [D]: %d", _pti.vm.hardware.btn_state[4]);
+			ImGui::Text("Botton [S]: %d", _pti.vm.hardware.btn_state[5]);
+			ImGui::Text("Botton [W]: %d", _pti.vm.hardware.btn_state[6]);
+			ImGui::Text("Botton [A]: %d", _pti.vm.hardware.btn_state[7]);
+			ImGui::Text("Botton [8]: %d", _pti.vm.hardware.btn_state[8]);
 
-		const ImVec2 font_vec2{(float) _pti.vm.draw.font->width, (float) _pti.vm.draw.font->height};
-		ImGui::Image((ImTextureID) (intptr_t) state.gl.font, font_vec2, uv_min, uv_max);
+			// random
+			ImGui::Text("Random [0]: %d", _pti.vm.hardware.rnd_reg[0]);
+			ImGui::Text("Random [1]: %d", _pti.vm.hardware.rnd_reg[1]);
+			ImGui::Text("Random [2]: %d", _pti.vm.hardware.rnd_reg[2]);
+			ImGui::Text("Random [3]: %d", _pti.vm.hardware.rnd_reg[3]);
+		}
+		ImGui::End();
 	}
 
-	// buttons
-	if (ImGui::CollapsingHeader("Buttons")) {
-		ImGui::Text("Botton [Left]: %d", _pti.vm.hardware.btn_state[0]);
-		ImGui::Text("Botton [Right]: %d", _pti.vm.hardware.btn_state[1]);
-		ImGui::Text("Botton [Up]: %d", _pti.vm.hardware.btn_state[2]);
-		ImGui::Text("Botton [Down]: %d", _pti.vm.hardware.btn_state[3]);
-		ImGui::Text("Botton [D]: %d", _pti.vm.hardware.btn_state[4]);
-		ImGui::Text("Botton [S]: %d", _pti.vm.hardware.btn_state[5]);
-		ImGui::Text("Botton [W]: %d", _pti.vm.hardware.btn_state[6]);
-		ImGui::Text("Botton [A]: %d", _pti.vm.hardware.btn_state[7]);
-		ImGui::Text("Botton [8]: %d", _pti.vm.hardware.btn_state[8]);
+	if (show_memory_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Memory", &show_memory_window)) {
+			const size_t used_bytes = (size_t) (_pti.ram.it - _pti.ram.begin);
+			const size_t capacity_bytes = (size_t) (_pti.ram.cap - _pti.ram.begin);
+
+			const float used_kb = used_bytes / 1024.0f;
+			const float capacity_kb = capacity_bytes / 1024.0f;
+
+			ImGui::Text("Usage: %.2f KB / %.2f KB (%.2f%%)\n", used_kb, capacity_kb, (used_kb / capacity_kb) * 100.0);
+			ImGui::Text("begin: %p", _pti.ram.begin);
+			ImGui::Text("cap: %p", _pti.ram.cap);
+			ImGui::Text("end: %p", _pti.ram.end);
+			ImGui::Text("it: %p", _pti.ram.it);
+		}
+		ImGui::End();
 	}
 
-	// random
-	if (ImGui::CollapsingHeader("Random")) {
-		ImGui::Text("Random [0]: %d", _pti.vm.hardware.rnd_reg[0]);
-		ImGui::Text("Random [1]: %d", _pti.vm.hardware.rnd_reg[1]);
-		ImGui::Text("Random [2]: %d", _pti.vm.hardware.rnd_reg[2]);
-		ImGui::Text("Random [3]: %d", _pti.vm.hardware.rnd_reg[3]);
+	if (show_cart_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Cart", &show_cart_window)) {
+			const size_t used_bytes = (size_t) (_pti.cart.it - _pti.cart.begin);
+			const size_t capacity_bytes = (size_t) (_pti.cart.cap - _pti.cart.begin);
+
+			const float used_kb = used_bytes / 1024.0f;
+			const float capacity_kb = capacity_bytes / 1024.0f;
+
+			ImGui::Text("Usage: %.2f KB / %.2f KB (%.2f%%)\n", used_kb, capacity_kb, (used_kb / capacity_kb) * 100.0);
+			ImGui::Text("begin: %p", _pti.cart.begin);
+			ImGui::Text("cap: %p", _pti.cart.cap);
+			ImGui::Text("end: %p", _pti.cart.end);
+			ImGui::Text("it: %p", _pti.cart.it);
+		}
+		ImGui::End();
 	}
 
-	// buttons
-	if (ImGui::CollapsingHeader("Tilemap")) {
-		ImGui::Text("Width: %d", _pti.vm.tilemap->width);
-		ImGui::Text("Height: %d", _pti.vm.tilemap->height);
-		ImGui::Text("Tiles: %p", _pti.vm.tilemap->tiles);
+	if (show_tileset_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Tileset", &show_tileset_window)) {
+			ImGui::Text("Width: %d", _pti.vm.draw.tileset->width);
+			ImGui::Text("Height: %d", _pti.vm.draw.tileset->height);
+			ImGui::Text("Tile Width: %d", _pti.vm.draw.tileset->tile_w);
+			ImGui::Text("Tile Height: %d", _pti.vm.draw.tileset->tile_h);
+			ImGui::Text("Pixels: %p", _pti.vm.draw.tileset->pixels);
+
+			const ImVec2 tileset_vec2{(float) _pti.vm.draw.tileset->width, (float) _pti.vm.draw.tileset->height};
+			ImGui::Image((ImTextureID) (intptr_t) state.gl.tileset, tileset_vec2, uv_min, uv_max);
+		}
+		ImGui::End();
 	}
 
-	// ram
-	if (ImGui::CollapsingHeader("Ram")) {
-		const size_t used_bytes = (size_t) (_pti.ram.it - _pti.ram.begin);
-		const size_t capacity_bytes = (size_t) (_pti.ram.cap - _pti.ram.begin);
+	if (show_font_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Font", &show_font_window)) {
+			ImGui::Text("Width: %d", _pti.vm.draw.font->width);
+			ImGui::Text("Height: %d", _pti.vm.draw.font->height);
+			ImGui::Text("Pixels: %p", _pti.vm.draw.font->pixels);
 
-		const float used_kb = used_bytes / 1024.0f;
-		const float capacity_kb = capacity_bytes / 1024.0f;
-
-		ImGui::Text("Usage: %.2f KB / %.2f KB (%.2f%%)\n", used_kb, capacity_kb, (used_kb / capacity_kb) * 100.0);
-		ImGui::Text("begin: %p", _pti.ram.begin);
-		ImGui::Text("cap: %p", _pti.ram.cap);
-		ImGui::Text("end: %p", _pti.ram.end);
-		ImGui::Text("it: %p", _pti.ram.it);
+			const ImVec2 font_vec2{(float) _pti.vm.draw.font->width, (float) _pti.vm.draw.font->height};
+			ImGui::Image((ImTextureID) (intptr_t) state.gl.font, font_vec2, uv_min, uv_max);
+		}
+		ImGui::End();
 	}
 
-	// cart
-	if (ImGui::CollapsingHeader("Cart")) {
-		const size_t used_bytes = (size_t) (_pti.cart.it - _pti.cart.begin);
-		const size_t capacity_bytes = (size_t) (_pti.cart.cap - _pti.cart.begin);
-
-		const float used_kb = used_bytes / 1024.0f;
-		const float capacity_kb = capacity_bytes / 1024.0f;
-
-		ImGui::Text("Usage: %.2f KB / %.2f KB (%.2f%%)\n", used_kb, capacity_kb, (used_kb / capacity_kb) * 100.0);
-		ImGui::Text("begin: %p", _pti.cart.begin);
-		ImGui::Text("cap: %p", _pti.cart.cap);
-		ImGui::Text("end: %p", _pti.cart.end);
-		ImGui::Text("it: %p", _pti.cart.it);
+	if (show_tilemap_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Tilemap", &show_tilemap_window)) {
+			ImGui::Text("Width: %d", _pti.vm.tilemap->width);
+			ImGui::Text("Height: %d", _pti.vm.tilemap->height);
+			ImGui::Text("Tiles: %p", _pti.vm.tilemap->tiles);
+		}
+		ImGui::End();
 	}
-
-	ImGui::End();
 }
 #endif
 
