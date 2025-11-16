@@ -104,6 +104,7 @@ void pti_bank_init(pti_bank_t *bank, const size_t capacity);
 void pti_load_bank(pti_bank_t *bank);
 void *pti_alloc(pti_bank_t *bank, const size_t size);
 void pti_reload(void);
+void pti_exit(void);
 void pti_memcpy(void *dst, const void *src, size_t len);
 void pti_memset(void *dst, const int value, size_t len);
 void pti_set_tilemap(pti_tilemap_t *ptr);
@@ -161,7 +162,7 @@ inline void pti_spr(const pti_bitmap_t &bitmap, int n, int x, int y, bool flip_x
 
 #ifdef PTI_IMPL
 
-#include <stdlib.h>// malloc, free
+#include <stdlib.h>// malloc, free, exit
 
 #if defined(__APPLE__)
 // apple
@@ -416,6 +417,10 @@ _PTI_PRIVATE void pti_free(pti_bank_t *bank) {
 
 void pti_reload(void) {
 	pti_memcpy(_pti.data, _pti.cart.begin, (uint32_t) (_pti.cart.cap - _pti.cart.begin));
+}
+
+void pti_exit(void) {
+	exit(0);
 }
 
 void pti_memcpy(void *dst, const void *src, size_t len) {
