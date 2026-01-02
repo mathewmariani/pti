@@ -3,6 +3,7 @@
 
 // sokol
 #include "sokol/sokol_app.h"
+#include "sokol/sokol_audio.h"
 #include "sokol/sokol_log.h"
 
 #if defined(PTI_DEBUG)
@@ -59,15 +60,21 @@ sapp_desc sokol_main(int argc, char *argv[]) {
 			},
 #if defined(SOKOL_GLCORE)
 #if defined(__APPLE__)
-			.gl_major_version = 4,
-			.gl_minor_version = 1,
+			.gl = {
+					.major_version = 4,
+					.minor_version = 1,
+			}
 #else
-			.gl_major_version = 4,
-			.gl_minor_version = 2,
+			.gl = {
+					.major_version = 4,
+					.minor_version = 2,
+			}
 #endif
 #endif
 	};
 }
+
+#define NUM_SAMPLES (32)
 
 static struct {
 	struct {
@@ -81,6 +88,10 @@ static struct {
 	} gl;
 
 	bool crt = false;
+
+	uint32_t even_odd;
+	int sample_pos;
+	float samples[NUM_SAMPLES];
 
 #if defined(PTI_TRACE_HOOKS)
 	pti_trace_hooks hooks;
@@ -477,6 +488,13 @@ static void init(void) {
 	/* initialize graphics */
 	gl_init();
 
+	/* initialize audio */
+	auto audio_desc = (saudio_desc) {
+			.logger = {
+					.func = slog_func,
+			}};
+	saudio_setup(audio_desc);
+
 #if defined(PTI_DEBUG)
 	/* initialize debug ui */
 	__dbgui_setup();
@@ -498,6 +516,7 @@ static void init(void) {
 }
 
 static void cleanup(void) {
+	saudio_shutdown();
 	glDeleteVertexArrays(1, &state.gl.vao);
 	glDeleteBuffers(1, &state.gl.vbo);
 	glDeleteTextures(1, &state.gl.color0);
@@ -519,6 +538,22 @@ static void frame(void) {
 
 	/* draw graphics */
 	gl_draw();
+
+	/* handle audio */
+	int num_frames = saudio_expect();
+	float s;
+	for (int i = 0; i < num_frames; i++) {
+		if (state.even_odd++ & (1 << 5)) {
+			s = 0.05f;
+		} else {
+			s = -0.05f;
+		}
+		state.samples[state.sample_pos++] = s;
+		if (state.sample_pos == NUM_SAMPLES) {
+			state.sample_pos = 0;
+			saudio_push(state.samples, NUM_SAMPLES);
+		}
+	}
 
 #if defined(PTI_DEBUG)
 	/* debug ui */

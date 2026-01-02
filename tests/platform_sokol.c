@@ -37,11 +37,15 @@ sapp_desc sokol_main(int argc, char *argv[]) {
 			},
 #if defined(SOKOL_GLCORE)
 #if defined(__APPLE__)
-			.gl_major_version = 4,
-			.gl_minor_version = 1,
+			.gl = {
+					.major_version = 4,
+					.minor_version = 1,
+			}
 #else
-			.gl_major_version = 4,
-			.gl_minor_version = 2,
+			.gl = {
+					.major_version = 4,
+					.minor_version = 2,
+			}
 #endif
 #endif
 	};

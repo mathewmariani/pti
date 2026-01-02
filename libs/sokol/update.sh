@@ -6,6 +6,7 @@ SOKOL_PREFIX="https://raw.githubusercontent.com/floooh/sokol/master"
 
 # headers
 SOKOL_APP_H="$SOKOL_PREFIX/sokol_app.h"
+SOKOL_AUDIO_H="$SOKOL_PREFIX/sokol_audio.h"
 SOKOL_GFX_H="$SOKOL_PREFIX/sokol_gfx.h"
 SOKOL_GLUE_H="$SOKOL_PREFIX/sokol_glue.h"
 SOKOL_LOG_H="$SOKOL_PREFIX/sokol_log.h"
@@ -19,6 +20,7 @@ OUTPUT=./libs/sokol
 
 # curl all headers and utils
 curl $SOKOL_APP_H > $OUTPUT/sokol_app.h
+curl $SOKOL_AUDIO_H > $OUTPUT/sokol_audio.h
 curl $SOKOL_GFX_H > $OUTPUT/sokol_gfx.h
 curl $SOKOL_GLUE_H > $OUTPUT/sokol_glue.h
 curl $SOKOL_LOG_H > $OUTPUT/sokol_log.h

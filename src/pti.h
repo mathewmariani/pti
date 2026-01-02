@@ -172,6 +172,10 @@ void pti_map(int x, int y);
 void pti_spr(const pti_bitmap_t *bitmap, int n, int x, int y, bool flip_x, bool flip_y);
 void pti_print(const char *text, int x, int y);
 
+//>> sound api
+void pti_sfx(int n, int channel, int offset);
+void pti_music(void);
+
 #ifdef __cplusplus
 }// extern "C"
 
