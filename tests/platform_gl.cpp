@@ -74,8 +74,6 @@ sapp_desc sokol_main(int argc, char *argv[]) {
 	};
 }
 
-#define NUM_SAMPLES (32)
-
 static struct {
 	struct {
 		GLuint vao;
@@ -89,9 +87,8 @@ static struct {
 
 	bool crt = false;
 
-	uint32_t even_odd;
-	int sample_pos;
-	float samples[NUM_SAMPLES];
+	pti_audio_t tone;
+
 
 #if defined(PTI_TRACE_HOOKS)
 	pti_trace_hooks hooks;
@@ -287,6 +284,43 @@ void gl_draw() {
 	glBindTexture(GL_TEXTURE_2D, state.gl.color0);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
+
+static void sokol_audio_cb(float *buffer, int num_frames, int num_channels) {
+	// always clear buffer
+	memset(buffer, 0, num_frames * num_channels * sizeof(float));
+
+	for (int i = 0; i < num_frames; i++) {
+		float mixed = 0.0f;
+
+		// mix your 4 virtual channels
+		for (int ch = 0; ch < PTI_NUM_CHANNELS; ch++) {
+			if (!_pti.vm.audio.channel[ch].playing) continue;
+
+			pti_audio_t *sfx = _pti.vm.audio.channel[ch].sfx;
+			int pos = _pti.vm.audio.channel[ch].position;
+
+			mixed += sfx->samples[pos];
+
+			pos++;
+			if (pos >= sfx->num_frames) {
+				if (_pti.vm.audio.channel[ch].looping) {
+					pos = 0;
+				} else {
+					_pti.vm.audio.channel[ch].playing = false;
+					pos = sfx->num_frames - 1;
+				}
+			}
+
+			_pti.vm.audio.channel[ch].position = pos;
+		}
+
+		// write mixed sample to all output channels
+		for (int c = 0; c < num_channels; c++) {
+			buffer[i * num_channels + c] = mixed;
+		}
+	}
+}
+
 
 #if defined(PTI_DEBUG)
 void imgui_debug_draw() {
@@ -490,6 +524,7 @@ static void init(void) {
 
 	/* initialize audio */
 	auto audio_desc = (saudio_desc) {
+			.stream_cb = sokol_audio_cb,
 			.logger = {
 					.func = slog_func,
 			}};
@@ -538,22 +573,6 @@ static void frame(void) {
 
 	/* draw graphics */
 	gl_draw();
-
-	/* handle audio */
-	int num_frames = saudio_expect();
-	float s;
-	for (int i = 0; i < num_frames; i++) {
-		if (state.even_odd++ & (1 << 5)) {
-			s = 0.05f;
-		} else {
-			s = -0.05f;
-		}
-		state.samples[state.sample_pos++] = s;
-		if (state.sample_pos == NUM_SAMPLES) {
-			state.sample_pos = 0;
-			saudio_push(state.samples, NUM_SAMPLES);
-		}
-	}
 
 #if defined(PTI_DEBUG)
 	/* debug ui */
