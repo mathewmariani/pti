@@ -62,6 +62,7 @@ static void frame(void) {
 		} else {
 			color = sweetie16[0];
 		}
-		pti_print(btn_str[i], 4, (i * 8) + 4, color);
+		pti_color(color);
+		pti_print(btn_str[i], 4, (i * 8) + 4);
 	}
 }

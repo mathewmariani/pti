@@ -50,6 +50,7 @@ static void frame(void) {
 	// pti_cls(0xff5d275d);
 
 	for (int i = 0; i < 5; i++) {
-		pti_print(btn_str[i], 4, (i * 8) + 4, sweetie16[i]);
+		pti_color(sweetie16[i]);
+		pti_print(btn_str[i], 4, (i * 8) + 4);
 	}
 }

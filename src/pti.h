@@ -167,16 +167,19 @@ void pti_rect(int x, int y, int w, int h, uint64_t color);
 void pti_rectf(int x, int y, int w, int h, uint64_t color);
 void pti_map(int x, int y);
 void pti_spr(const pti_bitmap_t *bitmap, int n, int x, int y, bool flip_x, bool flip_y);
-void pti_print(const char *text, int x, int y, uint64_t color);
+void pti_print(const char *text, int x, int y);
 
 #ifdef __cplusplus
 }// extern "C"
+
+#include <string>
 
 // reference-based equivalents for C++
 inline void pti_set_tilemap(pti_tilemap_t &tilemap) { pti_set_tilemap(&tilemap); }
 inline void pti_set_tileset(pti_tileset_t &tileset) { pti_set_tileset(&tileset); }
 inline void pti_set_font(pti_bitmap_t &bitmap) { pti_set_font(&bitmap); }
 inline void pti_spr(const pti_bitmap_t &bitmap, int n, int x, int y, bool flip_x, bool flip_y) { pti_spr(&bitmap, n, x, y, flip_x, flip_y); }
+inline void pti_print(const std::string &text, int x, int y) { pti_print(text.c_str(), x, y); }
 
 #endif
 
@@ -262,8 +265,8 @@ typedef struct {
 		uint16_t dither;
 		uint32_t ckey;
 		struct {
-			uint32_t high;
 			uint32_t low;
+			uint32_t high;
 		} color;
 	} draw;
 
@@ -721,8 +724,8 @@ void pti_cls(const uint32_t color) {
 
 void pti_color(const uint64_t color) {
 	_pti.vm.draw.color = {
-			.high = (uint32_t) (color & 0xFFFFFFFF),
-			.low = (uint32_t) (color >> 32),
+			.low = (uint32_t) (color & 0xFFFFFFFF),
+			.high = (uint32_t) (color >> 32),
 	};
 }
 
@@ -934,9 +937,7 @@ uint32_t _pti__next_utf8_code_point(const char *data, uint32_t *index, uint32_t 
 #define FONT_GLYPHS_PER_ROW (96 / FONT_GLYPH_WIDTH)
 #define FONT_TAB_SIZE (3)
 
-void pti_print(const char *text, int x, int y, uint64_t color) {
-	_pti.vm.draw.color.high = (uint32_t) (color >> 32);
-	_pti.vm.draw.color.low = (uint32_t) (color & 0xFFFFFFFF);
+void pti_print(const char *text, int x, int y) {
 	void *pixels = (void *) _pti__ptr_to_bank((void *) _pti.vm.draw.font->pixels);
 	int cursor_x = x;
 	int cursor_y = y;

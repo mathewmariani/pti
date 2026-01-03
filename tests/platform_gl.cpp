@@ -475,7 +475,7 @@ static void _pti_set_tileset(pti_tileset_t *ptr) {
 
 static void init(void) {
 	/* initialize graphics */
-	gl_draw();
+	gl_init();
 
 #if defined(PTI_DEBUG)
 	/* initialize debug ui */
