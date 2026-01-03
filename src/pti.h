@@ -28,6 +28,22 @@
 extern "C" {
 #endif
 
+enum {
+	PTI_KEY_STATE = (1 << 0),
+	PTI_KEY_PRESSED = (1 << 1),
+	PTI_KEY_RELEASED = (1 << 2),
+
+	PTI_REQUEST_NONE = (1 << 0),
+	PTI_REQUEST_SHUTDOWN = (1 << 1),
+};
+
+typedef enum pti_event_type {
+	PTI_EVENTTYPE_INVALID,
+	PTI_EVENTTYPE_KEY_DOWN,
+	PTI_EVENTTYPE_KEY_UP,
+	_PTI_EVENTTYPE_NUM,
+} pti_event_type;
+
 typedef enum pti_button {
 	PTI_LEFT,
 	PTI_RIGHT,
@@ -97,6 +113,10 @@ extern pti_desc pti_main(int argc, char *argv[]);
 void pti_init(const pti_desc *desc);
 void pti_install_trace_hooks(const pti_trace_hooks *trace_hooks);
 
+void pti_tick(double dt);
+void pti_event(pti_event_type type, int value);
+void pti_quit(void);
+
 // api functions
 
 //>> virutal machine api
@@ -146,7 +166,7 @@ void pti_rect(int x, int y, int w, int h, uint64_t color);
 void pti_rectf(int x, int y, int w, int h, uint64_t color);
 void pti_map(int x, int y);
 void pti_spr(const pti_bitmap_t *bitmap, int n, int x, int y, bool flip_x, bool flip_y);
-void pti_print(const char *text, int x, int y);
+void pti_print(const char *text, int x, int y, uint64_t color);
 
 #ifdef __cplusplus
 }// extern "C"
@@ -219,6 +239,11 @@ inline void pti_spr(const pti_bitmap_t &bitmap, int n, int x, int y, bool flip_x
 #include <smmintrin.h>
 #endif
 
+#define PTI_FRAMERATE (30.0)
+#define PTI_DELTA (1.0 / PTI_FRAMERATE)
+#define TICK_DURATION_NS (PTI_DELTA * 1e9)
+#define TICK_TOLERANCE_NS (1000000)
+
 typedef struct {
 	struct {
 		uint16_t width;
@@ -235,12 +260,23 @@ typedef struct {
 		int16_t cam_x, cam_y;
 		uint16_t dither;
 		uint32_t ckey;
+		struct {
+			uint32_t high;
+			uint32_t low;
+		} color;
 	} draw;
 
 	struct {
 		uint8_t btn_state[PTI_BUTTON_COUNT];
 		uint8_t rnd_reg[4];
+
+		struct {
+			unsigned int tick;
+			int tick_accum;
+		} timing;
 	} hardware;
+
+	uint8_t flags;
 } _pti__vm_t;
 
 typedef struct {
@@ -377,6 +413,40 @@ void pti_install_trace_hooks(const pti_trace_hooks *trace_hooks) {
 #endif
 }
 
+void pti_tick(double dt) {
+	if (dt > TICK_DURATION_NS) {
+		dt = TICK_DURATION_NS;
+	}
+
+	_pti.vm.hardware.timing.tick_accum += dt;
+	while (_pti.vm.hardware.timing.tick_accum + TICK_TOLERANCE_NS >= TICK_DURATION_NS) {
+		_pti.vm.hardware.timing.tick_accum -= TICK_DURATION_NS;
+		_pti.vm.hardware.timing.tick++;
+
+		if (_pti.desc.frame_cb != NULL) {
+			_pti.desc.frame_cb();
+		}
+
+		for (int i = 0; i < PTI_BUTTON_COUNT; i++) {
+			_pti.vm.hardware.btn_state[i] &= ~(PTI_KEY_PRESSED | PTI_KEY_RELEASED);
+		}
+	}
+}
+
+void pti_event(pti_event_type type, int pti_key) {
+	if (type == PTI_EVENTTYPE_KEY_DOWN) {
+		_pti.vm.hardware.btn_state[pti_key] |= (PTI_KEY_STATE | PTI_KEY_PRESSED);
+		_pti.vm.hardware.btn_state[pti_key] &= ~PTI_KEY_RELEASED;
+	} else if (type == PTI_EVENTTYPE_KEY_UP) {
+		_pti.vm.hardware.btn_state[pti_key] &= ~(PTI_KEY_STATE | PTI_KEY_PRESSED);
+		_pti.vm.hardware.btn_state[pti_key] |= PTI_KEY_RELEASED;
+	}
+}
+
+void pti_quit(void) {
+	_pti.vm.flags = PTI_REQUEST_SHUTDOWN;
+}
+
 // api functions
 
 //>> virutal machine
@@ -483,26 +553,20 @@ void pti_poke4(const uint32_t offset, const uint32_t index, const uint32_t value
 
 //>> input
 
-enum {
-	_PTI_KEY_STATE = (1 << 0),
-	_PTI_KEY_PRESSED = (1 << 1),
-	_PTI_KEY_RELEASED = (1 << 2),
-};
-
 _PTI_PRIVATE inline bool _pti__check_input_flag(uint32_t idx, int flag) {
 	return _pti.vm.hardware.btn_state[idx] & flag ? true : false;
 }
 
 bool pti_down(pti_button btn) {
-	return _pti__check_input_flag(btn, _PTI_KEY_STATE);
+	return _pti__check_input_flag(btn, PTI_KEY_STATE);
 }
 
 bool pti_pressed(pti_button btn) {
-	return _pti__check_input_flag(btn, _PTI_KEY_PRESSED);
+	return _pti__check_input_flag(btn, PTI_KEY_PRESSED);
 }
 
 bool pti_released(pti_button btn) {
-	return _pti__check_input_flag(btn, _PTI_KEY_RELEASED);
+	return _pti__check_input_flag(btn, PTI_KEY_RELEASED);
 }
 
 //>> map
@@ -608,6 +672,7 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int dst_x, int dst_y, int dst_
 	uint32_t *src = (uint32_t *) pixels + n * (src_w * src_h);
 	uint32_t *dst = _pti.screen;
 	uint32_t color_key = _pti.vm.draw.ckey;
+	uint32_t color_cur = _pti.vm.draw.color.low;
 
 	const int dst_width = _pti.desc.width;
 	const int clipped_width = dst_x2 - dst_x1 + 1;
@@ -618,9 +683,10 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int dst_x, int dst_y, int dst_
 		uint32_t *src_pixel = src + src_row * src_w + src_x;
 
 		for (int x = 0; x < clipped_width; x++) {
-			uint32_t color = *src_pixel;
-			if (color != color_key) {
-				dst_pixel[x] = color;
+			uint32_t src_color = *src_pixel;
+			if (src_color != color_key) {
+				// dst_pixel[x] = src_color;
+				dst_pixel[x] = (src_color == 0) ? src_color : color_cur;
 			}
 			src_pixel += ix;
 		}
@@ -860,7 +926,9 @@ uint32_t _pti__next_utf8_code_point(const char *data, uint32_t *index, uint32_t 
 #define FONT_GLYPHS_PER_ROW (96 / FONT_GLYPH_WIDTH)
 #define FONT_TAB_SIZE (3)
 
-void pti_print(const char *text, int x, int y) {
+void pti_print(const char *text, int x, int y, uint64_t color) {
+	_pti.vm.draw.color.high = (uint32_t) (color >> 32);
+	_pti.vm.draw.color.low = (uint32_t) (color & 0xFFFFFFFF);
 	void *pixels = (void *) _pti__ptr_to_bank((void *) _pti.vm.draw.font->pixels);
 	int cursor_x = x;
 	int cursor_y = y;

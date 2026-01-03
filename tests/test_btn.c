@@ -38,18 +38,30 @@ static void init(void) {
 
 static void cleanup(void) {}
 
-char *btn_str[5] = {
-		"0123456789",
-		"HelloWorld",
-		"Quick brown fox",
-		"jumps over the",
-		"lazy dog",
+char *btn_str[PTI_BUTTON_COUNT] = {
+		"PTI_LEFT",
+		"PTI_RIGHT",
+		"PTI_UP",
+		"PTI_DOWN",
+		"PTI_A",
+		"PTI_B",
+		"PTI_X",
+		"PTI_Y",
+		"PTI_DBG",
 };
 
 static void frame(void) {
-	// pti_cls(0xff5d275d);
-
-	for (int i = 0; i < 5; i++) {
-		pti_print(btn_str[i], 4, (i * 8) + 4, sweetie16[i]);
+	uint32_t color;
+	for (int i = 0; i < PTI_BUTTON_COUNT; i++) {
+		if (pti_down((pti_button) i)) {
+			color = sweetie16[1];
+		} else if (pti_pressed((pti_button) i)) {
+			color = sweetie16[2];
+		} else if (pti_released((pti_button) i)) {
+			color = sweetie16[3];
+		} else {
+			color = sweetie16[0];
+		}
+		pti_print(btn_str[i], 4, (i * 8) + 4, color);
 	}
 }
