@@ -33,7 +33,8 @@ static void init(void) {
 	pti_set_font(&bitmap);
 	pti_load_bank(&bank);
 
-	pti_clip(0, 0, 128, 128);
+	pti_dither(0x5a5a);
+	// pti_dither(0xeae0);
 }
 
 static void cleanup(void) {}
@@ -47,8 +48,6 @@ char *btn_str[5] = {
 };
 
 static void frame(void) {
-	// pti_cls(0xff5d275d);
-
 	for (int i = 0; i < 5; i++) {
 		pti_color(sweetie16[i]);
 		pti_print(btn_str[i], 4, (i * 8) + 4);

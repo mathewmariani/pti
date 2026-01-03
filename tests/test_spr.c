@@ -31,14 +31,11 @@ static void init(void) {
 
 	pti_load_bank(&bank);
 
-	pti_clip(0, 0, 240 * 2, 136 * 2);
+	pti_dither(0x5a5a);
+	// pti_dither(0xeae0);
 }
 static void cleanup(void) {}
 
-float t = 0.0f;
 static void frame(void) {
-	t += (1 / 60.0f);
-
-	pti_cls(0x00000000);
 	pti_spr(&bitmap, 0, 0, 0, false, false);
 }

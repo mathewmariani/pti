@@ -32,8 +32,6 @@ static void init(void) {
 
 	pti_set_font(&bitmap);
 	pti_load_bank(&bank);
-
-	pti_clip(0, 0, 128, 128);
 }
 
 static void cleanup(void) {}

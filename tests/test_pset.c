@@ -29,7 +29,9 @@ pti_desc pti_main(int argc, char *argv[]) {
 	};
 }
 
-static void init(void) { pti_clip(12, 12, 128 - 12, 128 - 12); }
+static void init(void) {
+	pti_clip(12, 12, 128 - 12, 128 - 12);
+}
 static void cleanup(void) {}
 
 static void frame(void) {

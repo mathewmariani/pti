@@ -29,14 +29,10 @@ pti_desc pti_main(int argc, char *argv[]) {
 	};
 }
 
-static void init(void) {
-	// graphics state:
-	pti_clip(0, 0, 128, 128);
-}
+static void init(void) {}
+static void cleanup(void) {}
 
 #define CLAMP01(x) (_pti_clamp(x, 0.0f, 1.0f))
-
-static void cleanup(void) {}
 
 static void frame(void) {
 	static float r = 1.0f;

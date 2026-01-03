@@ -29,11 +29,7 @@ pti_desc pti_main(int argc, char *argv[]) {
 	};
 }
 
-static void init(void) {
-	// graphics state:
-	pti_clip(0, 0, 128, 128);
-}
-
+static void init(void) {}
 static void cleanup(void) {}
 
 static void frame(void) {

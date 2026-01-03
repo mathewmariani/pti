@@ -407,6 +407,9 @@ void pti_init(const pti_desc *desc) {
 	for (int i = 0; i < 4; ++i) {
 		_pti.vm.hardware.rnd_reg[i] = 0x0;
 	}
+
+	// init gfx state
+	pti_clip(0, 0, _pti.vm.screen.width, _pti.vm.screen.height);
 }
 
 void pti_install_trace_hooks(const pti_trace_hooks *trace_hooks) {
@@ -682,15 +685,13 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int dst_x, int dst_y, int dst_
 	const int clipped_width = dst_x2 - dst_x1 + 1;
 
 	for (int y = dst_y1; y <= dst_y2; y++) {
-		uint32_t *dst_pixel = dst + y * dst_width + dst_x1;
 		int src_row = src_y + (y - dst_y1) * iy;
 		uint32_t *src_pixel = src + src_row * src_w + src_x;
-
-		for (int x = 0; x < clipped_width; x++) {
+		for (int x = dst_x1; x <= dst_x2; x++) {
 			uint32_t src_color = *src_pixel;
 			if (src_color != color_key) {
-				// dst_pixel[x] = src_color;
-				dst_pixel[x] = (src_color == 0) ? src_color : color_cur;
+				uint64_t c = ((uint64_t) _pti.vm.draw.color.high << 32) | src_color;
+				_pti__set_pixel(x, y, c);
 			}
 			src_pixel += ix;
 		}

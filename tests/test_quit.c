@@ -20,8 +20,7 @@ pti_desc pti_main(int argc, char *argv[]) {
 	};
 }
 
-static void init(void) {
-}
+static void init(void) {}
 static void cleanup(void) {}
 
 static void frame(void) {
