@@ -118,7 +118,7 @@ static GLuint create_program(GLuint vs, GLuint fs) {
 	return program;
 }
 
-static void sokol_init_gfx(void) {
+static void gl_init(void) {
 	const char *default_vs_src =
 #if defined(SOKOL_GLCORE)
 			"#version 410\n"
@@ -252,7 +252,7 @@ static void sokol_init_gfx(void) {
 	glDeleteShader(default_fs_stage);
 }
 
-void sokol_gfx_draw() {
+void gl_draw() {
 	const int width = _pti.vm.screen.width;
 	const int height = _pti.vm.screen.height;
 
@@ -475,7 +475,7 @@ static void _pti_set_tileset(pti_tileset_t *ptr) {
 
 static void init(void) {
 	/* initialize graphics */
-	sokol_init_gfx();
+	gl_draw();
 
 #if defined(PTI_DEBUG)
 	/* initialize debug ui */
@@ -518,7 +518,7 @@ static void frame(void) {
 	pti_tick(frame_time_ns);
 
 	/* draw graphics */
-	sokol_gfx_draw();
+	gl_draw();
 
 #if defined(PTI_DEBUG)
 	/* debug ui */
