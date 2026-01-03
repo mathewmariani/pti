@@ -636,7 +636,22 @@ _PTI_PRIVATE inline void _pti__set_pixel(int x, int y, uint64_t c) {
 	*(_pti.screen + (x + y * _pti.vm.screen.width)) = _pti__get_dither_bit(x, y) ? (c >> 32) & 0xffffffff : (c >> 0) & 0xffffffff;
 }
 
-_PTI_PRIVATE void _pti__plot(void *pixels, int n, int dst_x, int dst_y, int dst_w, int dst_h, int src_x, int src_y, int src_w, int src_h, bool flip_x, bool flip_y) {
+_PTI_PRIVATE void _pti__plot(void *pixels, bool mask, int n, int dst_x, int dst_y, int dst_w, int dst_h, int src_x, int src_y, int src_w, int src_h, bool flip_x, bool flip_y) {
+#define PTI_PLOT_LOOP_BODY(EMIT_PIXEL)                           \
+	do {                                                         \
+		for (int y = dst_y1; y <= dst_y2; y++) {                 \
+			int src_row = src_y + (y - dst_y1) * iy;             \
+			uint32_t *src_pixel = src + src_row * src_w + src_x; \
+			for (int x = dst_x1; x <= dst_x2; x++) {             \
+				uint32_t src_color = *src_pixel;                 \
+				if (src_color != color_key) {                    \
+					EMIT_PIXEL;                                  \
+				}                                                \
+				src_pixel += ix;                                 \
+			}                                                    \
+		}                                                        \
+	} while (0)
+
 	const int16_t clip_x0 = _pti.vm.draw.clip_x0;
 	const int16_t clip_y0 = _pti.vm.draw.clip_y0;
 	const int16_t clip_x1 = _pti.vm.draw.clip_x1;
@@ -677,25 +692,43 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int dst_x, int dst_y, int dst_
 	}
 
 	uint32_t *src = (uint32_t *) pixels + n * (src_w * src_h);
-	uint32_t *dst = _pti.screen;
 	uint32_t color_key = _pti.vm.draw.ckey;
-	uint32_t color_cur = _pti.vm.draw.color.low;
 
 	const int dst_width = _pti.desc.width;
-	const int clipped_width = dst_x2 - dst_x1 + 1;
 
-	for (int y = dst_y1; y <= dst_y2; y++) {
-		int src_row = src_y + (y - dst_y1) * iy;
-		uint32_t *src_pixel = src + src_row * src_w + src_x;
-		for (int x = dst_x1; x <= dst_x2; x++) {
-			uint32_t src_color = *src_pixel;
-			if (src_color != color_key) {
-				uint64_t c = ((uint64_t) _pti.vm.draw.color.high << 32) | src_color;
-				_pti__set_pixel(x, y, c);
-			}
-			src_pixel += ix;
-		}
+	if (mask) {
+		PTI_PLOT_LOOP_BODY(
+				if (src_color != 0) {
+					uint64_t c = ((uint64_t) _pti.vm.draw.color.high << 32) | _pti.vm.draw.color.low;
+					_pti__set_pixel(x, y, c);
+				});
+	} else {
+		PTI_PLOT_LOOP_BODY({
+			uint64_t c = ((uint64_t) _pti.vm.draw.color.high << 32) | src_color;
+			_pti__set_pixel(x, y, c);
+		});
 	}
+
+	// uint32_t *src = (uint32_t *) pixels + n * (src_w * src_h);
+	// uint32_t *dst = _pti.screen;
+	// uint32_t color_key = _pti.vm.draw.ckey;
+	// uint32_t color_cur = _pti.vm.draw.color.low;
+
+	// const int dst_width = _pti.desc.width;
+	// const int clipped_width = dst_x2 - dst_x1 + 1;
+
+	// for (int y = dst_y1; y <= dst_y2; y++) {
+	// 	int src_row = src_y + (y - dst_y1) * iy;
+	// 	uint32_t *src_pixel = src + src_row * src_w + src_x;
+	// 	for (int x = dst_x1; x <= dst_x2; x++) {
+	// 		uint32_t src_color = *src_pixel;
+	// 		if (src_color != color_key) {
+	// 			uint64_t c = ((uint64_t) _pti.vm.draw.color.high << 32) | src_color;
+	// 			_pti__set_pixel(x, y, c);
+	// 		}
+	// 		src_pixel += ix;
+	// 	}
+	// }
 }
 
 void pti_camera(int x, int y) {
@@ -891,6 +924,7 @@ void pti_map(int x, int y) {
 
 			_pti__plot(
 					tileset->pixels, 0,
+					false,
 					x + i * tileset->tile_w,
 					y + j * tileset->tile_h,
 					tileset->tile_w, tileset->tile_h,
@@ -906,7 +940,7 @@ void pti_spr(const pti_bitmap_t *sprite, int n, int x, int y, bool flip_x, bool 
 	const int bmp_h = sprite->height;
 	void *pixels = (void *) _pti__ptr_to_bank((void *) sprite->pixels);
 	_pti__transform(&x, &y);
-	_pti__plot(pixels, n, x, y, bmp_w, bmp_h, 0, 0, bmp_w, bmp_h, flip_x, flip_y);
+	_pti__plot(pixels, false, n, x, y, bmp_w, bmp_h, 0, 0, bmp_w, bmp_h, flip_x, flip_y);
 }
 
 uint32_t _pti__next_utf8_code_point(const char *data, uint32_t *index, uint32_t end) {
@@ -968,7 +1002,7 @@ void pti_print(const char *text, int x, int y) {
 
 		int width = _pti.vm.draw.font->width;
 		int height = _pti.vm.draw.font->height;
-		_pti__plot(pixels, 0, cursor_x, cursor_y, FONT_GLYPH_WIDTH, FONT_GLYPH_HEIGHT, glyph_x, glyph_y, width, height, false, false);
+		_pti__plot(pixels, true, 0, cursor_x, cursor_y, FONT_GLYPH_WIDTH, FONT_GLYPH_HEIGHT, glyph_x, glyph_y, width, height, false, false);
 
 		cursor_x += FONT_GLYPH_WIDTH;
 	}
