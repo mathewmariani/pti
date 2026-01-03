@@ -28,6 +28,22 @@
 extern "C" {
 #endif
 
+enum {
+	PTI_KEY_STATE = (1 << 0),
+	PTI_KEY_PRESSED = (1 << 1),
+	PTI_KEY_RELEASED = (1 << 2),
+
+	PTI_REQUEST_NONE = (1 << 0),
+	PTI_REQUEST_SHUTDOWN = (1 << 1),
+};
+
+typedef enum pti_event_type {
+	PTI_EVENTTYPE_INVALID,
+	PTI_EVENTTYPE_KEY_DOWN,
+	PTI_EVENTTYPE_KEY_UP,
+	_PTI_EVENTTYPE_NUM,
+} pti_event_type;
+
 typedef enum pti_button {
 	PTI_LEFT,
 	PTI_RIGHT,
@@ -97,6 +113,10 @@ extern pti_desc pti_main(int argc, char *argv[]);
 void pti_init(const pti_desc *desc);
 void pti_install_trace_hooks(const pti_trace_hooks *trace_hooks);
 
+void pti_tick(double dt);
+void pti_event(pti_event_type type, int value);
+void pti_quit(void);
+
 // api functions
 
 //>> virutal machine api
@@ -135,6 +155,7 @@ uint16_t pti_prand(void);
 void pti_camera(int x, int y);
 void pti_get_camera(int *x, int *y);
 void pti_cls(const uint32_t color);
+void pti_color(const uint64_t color);
 void pti_colorkey(const uint32_t color);
 void pti_dither(const uint16_t bstr);
 void pti_clip(int x0, int y0, int x1, int y1);
@@ -151,11 +172,14 @@ void pti_print(const char *text, int x, int y);
 #ifdef __cplusplus
 }// extern "C"
 
+#include <string>
+
 // reference-based equivalents for C++
 inline void pti_set_tilemap(pti_tilemap_t &tilemap) { pti_set_tilemap(&tilemap); }
 inline void pti_set_tileset(pti_tileset_t &tileset) { pti_set_tileset(&tileset); }
 inline void pti_set_font(pti_bitmap_t &bitmap) { pti_set_font(&bitmap); }
 inline void pti_spr(const pti_bitmap_t &bitmap, int n, int x, int y, bool flip_x, bool flip_y) { pti_spr(&bitmap, n, x, y, flip_x, flip_y); }
+inline void pti_print(const std::string &text, int x, int y) { pti_print(text.c_str(), x, y); }
 
 #endif
 
@@ -219,6 +243,11 @@ inline void pti_spr(const pti_bitmap_t &bitmap, int n, int x, int y, bool flip_x
 #include <smmintrin.h>
 #endif
 
+#define PTI_FRAMERATE (30.0)
+#define PTI_DELTA (1.0 / PTI_FRAMERATE)
+#define TICK_DURATION_NS (PTI_DELTA * 1e9)
+#define TICK_TOLERANCE_NS (1000000)
+
 typedef struct {
 	struct {
 		uint16_t width;
@@ -235,12 +264,23 @@ typedef struct {
 		int16_t cam_x, cam_y;
 		uint16_t dither;
 		uint32_t ckey;
+		struct {
+			uint32_t low;
+			uint32_t high;
+		} color;
 	} draw;
 
 	struct {
 		uint8_t btn_state[PTI_BUTTON_COUNT];
 		uint8_t rnd_reg[4];
+
+		struct {
+			unsigned int tick;
+			int tick_accum;
+		} timing;
 	} hardware;
+
+	uint8_t flags;
 } _pti__vm_t;
 
 typedef struct {
@@ -367,6 +407,9 @@ void pti_init(const pti_desc *desc) {
 	for (int i = 0; i < 4; ++i) {
 		_pti.vm.hardware.rnd_reg[i] = 0x0;
 	}
+
+	// init gfx state
+	pti_clip(0, 0, _pti.vm.screen.width, _pti.vm.screen.height);
 }
 
 void pti_install_trace_hooks(const pti_trace_hooks *trace_hooks) {
@@ -375,6 +418,40 @@ void pti_install_trace_hooks(const pti_trace_hooks *trace_hooks) {
 #else
 #warning "pti.h: PTI_TRACE_HOOKS not defined."
 #endif
+}
+
+void pti_tick(double dt) {
+	if (dt > TICK_DURATION_NS) {
+		dt = TICK_DURATION_NS;
+	}
+
+	_pti.vm.hardware.timing.tick_accum += dt;
+	while (_pti.vm.hardware.timing.tick_accum + TICK_TOLERANCE_NS >= TICK_DURATION_NS) {
+		_pti.vm.hardware.timing.tick_accum -= TICK_DURATION_NS;
+		_pti.vm.hardware.timing.tick++;
+
+		if (_pti.desc.frame_cb != NULL) {
+			_pti.desc.frame_cb();
+		}
+
+		for (int i = 0; i < PTI_BUTTON_COUNT; i++) {
+			_pti.vm.hardware.btn_state[i] &= ~(PTI_KEY_PRESSED | PTI_KEY_RELEASED);
+		}
+	}
+}
+
+void pti_event(pti_event_type type, int pti_key) {
+	if (type == PTI_EVENTTYPE_KEY_DOWN) {
+		_pti.vm.hardware.btn_state[pti_key] |= (PTI_KEY_STATE | PTI_KEY_PRESSED);
+		_pti.vm.hardware.btn_state[pti_key] &= ~PTI_KEY_RELEASED;
+	} else if (type == PTI_EVENTTYPE_KEY_UP) {
+		_pti.vm.hardware.btn_state[pti_key] &= ~(PTI_KEY_STATE | PTI_KEY_PRESSED);
+		_pti.vm.hardware.btn_state[pti_key] |= PTI_KEY_RELEASED;
+	}
+}
+
+void pti_quit(void) {
+	_pti.vm.flags = PTI_REQUEST_SHUTDOWN;
 }
 
 // api functions
@@ -483,26 +560,20 @@ void pti_poke4(const uint32_t offset, const uint32_t index, const uint32_t value
 
 //>> input
 
-enum {
-	_PTI_KEY_STATE = (1 << 0),
-	_PTI_KEY_PRESSED = (1 << 1),
-	_PTI_KEY_RELEASED = (1 << 2),
-};
-
 _PTI_PRIVATE inline bool _pti__check_input_flag(uint32_t idx, int flag) {
 	return _pti.vm.hardware.btn_state[idx] & flag ? true : false;
 }
 
 bool pti_down(pti_button btn) {
-	return _pti__check_input_flag(btn, _PTI_KEY_STATE);
+	return _pti__check_input_flag(btn, PTI_KEY_STATE);
 }
 
 bool pti_pressed(pti_button btn) {
-	return _pti__check_input_flag(btn, _PTI_KEY_PRESSED);
+	return _pti__check_input_flag(btn, PTI_KEY_PRESSED);
 }
 
 bool pti_released(pti_button btn) {
-	return _pti__check_input_flag(btn, _PTI_KEY_RELEASED);
+	return _pti__check_input_flag(btn, PTI_KEY_RELEASED);
 }
 
 //>> map
@@ -565,7 +636,22 @@ _PTI_PRIVATE inline void _pti__set_pixel(int x, int y, uint64_t c) {
 	*(_pti.screen + (x + y * _pti.vm.screen.width)) = _pti__get_dither_bit(x, y) ? (c >> 32) & 0xffffffff : (c >> 0) & 0xffffffff;
 }
 
-_PTI_PRIVATE void _pti__plot(void *pixels, int n, int dst_x, int dst_y, int dst_w, int dst_h, int src_x, int src_y, int src_w, int src_h, bool flip_x, bool flip_y) {
+_PTI_PRIVATE void _pti__plot(void *pixels, bool mask, int n, int dst_x, int dst_y, int dst_w, int dst_h, int src_x, int src_y, int src_w, int src_h, bool flip_x, bool flip_y) {
+#define PTI_PLOT_LOOP_BODY(EMIT_PIXEL)                           \
+	do {                                                         \
+		for (int y = dst_y1; y <= dst_y2; y++) {                 \
+			int src_row = src_y + (y - dst_y1) * iy;             \
+			uint32_t *src_pixel = src + src_row * src_w + src_x; \
+			for (int x = dst_x1; x <= dst_x2; x++) {             \
+				uint32_t src_color = *src_pixel;                 \
+				if (src_color != color_key) {                    \
+					EMIT_PIXEL;                                  \
+				}                                                \
+				src_pixel += ix;                                 \
+			}                                                    \
+		}                                                        \
+	} while (0)
+
 	const int16_t clip_x0 = _pti.vm.draw.clip_x0;
 	const int16_t clip_y0 = _pti.vm.draw.clip_y0;
 	const int16_t clip_x1 = _pti.vm.draw.clip_x1;
@@ -606,25 +692,43 @@ _PTI_PRIVATE void _pti__plot(void *pixels, int n, int dst_x, int dst_y, int dst_
 	}
 
 	uint32_t *src = (uint32_t *) pixels + n * (src_w * src_h);
-	uint32_t *dst = _pti.screen;
 	uint32_t color_key = _pti.vm.draw.ckey;
 
 	const int dst_width = _pti.desc.width;
-	const int clipped_width = dst_x2 - dst_x1 + 1;
 
-	for (int y = dst_y1; y <= dst_y2; y++) {
-		uint32_t *dst_pixel = dst + y * dst_width + dst_x1;
-		int src_row = src_y + (y - dst_y1) * iy;
-		uint32_t *src_pixel = src + src_row * src_w + src_x;
-
-		for (int x = 0; x < clipped_width; x++) {
-			uint32_t color = *src_pixel;
-			if (color != color_key) {
-				dst_pixel[x] = color;
-			}
-			src_pixel += ix;
-		}
+	if (mask) {
+		PTI_PLOT_LOOP_BODY(
+				if (src_color != 0) {
+					uint64_t c = ((uint64_t) _pti.vm.draw.color.high << 32) | _pti.vm.draw.color.low;
+					_pti__set_pixel(x, y, c);
+				});
+	} else {
+		PTI_PLOT_LOOP_BODY({
+			uint64_t c = ((uint64_t) _pti.vm.draw.color.high << 32) | src_color;
+			_pti__set_pixel(x, y, c);
+		});
 	}
+
+	// uint32_t *src = (uint32_t *) pixels + n * (src_w * src_h);
+	// uint32_t *dst = _pti.screen;
+	// uint32_t color_key = _pti.vm.draw.ckey;
+	// uint32_t color_cur = _pti.vm.draw.color.low;
+
+	// const int dst_width = _pti.desc.width;
+	// const int clipped_width = dst_x2 - dst_x1 + 1;
+
+	// for (int y = dst_y1; y <= dst_y2; y++) {
+	// 	int src_row = src_y + (y - dst_y1) * iy;
+	// 	uint32_t *src_pixel = src + src_row * src_w + src_x;
+	// 	for (int x = dst_x1; x <= dst_x2; x++) {
+	// 		uint32_t src_color = *src_pixel;
+	// 		if (src_color != color_key) {
+	// 			uint64_t c = ((uint64_t) _pti.vm.draw.color.high << 32) | src_color;
+	// 			_pti__set_pixel(x, y, c);
+	// 		}
+	// 		src_pixel += ix;
+	// 	}
+	// }
 }
 
 void pti_camera(int x, int y) {
@@ -650,6 +754,13 @@ void pti_cls(const uint32_t color) {
 	for (size_t i = 0; i < pixel_count; i++) {
 		pixels[i] = color;
 	}
+}
+
+void pti_color(const uint64_t color) {
+	_pti.vm.draw.color = {
+			.low = (uint32_t) (color & 0xFFFFFFFF),
+			.high = (uint32_t) (color >> 32),
+	};
 }
 
 void pti_colorkey(const uint32_t color) {
@@ -813,6 +924,7 @@ void pti_map(int x, int y) {
 
 			_pti__plot(
 					tileset->pixels, 0,
+					false,
 					x + i * tileset->tile_w,
 					y + j * tileset->tile_h,
 					tileset->tile_w, tileset->tile_h,
@@ -828,7 +940,7 @@ void pti_spr(const pti_bitmap_t *sprite, int n, int x, int y, bool flip_x, bool 
 	const int bmp_h = sprite->height;
 	void *pixels = (void *) _pti__ptr_to_bank((void *) sprite->pixels);
 	_pti__transform(&x, &y);
-	_pti__plot(pixels, n, x, y, bmp_w, bmp_h, 0, 0, bmp_w, bmp_h, flip_x, flip_y);
+	_pti__plot(pixels, false, n, x, y, bmp_w, bmp_h, 0, 0, bmp_w, bmp_h, flip_x, flip_y);
 }
 
 uint32_t _pti__next_utf8_code_point(const char *data, uint32_t *index, uint32_t end) {
@@ -890,7 +1002,7 @@ void pti_print(const char *text, int x, int y) {
 
 		int width = _pti.vm.draw.font->width;
 		int height = _pti.vm.draw.font->height;
-		_pti__plot(pixels, 0, cursor_x, cursor_y, FONT_GLYPH_WIDTH, FONT_GLYPH_HEIGHT, glyph_x, glyph_y, width, height, false, false);
+		_pti__plot(pixels, true, 0, cursor_x, cursor_y, FONT_GLYPH_WIDTH, FONT_GLYPH_HEIGHT, glyph_x, glyph_y, width, height, false, false);
 
 		cursor_x += FONT_GLYPH_WIDTH;
 	}

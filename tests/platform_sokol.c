@@ -255,46 +255,37 @@ static void cleanup(void) {
 	sg_shutdown();
 }
 
-#define PTI_FRAMERATE (30.0)
-#define PTI_DELTA (1.0 / PTI_FRAMERATE)
-#define TICK_DURATION_NS (PTI_DELTA * 1e9)
-#define TICK_TOLERANCE_NS (1000000)
-
 static void frame(void) {
+	if (_pti.vm.flags == PTI_REQUEST_SHUTDOWN) {
+		sapp_request_quit();
+		return;
+	}
+
 	double frame_time_ns = sapp_frame_duration() * 1000000000.0;
-	if (frame_time_ns > TICK_DURATION_NS) {
-		frame_time_ns = TICK_DURATION_NS;
-	}
-
-	state.timing.tick_accum += frame_time_ns;
-	while (state.timing.tick_accum + TICK_TOLERANCE_NS >= TICK_DURATION_NS) {
-		state.timing.tick_accum -= TICK_DURATION_NS;
-		state.timing.tick++;
-
-		if (_pti.desc.frame_cb != NULL) {
-			_pti.desc.frame_cb();
-		}
-
-		for (int i = 0; i < PTI_BUTTON_COUNT; i++) {
-			_pti.vm.hardware.btn_state[i] &= ~(_PTI_KEY_PRESSED | _PTI_KEY_RELEASED);
-		}
-	}
+	pti_tick(frame_time_ns);
 
 	/* draw graphics */
 	sokol_gfx_draw();
-}
 
+#if defined(PTI_DEBUG)
+	/* debug ui */
+	__dbgui_begin();
+	imgui_debug_draw();
+	if (_pti.desc.debug_cb != NULL) {
+		_pti.desc.debug_cb();
+	}
+	__dbgui_end();
+#endif
+}
 static inline void btn_down(int pti_key, int sapp_key, int sapp_alt, const sapp_event *ev) {
 	if (ev->key_code == sapp_key || ev->key_code == sapp_alt) {
-		_pti.vm.hardware.btn_state[pti_key] |= (_PTI_KEY_STATE | _PTI_KEY_PRESSED);
-		_pti.vm.hardware.btn_state[pti_key] &= ~_PTI_KEY_RELEASED;
+		pti_event(PTI_EVENTTYPE_KEY_DOWN, pti_key);
 	}
 }
 
 static inline void btn_up(int pti_key, int sapp_key, int sapp_alt, const sapp_event *ev) {
 	if (ev->key_code == sapp_key || ev->key_code == sapp_alt) {
-		_pti.vm.hardware.btn_state[pti_key] &= ~(_PTI_KEY_STATE | _PTI_KEY_PRESSED);
-		_pti.vm.hardware.btn_state[pti_key] |= _PTI_KEY_RELEASED;
+		pti_event(PTI_EVENTTYPE_KEY_UP, pti_key);
 	}
 }
 

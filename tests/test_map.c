@@ -37,8 +37,6 @@ static void init(void) {
 	pti_set_tileset(&tileset);
 	pti_set_font(&bitmap);
 	pti_load_bank(&bank);
-
-	pti_clip(0, 0, 240 * 2, 136 * 2);
 }
 
 static void cleanup(void) {}
