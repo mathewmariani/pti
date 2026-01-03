@@ -305,6 +305,10 @@ static void event(const sapp_event *ev) {
 			btn_down(PTI_B, SAPP_KEYCODE_S, SAPP_KEYCODE_S, ev);
 			btn_down(PTI_X, SAPP_KEYCODE_W, SAPP_KEYCODE_W, ev);
 			btn_down(PTI_Y, SAPP_KEYCODE_A, SAPP_KEYCODE_A, ev);
+			btn_down(PTI_LSHOULDER, SAPP_KEYCODE_Q, SAPP_KEYCODE_Q, ev);
+			btn_down(PTI_RSHOULDER, SAPP_KEYCODE_E, SAPP_KEYCODE_E, ev);
+			btn_down(PTI_START, SAPP_KEYCODE_X, SAPP_KEYCODE_X, ev);
+			btn_down(PTI_SELECT, SAPP_KEYCODE_Z, SAPP_KEYCODE_Z, ev);
 			btn_down(PTI_DBG, SAPP_KEYCODE_C, SAPP_KEYCODE_C, ev);
 			break;
 
@@ -317,6 +321,10 @@ static void event(const sapp_event *ev) {
 			btn_up(PTI_B, SAPP_KEYCODE_S, SAPP_KEYCODE_S, ev);
 			btn_up(PTI_X, SAPP_KEYCODE_W, SAPP_KEYCODE_W, ev);
 			btn_up(PTI_Y, SAPP_KEYCODE_A, SAPP_KEYCODE_A, ev);
+			btn_up(PTI_LSHOULDER, SAPP_KEYCODE_Q, SAPP_KEYCODE_Q, ev);
+			btn_up(PTI_RSHOULDER, SAPP_KEYCODE_E, SAPP_KEYCODE_E, ev);
+			btn_up(PTI_START, SAPP_KEYCODE_X, SAPP_KEYCODE_X, ev);
+			btn_up(PTI_SELECT, SAPP_KEYCODE_Z, SAPP_KEYCODE_Z, ev);
 			btn_up(PTI_DBG, SAPP_KEYCODE_C, SAPP_KEYCODE_C, ev);
 			break;
 

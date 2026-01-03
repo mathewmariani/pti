@@ -45,6 +45,10 @@ char *btn_str[PTI_BUTTON_COUNT] = {
 		"PTI_B",
 		"PTI_X",
 		"PTI_Y",
+		"PTI_LSHOULDER",
+		"PTI_RSHOULDER",
+		"PTI_START",
+		"PTI_SELECT",
 		"PTI_DBG",
 };
 
