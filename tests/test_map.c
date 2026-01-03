@@ -46,7 +46,7 @@ static void cleanup(void) {}
 float t = 0.0f;
 static void frame(void) {
 	t += (1 / 60.0f);
-	// pti_camera((int) (100.0f * sinf(t)), 0);
-	// pti_cls(0x00000000);
+	pti_camera((int) (100.0f * sinf(t)), 0);
+	pti_cls(0x00000000);
 	pti_map(0, 0);
 }
