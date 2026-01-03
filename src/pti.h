@@ -644,8 +644,12 @@ void pti_get_camera(int *x, int *y) {
 void pti_cls(const uint32_t color) {
 	const int screen_w = _pti.vm.screen.width;
 	const int screen_h = _pti.vm.screen.height;
-	const size_t size = screen_w * screen_h * sizeof(uint32_t);
-	pti_memset(_pti.screen, color, size);
+	const size_t pixel_count = screen_w * screen_h;
+
+	uint32_t *pixels = (uint32_t *) _pti.screen;
+	for (size_t i = 0; i < pixel_count; i++) {
+		pixels[i] = color;
+	}
 }
 
 void pti_colorkey(const uint32_t color) {
