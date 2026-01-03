@@ -33,9 +33,6 @@ pti_audio_t tone;
 bool playing = false;
 
 static void init(void) {
-	// graphics state:
-	pti_clip(0, 0, 128, 128);
-
 	tone.num_frames = 44100;// 1 second
 	tone.num_channels = 1;
 	tone.samples = malloc(tone.num_frames * sizeof(float));
