@@ -155,6 +155,7 @@ uint16_t pti_prand(void);
 void pti_camera(int x, int y);
 void pti_get_camera(int *x, int *y);
 void pti_cls(const uint32_t color);
+void pti_color(const uint64_t color);
 void pti_colorkey(const uint32_t color);
 void pti_dither(const uint16_t bstr);
 void pti_clip(int x0, int y0, int x1, int y1);
@@ -716,6 +717,13 @@ void pti_cls(const uint32_t color) {
 	for (size_t i = 0; i < pixel_count; i++) {
 		pixels[i] = color;
 	}
+}
+
+void pti_color(const uint64_t color) {
+	_pti.vm.draw.color = {
+			.high = (uint32_t) (color & 0xFFFFFFFF),
+			.low = (uint32_t) (color >> 32),
+	};
 }
 
 void pti_colorkey(const uint32_t color) {
