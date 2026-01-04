@@ -294,7 +294,9 @@ static void sokol_audio_cb(float *buffer, int num_frames, int num_channels) {
 
 		// mix your 4 virtual channels
 		for (int ch = 0; ch < PTI_NUM_CHANNELS; ch++) {
-			if (!_pti.vm.audio.channel[ch].playing) continue;
+			if (!_pti__audio_is_active(ch)) {
+				continue;
+			}
 
 			pti_audio_t *sfx = _pti.vm.audio.channel[ch].sfx;
 			int pos = _pti.vm.audio.channel[ch].position;
@@ -306,7 +308,7 @@ static void sokol_audio_cb(float *buffer, int num_frames, int num_channels) {
 				if (_pti.vm.audio.channel[ch].looping) {
 					pos = 0;
 				} else {
-					_pti.vm.audio.channel[ch].playing = false;
+					_pti.vm.audio.channel[ch].sfx = nullptr;
 					pos = sfx->num_frames - 1;
 				}
 			}

@@ -46,6 +46,19 @@ typedef enum pti_event_type {
 	_PTI_EVENTTYPE_NUM,
 } pti_event_type;
 
+typedef union pti_stat_t {
+	void *ptr;
+} pti_stat_t;
+
+typedef enum pti_stat_type {
+	PTI_STATTYPE_INVALID = -1,
+	PTI_STATTYPE_SFX_CHANNEL0,
+	PTI_STATTYPE_SFX_CHANNEL1,
+	PTI_STATTYPE_SFX_CHANNEL2,
+	PTI_STATTYPE_SFX_CHANNEL3,
+	_PTI_STATTYPE_NUM
+} pti_stat_type;
+
 typedef enum pti_button {
 	PTI_LEFT,
 	PTI_RIGHT,
@@ -140,6 +153,7 @@ void pti_memset(void *dst, const int value, size_t len);
 void pti_set_tilemap(pti_tilemap_t *ptr);
 void pti_set_tileset(pti_tileset_t *ptr);
 void pti_set_font(pti_bitmap_t *ptr);
+pti_stat_t pti_stat(const pti_stat_type type);
 
 //>> memory api
 const uint8_t pti_peek(const uint32_t offset, const uint32_t index);
@@ -303,7 +317,6 @@ typedef struct {
 			int position;
 			int volume;
 			bool is_music;
-			bool playing;
 			bool looping;
 		} channel[4];
 	} audio;
@@ -544,6 +557,24 @@ void pti_set_tileset(pti_tileset_t *ptr) {
 void pti_set_font(pti_bitmap_t *ptr) {
 	_PTI_TRACE_ARGS(set_font, ptr);
 	_pti.vm.draw.font = ptr;
+}
+
+pti_stat_t pti_stat(const pti_stat_type type) {
+	union pti_stat_t ret = {0};
+	switch (type) {
+		case PTI_STATTYPE_SFX_CHANNEL0:
+		case PTI_STATTYPE_SFX_CHANNEL1:
+		case PTI_STATTYPE_SFX_CHANNEL2:
+		case PTI_STATTYPE_SFX_CHANNEL3: {
+			int ch = type - PTI_STATTYPE_SFX_CHANNEL0;
+			ret.ptr = _pti.vm.audio.channel[ch].sfx;
+		} break;
+
+		case PTI_STATTYPE_INVALID:
+		default:
+			break;
+	}
+	return ret;
 }
 
 //>> memory api
@@ -1042,29 +1073,43 @@ _PTI_PRIVATE void _pti__audio_play(pti_audio_t *audio, int channel, bool music, 
 	_pti.vm.audio.channel[channel].sfx = audio;
 	_pti.vm.audio.channel[channel].is_music = music;
 	_pti.vm.audio.channel[channel].looping = music;
-	_pti.vm.audio.channel[channel].playing = true;
 	_pti.vm.audio.channel[channel].position = 0;
 }
 
 _PTI_PRIVATE void _pti__audio_stop(int channel) {
 	_pti.vm.audio.channel[channel].sfx = nullptr;
 	_pti.vm.audio.channel[channel].is_music = false;
-	_pti.vm.audio.channel[channel].playing = false;
 	_pti.vm.audio.channel[channel].looping = false;
 	_pti.vm.audio.channel[channel].position = 0;
 }
 
 _PTI_PRIVATE bool _pti__audio_is_active(int channel) {
-	return _pti.vm.audio.channel[channel].playing;
+	return _pti.vm.audio.channel[channel].sfx != NULL;
 }
 
 void pti_sfx(pti_audio_t *audio, int channel, int offset) {
-	// play on first available channel
-	for (int i = 0; i < PTI_NUM_CHANNELS; i++) {
-		if (!_pti__audio_is_active(i)) {
-			_pti__audio_play(audio, i, false, offset);
-			return;
+	// stop any channels
+	if (audio == NULL) {
+		if (channel == -1) {
+			for (int i = 0; i < PTI_NUM_CHANNELS; i++) {
+				_pti__audio_stop(i);
+			}
+		} else {
+			_pti__audio_stop(channel);
 		}
+		return;
+	}
+	// play on first available channel
+	if (channel == -1) {
+		for (int i = 0; i < PTI_NUM_CHANNELS; i++) {
+			if (!_pti__audio_is_active(i)) {
+				_pti__audio_play(audio, i, false, offset);
+				return;
+			}
+		}
+		// all channels are busy
+	} else {
+		_pti__audio_play(audio, channel, false, offset);
 	}
 }
 
@@ -1074,6 +1119,10 @@ void pti_music(pti_audio_t *music) {
 		if (_pti.vm.audio.channel[i].is_music) {
 			_pti__audio_stop(i);
 		}
+	}
+
+	if (music == NULL) {
+		return;
 	}
 
 	// play on first available channel

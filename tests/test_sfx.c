@@ -5,13 +5,10 @@
 // engine
 #include "pti.h"
 
-#define PTI_ARGB(a, r, g, b)                                    \
-	(uint32_t) (((uint8_t) (a) << 24) | ((uint8_t) (r) << 16) | \
-				((uint8_t) (g) << 8) | ((uint8_t) (b) << 0))
+// tests
+#include "assets.h"
 
-#define PTI_RGBA(r, g, b, a)                                    \
-	(uint32_t) (((uint8_t) (a) << 24) | ((uint8_t) (r) << 16) | \
-				((uint8_t) (g) << 8) | ((uint8_t) (b) << 0))
+pti_bank_t bank;
 
 // forward declarations
 static void init(void);
@@ -29,32 +26,46 @@ pti_desc pti_main(int argc, char *argv[]) {
 	};
 }
 
-pti_audio_t tone;
+static pti_bitmap_t bitmap;
+static pti_audio_t tone;
+static pti_audio_t track;
 bool playing = false;
 
 static void init(void) {
-	tone.num_frames = 44100;// 1 second
-	tone.num_channels = 1;
-	tone.samples = malloc(tone.num_frames * sizeof(float));
+	pti_bank_init(&bank, _pti_kilobytes(256));
+	init_assets(&bank);
+	bitmap = create_bitmap("assets/font.ase");
+	tone = create_sine_tone(440.0f, 0.3f, 0.5f, 44100.0f, 1);
+	track = create_sfx("assets/shoot.ogg");
 
-	float frequency = 440.0f;
-	float amplitude = 0.3f;
-	float phase = 0.0f;
-
-	for (int i = 0; i < tone.num_frames; i++) {
-		tone.samples[i] = sinf(phase) * amplitude;
-		phase += 2.0f * 3.14159265f * frequency / 44100.0f;
-		if (phase >= 2.0f * 3.14159265f) phase -= 2.0f * 3.14159265f;
-	}
+	pti_set_font(&bitmap);
+	pti_load_bank(&bank);
 }
 
-static void cleanup(void) {
-	free(tone.samples);
-}
+static void cleanup(void) {}
+
+char *channel_str[PTI_NUM_CHANNELS] = {
+		"CH..0: ",
+		"CH..1: ",
+		"CH..2: ",
+		"CH..3: ",
+};
 
 static void frame(void) {
-	pti_rectf(0, 0, 128, 128, 0xFF7F00FF);
+	pti_cls(0xFF7F00FF);
 	if (pti_down(PTI_LEFT) && pti_pressed(PTI_LEFT)) {
-		pti_sfx(&tone, 0, 0);
+		pti_sfx(&tone, -1, 0);
+	}
+	if (pti_down(PTI_RIGHT) && pti_pressed(PTI_RIGHT)) {
+		pti_sfx(&track, -1, 0);
+	}
+
+	pti_color(0xffffffff);
+	pti_print("PRESS LEFT FOR TONE", 4, 4);
+	pti_print("PRESS RIGHT FOR SFX", 4, 12);
+
+	for (int i = 0; i < PTI_NUM_CHANNELS; i++) {
+		pti_print(channel_str[i], 4, (i * 8) + 32);
+		pti_print(pti_stat(PTI_STATTYPE_SFX_CHANNEL0 + i).ptr ? "PLAYING" : "SILENT", 40, (i * 8) + 32);
 	}
 }

@@ -2,6 +2,9 @@
 #define CUTE_ASEPRITE_IMPLEMENTATION
 #include "cute_aseprite.h"
 
+// stb
+#include "stb_vorbis.c"
+
 // engine
 #include "pti.h"
 
@@ -102,4 +105,109 @@ pti_tilemap_t create_tilemap(const char *path) {
 	cute_aseprite_free(ase);
 
 	return tilemap;
+}
+
+static void stereo_to_mono_i16(const int16_t *src, int16_t *dst, int frames) {
+	for (int i = 0; i < frames; i++) {
+		int l = src[i * 2 + 0];
+		int r = src[i * 2 + 1];
+		dst[i] = (int16_t) ((l + r) / 2);
+	}
+}
+
+static int resample_i16(const int16_t *src, int src_frames, int src_rate, int16_t *dst, int dst_rate) {
+	float ratio = (float) src_rate / (float) dst_rate;
+	int dst_frames = (int) (src_frames / ratio);
+
+	for (int i = 0; i < dst_frames; i++) {
+		int src_i = (int) (i * ratio);
+		if (src_i >= src_frames) src_i = src_frames - 1;
+		dst[i] = src[src_i];
+	}
+
+	return dst_frames;
+}
+
+static void i16_to_float(const int16_t *src, float *dst, int frames) {
+	for (int i = 0; i < frames; i++) {
+		dst[i] = src[i] / 32768.0f;
+	}
+}
+
+pti_audio_t create_sfx(const char *path) {
+	short *pcm = NULL;
+	int src_rate = 0;
+	int channels = 0;
+
+	int src_frames = stb_vorbis_decode_filename(path, &channels, &src_rate, &pcm);
+
+	pti_audio_t out = {0};
+	if (src_frames <= 0) return out;
+
+	// --- Step 1: convert to mono ---
+	int16_t *mono = NULL;
+
+	if (channels == 2) {
+		mono = malloc(sizeof(int16_t) * src_frames);
+		stereo_to_mono_i16(pcm, mono, src_frames);
+	} else {
+		mono = pcm;// already mono
+	}
+
+	// --- Step 2: resample to 22050 ---
+	int target_rate = 22050;
+	int max_dst_frames = (int) ((float) src_frames * target_rate / src_rate) + 1;
+
+	int16_t *resampled = malloc(sizeof(int16_t) * max_dst_frames);
+	int dst_frames = resample_i16(
+			mono,
+			src_frames,
+			src_rate,
+			resampled,
+			target_rate);
+
+	// --- Step 3: allocate final float buffer ---
+	out.num_channels = 1;
+	out.num_frames = dst_frames;
+
+	out.samples = (float *) pti_alloc(_bank, sizeof(float) * dst_frames);
+	i16_to_float(resampled, out.samples, dst_frames);
+
+	// --- cleanup ---
+	if (channels == 2) free(mono);
+	free(resampled);
+	free(pcm);
+
+	return out;
+}
+
+pti_audio_t create_sine_tone(float frequency, float amplitude, float duration_seconds, int sample_rate, int num_channels) {
+	pti_audio_t tone;
+	tone.num_frames = (int) (duration_seconds * sample_rate);
+	tone.num_channels = num_channels;
+	tone.samples = (float *) pti_alloc(_bank, sizeof(float) * tone.num_frames * num_channels);
+
+	if (!tone.samples) {
+		tone.num_frames = 0;
+		tone.num_channels = 0;
+		return tone;// allocation failed
+	}
+
+	float phase = 0.0f;
+	float phase_increment = 2.0f * 3.14159265f * frequency / (float) sample_rate;
+
+	for (int i = 0; i < tone.num_frames; i++) {
+		float value = sinf(phase) * amplitude;
+
+		for (int ch = 0; ch < num_channels; ch++) {
+			tone.samples[i * num_channels + ch] = value;
+		}
+
+		phase += phase_increment;
+		if (phase >= 2.0f * 3.14159265f) {
+			phase -= 2.0f * 3.14159265f;
+		}
+	}
+
+	return tone;
 }
