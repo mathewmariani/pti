@@ -280,6 +280,15 @@ inline void pti_music(pti_sound_t &music) { pti_music(&music); };
 #define TICK_DURATION_NS (PTI_DELTA * 1e9)
 #define TICK_TOLERANCE_NS (1000000)
 
+
+typedef struct {
+	pti_sound_t *sfx;
+	int position;
+	int volume;
+	bool is_music;
+	bool looping;
+} pti_channel_t;
+
 typedef struct {
 	struct {
 		uint16_t width;
@@ -313,13 +322,7 @@ typedef struct {
 	} hardware;
 
 	struct {
-		struct {
-			pti_sound_t *sfx;
-			int position;
-			int volume;
-			bool is_music;
-			bool looping;
-		} channel[4];
+		pti_channel_t channel[4];
 	} audio;
 
 	uint8_t flags;
@@ -1070,6 +1073,39 @@ void pti_print(const char *text, int x, int y) {
 
 //>> audio
 
+_PTI_PRIVATE bool _pti__audio_is_active(int channel) {
+	return _pti.vm.audio.channel[channel].sfx != NULL;
+}
+
+_PTI_PRIVATE int16_t _pti__audio_mix_sample(void) {
+	int32_t mixed = 0;
+
+	for (int ch = 0; ch < PTI_NUM_CHANNELS; ch++) {
+		pti_channel_t *c = &_pti.vm.audio.channel[ch];
+
+		if (!_pti__audio_is_active(ch)) {
+			continue;
+		}
+
+		pti_sound_t *sfx = c->sfx;
+		mixed += sfx->samples[c->position]; /* multiply by volume */
+
+		c->position++;
+		if (c->position >= sfx->samples_count) {
+			if (c->looping) {
+				c->position = 0;
+			} else {
+				c->position = sfx->samples_count - 1;
+				c->sfx = NULL;
+			}
+		}
+	}
+
+	// clamp to int16_t range
+	_pti_clamp(mixed, -32768, 32767);
+	return (int16_t) mixed;
+}
+
 _PTI_PRIVATE void _pti__audio_play(pti_sound_t *audio, int channel, bool music, int offset) {
 	_pti.vm.audio.channel[channel].sfx = audio;
 	_pti.vm.audio.channel[channel].is_music = music;
@@ -1078,14 +1114,10 @@ _PTI_PRIVATE void _pti__audio_play(pti_sound_t *audio, int channel, bool music, 
 }
 
 _PTI_PRIVATE void _pti__audio_stop(int channel) {
-	_pti.vm.audio.channel[channel].sfx = nullptr;
+	_pti.vm.audio.channel[channel].sfx = NULL;
 	_pti.vm.audio.channel[channel].is_music = false;
 	_pti.vm.audio.channel[channel].looping = false;
 	_pti.vm.audio.channel[channel].position = 0;
-}
-
-_PTI_PRIVATE bool _pti__audio_is_active(int channel) {
-	return _pti.vm.audio.channel[channel].sfx != NULL;
 }
 
 void pti_sfx(pti_sound_t *audio, int channel, int offset) {

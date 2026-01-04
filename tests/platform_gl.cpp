@@ -287,42 +287,17 @@ void gl_draw() {
 
 static void sokol_audio_cb(float *buffer, int num_frames, int num_channels) {
 	// always clear buffer
-	memset(buffer, 0, num_frames * num_channels * sizeof(float));
+	// memset(buffer, 0, num_frames * num_channels * sizeof(float));
 
 	for (int i = 0; i < num_frames; i++) {
-		int16_t mixed = 0;
+		int16_t mixed = _pti__audio_mix_sample();
 
-		// mix your 4 virtual channels
-		for (int ch = 0; ch < PTI_NUM_CHANNELS; ch++) {
-			if (!_pti__audio_is_active(ch)) {
-				continue;
-			}
-
-			pti_sound_t *sfx = _pti.vm.audio.channel[ch].sfx;
-			int pos = _pti.vm.audio.channel[ch].position;
-
-			mixed += sfx->samples[pos];
-
-			pos++;
-			if (pos >= sfx->samples_count) {
-				if (_pti.vm.audio.channel[ch].looping) {
-					pos = 0;
-				} else {
-					_pti.vm.audio.channel[ch].sfx = nullptr;
-					pos = sfx->samples_count - 1;
-				}
-			}
-
-			_pti.vm.audio.channel[ch].position = pos;
-		}
-
-		// write mixed sample to all output channels
+		float f = mixed / 32768.0f;
 		for (int c = 0; c < num_channels; c++) {
-			buffer[i * num_channels + c] = mixed / 32768.0f;
+			buffer[i * num_channels + c] = f;
 		}
 	}
 }
-
 
 #if defined(PTI_DEBUG)
 void imgui_debug_draw() {
