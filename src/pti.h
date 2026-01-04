@@ -35,6 +35,8 @@ enum {
 
 	PTI_REQUEST_NONE = (1 << 0),
 	PTI_REQUEST_SHUTDOWN = (1 << 1),
+
+	PTI_NUM_CHANNELS = 4,
 };
 
 typedef enum pti_event_type {
@@ -43,6 +45,19 @@ typedef enum pti_event_type {
 	PTI_EVENTTYPE_KEY_UP,
 	_PTI_EVENTTYPE_NUM,
 } pti_event_type;
+
+typedef union pti_stat_t {
+	void *ptr;
+} pti_stat_t;
+
+typedef enum pti_stat_type {
+	PTI_STATTYPE_INVALID = -1,
+	PTI_STATTYPE_SFX_CHANNEL0,
+	PTI_STATTYPE_SFX_CHANNEL1,
+	PTI_STATTYPE_SFX_CHANNEL2,
+	PTI_STATTYPE_SFX_CHANNEL3,
+	_PTI_STATTYPE_NUM
+} pti_stat_type;
 
 typedef enum pti_button {
 	PTI_LEFT,
@@ -69,6 +84,13 @@ typedef struct pti_bitmap_t {
 	uint32_t height;
 	void *pixels;// (width) x (height x frames)
 } pti_bitmap_t;
+
+typedef struct pti_sound_t {
+	int channels;
+	int samples_count;
+	int rate;
+	int16_t *samples;// (channels) x (samples_count)
+} pti_sound_t;
 
 typedef struct pti_tileset_t {
 	uint32_t count;
@@ -132,6 +154,7 @@ void pti_memset(void *dst, const int value, size_t len);
 void pti_set_tilemap(pti_tilemap_t *ptr);
 void pti_set_tileset(pti_tileset_t *ptr);
 void pti_set_font(pti_bitmap_t *ptr);
+pti_stat_t pti_stat(const pti_stat_type type);
 
 //>> memory api
 const uint8_t pti_peek(const uint32_t offset, const uint32_t index);
@@ -172,6 +195,10 @@ void pti_map(int x, int y);
 void pti_spr(const pti_bitmap_t *bitmap, int n, int x, int y, bool flip_x, bool flip_y);
 void pti_print(const char *text, int x, int y);
 
+//>> sound api
+void pti_sfx(pti_sound_t *sfx, int channel, int offset);
+void pti_music(pti_sound_t *music);
+
 #ifdef __cplusplus
 }// extern "C"
 
@@ -183,6 +210,8 @@ inline void pti_set_tileset(pti_tileset_t &tileset) { pti_set_tileset(&tileset);
 inline void pti_set_font(pti_bitmap_t &bitmap) { pti_set_font(&bitmap); }
 inline void pti_spr(const pti_bitmap_t &bitmap, int n, int x, int y, bool flip_x, bool flip_y) { pti_spr(&bitmap, n, x, y, flip_x, flip_y); }
 inline void pti_print(const std::string &text, int x, int y) { pti_print(text.c_str(), x, y); }
+inline void pti_sfx(pti_sound_t &sfx, int channel, int offset) { pti_sfx(&sfx, channel, offset); };
+inline void pti_music(pti_sound_t &music) { pti_music(&music); };
 
 #endif
 
@@ -251,6 +280,15 @@ inline void pti_print(const std::string &text, int x, int y) { pti_print(text.c_
 #define TICK_DURATION_NS (PTI_DELTA * 1e9)
 #define TICK_TOLERANCE_NS (1000000)
 
+
+typedef struct {
+	pti_sound_t *sfx;
+	int position;
+	int volume;
+	bool is_music;
+	bool looping;
+} pti_channel_t;
+
 typedef struct {
 	struct {
 		uint16_t width;
@@ -282,6 +320,10 @@ typedef struct {
 			int tick_accum;
 		} timing;
 	} hardware;
+
+	struct {
+		pti_channel_t channel[4];
+	} audio;
 
 	uint8_t flags;
 } _pti__vm_t;
@@ -519,6 +561,24 @@ void pti_set_tileset(pti_tileset_t *ptr) {
 void pti_set_font(pti_bitmap_t *ptr) {
 	_PTI_TRACE_ARGS(set_font, ptr);
 	_pti.vm.draw.font = ptr;
+}
+
+pti_stat_t pti_stat(const pti_stat_type type) {
+	union pti_stat_t ret = {0};
+	switch (type) {
+		case PTI_STATTYPE_SFX_CHANNEL0:
+		case PTI_STATTYPE_SFX_CHANNEL1:
+		case PTI_STATTYPE_SFX_CHANNEL2:
+		case PTI_STATTYPE_SFX_CHANNEL3: {
+			int ch = type - PTI_STATTYPE_SFX_CHANNEL0;
+			ret.ptr = _pti.vm.audio.channel[ch].sfx;
+		} break;
+
+		case PTI_STATTYPE_INVALID:
+		default:
+			break;
+	}
+	return ret;
 }
 
 //>> memory api
@@ -1008,6 +1068,102 @@ void pti_print(const char *text, int x, int y) {
 		_pti__plot(pixels, true, 0, cursor_x, cursor_y, FONT_GLYPH_WIDTH, FONT_GLYPH_HEIGHT, glyph_x, glyph_y, width, height, false, false);
 
 		cursor_x += FONT_GLYPH_WIDTH;
+	}
+}
+
+//>> audio
+
+_PTI_PRIVATE bool _pti__audio_is_active(int channel) {
+	return _pti.vm.audio.channel[channel].sfx != NULL;
+}
+
+_PTI_PRIVATE int16_t _pti__audio_mix_sample(void) {
+	int32_t mixed = 0;
+
+	for (int ch = 0; ch < PTI_NUM_CHANNELS; ch++) {
+		pti_channel_t *c = &_pti.vm.audio.channel[ch];
+
+		if (!_pti__audio_is_active(ch)) {
+			continue;
+		}
+
+		pti_sound_t *sfx = c->sfx;
+		mixed += sfx->samples[c->position]; /* multiply by volume */
+
+		c->position++;
+		if (c->position >= sfx->samples_count) {
+			if (c->looping) {
+				c->position = 0;
+			} else {
+				c->position = sfx->samples_count - 1;
+				c->sfx = NULL;
+			}
+		}
+	}
+
+	// clamp to int16_t range
+	_pti_clamp(mixed, -32768, 32767);
+	return (int16_t) mixed;
+}
+
+_PTI_PRIVATE void _pti__audio_play(pti_sound_t *audio, int channel, bool music, int offset) {
+	_pti.vm.audio.channel[channel].sfx = audio;
+	_pti.vm.audio.channel[channel].is_music = music;
+	_pti.vm.audio.channel[channel].looping = music;
+	_pti.vm.audio.channel[channel].position = 0;
+}
+
+_PTI_PRIVATE void _pti__audio_stop(int channel) {
+	_pti.vm.audio.channel[channel].sfx = NULL;
+	_pti.vm.audio.channel[channel].is_music = false;
+	_pti.vm.audio.channel[channel].looping = false;
+	_pti.vm.audio.channel[channel].position = 0;
+}
+
+void pti_sfx(pti_sound_t *audio, int channel, int offset) {
+	// stop any channels
+	if (audio == NULL) {
+		if (channel == -1) {
+			for (int i = 0; i < PTI_NUM_CHANNELS; i++) {
+				_pti__audio_stop(i);
+			}
+		} else {
+			_pti__audio_stop(channel);
+		}
+		return;
+	}
+	// play on first available channel
+	if (channel == -1) {
+		for (int i = 0; i < PTI_NUM_CHANNELS; i++) {
+			if (!_pti__audio_is_active(i)) {
+				_pti__audio_play(audio, i, false, offset);
+				return;
+			}
+		}
+		// all channels are busy
+	} else {
+		_pti__audio_play(audio, channel, false, offset);
+	}
+}
+
+void pti_music(pti_sound_t *music) {
+	// stop all music
+	for (int i = 0; i < PTI_NUM_CHANNELS; i++) {
+		if (_pti.vm.audio.channel[i].is_music) {
+			_pti__audio_stop(i);
+		}
+	}
+
+	if (music == NULL) {
+		return;
+	}
+
+	// play on first available channel
+	for (int i = 0; i < PTI_NUM_CHANNELS; i++) {
+		if (!_pti__audio_is_active(i)) {
+			_pti__audio_play(music, i, true, 0);
+			return;
+		}
 	}
 }
 

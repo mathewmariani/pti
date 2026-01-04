@@ -3,6 +3,7 @@
 
 // sokol
 #include "sokol/sokol_app.h"
+#include "sokol/sokol_audio.h"
 #include "sokol/sokol_log.h"
 
 #if defined(PTI_DEBUG)
@@ -59,11 +60,15 @@ sapp_desc sokol_main(int argc, char *argv[]) {
 			},
 #if defined(SOKOL_GLCORE)
 #if defined(__APPLE__)
-			.gl_major_version = 4,
-			.gl_minor_version = 1,
+			.gl = {
+					.major_version = 4,
+					.minor_version = 1,
+			}
 #else
-			.gl_major_version = 4,
-			.gl_minor_version = 2,
+			.gl = {
+					.major_version = 4,
+					.minor_version = 2,
+			}
 #endif
 #endif
 	};
@@ -81,6 +86,9 @@ static struct {
 	} gl;
 
 	bool crt = false;
+
+	pti_sound_t tone;
+
 
 #if defined(PTI_TRACE_HOOKS)
 	pti_trace_hooks hooks;
@@ -275,6 +283,20 @@ void gl_draw() {
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, state.gl.color0);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
+}
+
+static void sokol_audio_cb(float *buffer, int num_frames, int num_channels) {
+	// always clear buffer
+	// memset(buffer, 0, num_frames * num_channels * sizeof(float));
+
+	for (int i = 0; i < num_frames; i++) {
+		int16_t mixed = _pti__audio_mix_sample();
+
+		float f = mixed / 32768.0f;
+		for (int c = 0; c < num_channels; c++) {
+			buffer[i * num_channels + c] = f;
+		}
+	}
 }
 
 #if defined(PTI_DEBUG)
@@ -477,6 +499,15 @@ static void init(void) {
 	/* initialize graphics */
 	gl_init();
 
+	/* initialize audio */
+	auto audio_desc = (saudio_desc) {
+			.num_channels = 2,
+			.stream_cb = sokol_audio_cb,
+			.logger = {
+					.func = slog_func,
+			}};
+	saudio_setup(audio_desc);
+
 #if defined(PTI_DEBUG)
 	/* initialize debug ui */
 	__dbgui_setup();
@@ -498,6 +529,7 @@ static void init(void) {
 }
 
 static void cleanup(void) {
+	saudio_shutdown();
 	glDeleteVertexArrays(1, &state.gl.vao);
 	glDeleteBuffers(1, &state.gl.vbo);
 	glDeleteTextures(1, &state.gl.color0);

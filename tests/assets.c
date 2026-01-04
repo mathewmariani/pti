@@ -2,6 +2,9 @@
 #define CUTE_ASEPRITE_IMPLEMENTATION
 #include "cute_aseprite.h"
 
+// stb
+#include "stb_vorbis.c"
+
 // engine
 #include "pti.h"
 
@@ -102,4 +105,79 @@ pti_tilemap_t create_tilemap(const char *path) {
 	cute_aseprite_free(ase);
 
 	return tilemap;
+}
+
+pti_sound_t create_sfx(const char *path) {
+	pti_sound_t sound = {0};
+
+	int error = 0;
+	stb_vorbis *stream = stb_vorbis_open_filename(path, &error, 0);
+	if (!stream) return sound;
+
+	stb_vorbis_info info = stb_vorbis_get_info(stream);
+	sound.rate = info.sample_rate;
+	sound.channels = info.channels;
+	sound.samples_count = stb_vorbis_stream_length_in_samples(stream);
+
+	size_t bytes_needed = sound.samples_count * sound.channels * sizeof(int16_t);
+	sound.samples = (int16_t *) pti_alloc(_bank, bytes_needed);
+	if (!sound.samples) {
+		stb_vorbis_close(stream);
+		return sound;
+	}
+
+	int16_t buffer[1024 * info.channels];// per channel buffer
+	int16_t *it = sound.samples;
+	int samples_read_per_channel;
+
+	while ((samples_read_per_channel =
+					stb_vorbis_get_samples_short_interleaved(stream, info.channels, buffer, 1024)) > 0) {
+		memcpy(it, buffer, samples_read_per_channel * info.channels * sizeof(int16_t));
+		it += samples_read_per_channel * info.channels;
+	}
+
+	stb_vorbis_close(stream);
+	return sound;
+}
+
+pti_sound_t create_sine_tone(float frequency, float amplitude, float duration_seconds, int sample_rate, int num_channels) {
+	pti_sound_t tone = {0};
+
+	tone.samples_count = (int) (duration_seconds * sample_rate);
+	tone.channels = num_channels;
+
+	tone.samples = (int16_t *) pti_alloc(
+			_bank,
+			sizeof(int16_t) * tone.samples_count * num_channels);
+
+	if (!tone.samples) {
+		tone.samples_count = 0;
+		tone.channels = 0;
+		return tone;// allocation failed
+	}
+
+	if (amplitude > 1.0f) amplitude = 1.0f;
+	if (amplitude < 0.0f) amplitude = 0.0f;
+
+	float phase = 0.0f;
+	float phase_inc = 2.0f * 3.14159265f * frequency / (float) sample_rate;
+
+	for (int i = 0; i < tone.samples_count; i++) {
+		float value = sinf(phase) * amplitude;
+
+		// clamp
+		if (value > 1.0f) value = 1.0f;
+		if (value < -1.0f) value = -1.0f;
+
+		int16_t sample = (int16_t) (value * 32767.0f);
+
+		for (int ch = 0; ch < num_channels; ch++) {
+			tone.samples[i * num_channels + ch] = sample;
+		}
+
+		phase += phase_inc;
+		if (phase >= 2.0f * 3.14159265f) phase -= 2.0f * 3.14159265f;
+	}
+
+	return tone;
 }
