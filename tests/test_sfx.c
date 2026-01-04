@@ -20,23 +20,23 @@ pti_desc pti_main(int argc, char *argv[]) {
 			.init_cb = init,
 			.frame_cb = frame,
 			.cleanup_cb = cleanup,
-			.memory_size = _pti_kilobytes(256),
+			.memory_size = _pti_kilobytes(1024),
 			.width = 128,
 			.height = 128,
 	};
 }
 
 static pti_bitmap_t bitmap;
-static pti_audio_t tone;
-static pti_audio_t track;
+static pti_sound_t tone;
+static pti_sound_t track;
 bool playing = false;
 
 static void init(void) {
-	pti_bank_init(&bank, _pti_kilobytes(256));
+	pti_bank_init(&bank, _pti_kilobytes(1024));
 	init_assets(&bank);
 	bitmap = create_bitmap("assets/font.ase");
 	tone = create_sine_tone(440.0f, 0.3f, 0.5f, 44100.0f, 1);
-	track = create_sfx("assets/shoot.ogg");
+	track = create_sfx("assets/death.ogg");
 
 	pti_set_font(&bitmap);
 	pti_load_bank(&bank);

@@ -87,7 +87,7 @@ static struct {
 
 	bool crt = false;
 
-	pti_audio_t tone;
+	pti_sound_t tone;
 
 
 #if defined(PTI_TRACE_HOOKS)
@@ -290,7 +290,7 @@ static void sokol_audio_cb(float *buffer, int num_frames, int num_channels) {
 	memset(buffer, 0, num_frames * num_channels * sizeof(float));
 
 	for (int i = 0; i < num_frames; i++) {
-		float mixed = 0.0f;
+		int16_t mixed = 0;
 
 		// mix your 4 virtual channels
 		for (int ch = 0; ch < PTI_NUM_CHANNELS; ch++) {
@@ -298,18 +298,18 @@ static void sokol_audio_cb(float *buffer, int num_frames, int num_channels) {
 				continue;
 			}
 
-			pti_audio_t *sfx = _pti.vm.audio.channel[ch].sfx;
+			pti_sound_t *sfx = _pti.vm.audio.channel[ch].sfx;
 			int pos = _pti.vm.audio.channel[ch].position;
 
 			mixed += sfx->samples[pos];
 
 			pos++;
-			if (pos >= sfx->num_frames) {
+			if (pos >= sfx->samples_count) {
 				if (_pti.vm.audio.channel[ch].looping) {
 					pos = 0;
 				} else {
 					_pti.vm.audio.channel[ch].sfx = nullptr;
-					pos = sfx->num_frames - 1;
+					pos = sfx->samples_count - 1;
 				}
 			}
 
@@ -318,7 +318,7 @@ static void sokol_audio_cb(float *buffer, int num_frames, int num_channels) {
 
 		// write mixed sample to all output channels
 		for (int c = 0; c < num_channels; c++) {
-			buffer[i * num_channels + c] = mixed;
+			buffer[i * num_channels + c] = mixed / 32768.0f;
 		}
 	}
 }
@@ -526,6 +526,7 @@ static void init(void) {
 
 	/* initialize audio */
 	auto audio_desc = (saudio_desc) {
+			.num_channels = 2,
 			.stream_cb = sokol_audio_cb,
 			.logger = {
 					.func = slog_func,

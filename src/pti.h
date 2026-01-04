@@ -85,11 +85,12 @@ typedef struct pti_bitmap_t {
 	void *pixels;// (width) x (height x frames)
 } pti_bitmap_t;
 
-typedef struct pti_audio_t {
-	int num_frames;
-	int num_channels;
-	float *samples;// (num_frames) x (num_channels)
-} pti_audio_t;
+typedef struct pti_sound_t {
+	int channels;
+	int samples_count;
+	int rate;
+	int16_t *samples;// (channels) x (samples_count)
+} pti_sound_t;
 
 typedef struct pti_tileset_t {
 	uint32_t count;
@@ -195,8 +196,8 @@ void pti_spr(const pti_bitmap_t *bitmap, int n, int x, int y, bool flip_x, bool 
 void pti_print(const char *text, int x, int y);
 
 //>> sound api
-void pti_sfx(pti_audio_t *sfx, int channel, int offset);
-void pti_music(pti_audio_t *music);
+void pti_sfx(pti_sound_t *sfx, int channel, int offset);
+void pti_music(pti_sound_t *music);
 
 #ifdef __cplusplus
 }// extern "C"
@@ -209,8 +210,8 @@ inline void pti_set_tileset(pti_tileset_t &tileset) { pti_set_tileset(&tileset);
 inline void pti_set_font(pti_bitmap_t &bitmap) { pti_set_font(&bitmap); }
 inline void pti_spr(const pti_bitmap_t &bitmap, int n, int x, int y, bool flip_x, bool flip_y) { pti_spr(&bitmap, n, x, y, flip_x, flip_y); }
 inline void pti_print(const std::string &text, int x, int y) { pti_print(text.c_str(), x, y); }
-inline void pti_sfx(pti_audio_t &sfx, int channel, int offset) { pti_sfx(&sfx, channel, offset); };
-inline void pti_music(pti_audio_t &music) { pti_music(&music); };
+inline void pti_sfx(pti_sound_t &sfx, int channel, int offset) { pti_sfx(&sfx, channel, offset); };
+inline void pti_music(pti_sound_t &music) { pti_music(&music); };
 
 #endif
 
@@ -313,7 +314,7 @@ typedef struct {
 
 	struct {
 		struct {
-			pti_audio_t *sfx;
+			pti_sound_t *sfx;
 			int position;
 			int volume;
 			bool is_music;
@@ -1069,7 +1070,7 @@ void pti_print(const char *text, int x, int y) {
 
 //>> audio
 
-_PTI_PRIVATE void _pti__audio_play(pti_audio_t *audio, int channel, bool music, int offset) {
+_PTI_PRIVATE void _pti__audio_play(pti_sound_t *audio, int channel, bool music, int offset) {
 	_pti.vm.audio.channel[channel].sfx = audio;
 	_pti.vm.audio.channel[channel].is_music = music;
 	_pti.vm.audio.channel[channel].looping = music;
@@ -1087,7 +1088,7 @@ _PTI_PRIVATE bool _pti__audio_is_active(int channel) {
 	return _pti.vm.audio.channel[channel].sfx != NULL;
 }
 
-void pti_sfx(pti_audio_t *audio, int channel, int offset) {
+void pti_sfx(pti_sound_t *audio, int channel, int offset) {
 	// stop any channels
 	if (audio == NULL) {
 		if (channel == -1) {
@@ -1113,7 +1114,7 @@ void pti_sfx(pti_audio_t *audio, int channel, int offset) {
 	}
 }
 
-void pti_music(pti_audio_t *music) {
+void pti_music(pti_sound_t *music) {
 	// stop all music
 	for (int i = 0; i < PTI_NUM_CHANNELS; i++) {
 		if (_pti.vm.audio.channel[i].is_music) {
