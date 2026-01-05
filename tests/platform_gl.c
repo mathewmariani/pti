@@ -270,7 +270,7 @@ static void cleanup(void) {
 #define TICK_TOLERANCE_NS (1000000)
 
 static void frame(void) {
-	if (_pti.vm.flags == PTI_REQUEST_SHUTDOWN) {
+	if (_pti.vm.interrupts == PTI_REQUEST_SHUTDOWN) {
 		sapp_request_quit();
 		return;
 	}

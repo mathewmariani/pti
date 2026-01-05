@@ -107,6 +107,11 @@ typedef struct pti_tilemap_t {
 	int *tiles;
 } pti_tilemap_t;
 
+typedef struct pti_flags_t {
+	uint8_t count;
+	uint8_t *flags;
+} pti_flags_t;
+
 typedef struct pti_bank_t {
 	uint8_t *begin;
 	uint8_t *end;
@@ -115,6 +120,7 @@ typedef struct pti_bank_t {
 } pti_bank_t;
 
 typedef struct pti_trace_hooks {
+	void (*set_flags)(pti_flags_t *ptr);
 	void (*set_tilemap)(pti_tilemap_t *ptr);
 	void (*set_tileset)(pti_tileset_t *ptr);
 	void (*set_font)(pti_bitmap_t *ptr);
@@ -151,6 +157,7 @@ void *pti_alloc(pti_bank_t *bank, const size_t size);
 void pti_reload(void);
 void pti_memcpy(void *dst, const void *src, size_t len);
 void pti_memset(void *dst, const int value, size_t len);
+void pti_set_flags(pti_flags_t *ptr);
 void pti_set_tilemap(pti_tilemap_t *ptr);
 void pti_set_tileset(pti_tileset_t *ptr);
 void pti_set_font(pti_bitmap_t *ptr);
@@ -172,7 +179,7 @@ bool pti_released(pti_button btn);
 //>> map api
 uint32_t pti_mget(int x, int y);
 void pti_mset(int x, int y, int value);
-uint16_t pti_fget(int x, int y);
+uint8_t pti_fget(int i);
 
 //>> random api
 uint16_t pti_prand(void);
@@ -205,6 +212,7 @@ void pti_music(pti_sound_t *music);
 #include <string>
 
 // reference-based equivalents for C++
+inline void pti_set_flags(pti_flags_t &flags) { pti_set_flags(&flags); }
 inline void pti_set_tilemap(pti_tilemap_t &tilemap) { pti_set_tilemap(&tilemap); }
 inline void pti_set_tileset(pti_tileset_t &tileset) { pti_set_tileset(&tileset); }
 inline void pti_set_font(pti_bitmap_t &bitmap) { pti_set_font(&bitmap); }
@@ -295,6 +303,7 @@ typedef struct {
 		uint16_t height;
 	} screen;
 
+	pti_flags_t *flags;
 	pti_tilemap_t *tilemap;
 
 	struct {
@@ -325,7 +334,7 @@ typedef struct {
 		pti_channel_t channel[4];
 	} audio;
 
-	uint8_t flags;
+	uint8_t interrupts;
 } _pti__vm_t;
 
 typedef struct {
@@ -496,7 +505,7 @@ void pti_event(pti_event_type type, int pti_key) {
 }
 
 void pti_quit(void) {
-	_pti.vm.flags = PTI_REQUEST_SHUTDOWN;
+	_pti.vm.interrupts = PTI_REQUEST_SHUTDOWN;
 }
 
 // api functions
@@ -546,6 +555,11 @@ void pti_memcpy(void *dst, const void *src, size_t len) {
 
 void pti_memset(void *dst, const int value, size_t len) {
 	memset(dst, value, len);
+}
+
+void pti_set_flags(pti_flags_t *ptr) {
+	// _PTI_TRACE_ARGS(set_flags, ptr);
+	_pti.vm.flags = ptr;
 }
 
 void pti_set_tilemap(pti_tilemap_t *ptr) {
@@ -642,6 +656,9 @@ bool pti_released(pti_button btn) {
 //>> map
 
 uint32_t pti_mget(int x, int y) {
+	if (_pti.vm.tilemap == NULL) {
+		return 0;
+	}
 	int *tiles = (int *) _pti__ptr_to_bank((void *) _pti.vm.tilemap->tiles);
 	return *(tiles + x + y * _pti.vm.tilemap->width);
 }
@@ -651,8 +668,12 @@ void pti_mset(int x, int y, int value) {
 	*(tiles + x + y * _pti.vm.tilemap->width) = value;
 }
 
-uint16_t pti_fget(int x, int y) {
-	return (uint16_t) pti_mget(x, y);
+uint8_t pti_fget(int i) {
+	if (_pti.vm.flags == NULL) {
+		return 0;
+	}
+	uint8_t *flags = (uint8_t *) _pti__ptr_to_bank((void *) _pti.vm.flags->flags);
+	return *(flags + i);
 }
 
 //>> random
@@ -961,6 +982,9 @@ void pti_rectf(int x, int y, int w, int h, uint64_t color) {
 }
 
 void pti_map(int x, int y) {
+	if (_pti.vm.tilemap == NULL) {
+		return;
+	}
 	const int map_w = _pti.vm.tilemap->width;
 	const int map_h = _pti.vm.tilemap->height;
 
