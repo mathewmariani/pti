@@ -1,23 +1,22 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -e
 
-# URL of the Python script
-GL3W_URL="https://raw.githubusercontent.com/skaslev/gl3w/refs/heads/master/gl3w_gen.py"
-
-# Directory where this shell script is located
+# Resolve directory where this script lives
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Temporary location for the downloaded Python script
-TMP_SCRIPT="$(mktemp /tmp/gl3w_gen.XXXXXX.py)"
+# URLs
+GL3W_GEN_URL="https://raw.githubusercontent.com/skaslev/gl3w/refs/heads/master/gl3w_gen.py"
 
-# Download the script
+# Temp file for the generator
+GENERATOR="$(mktemp --suffix=.py)"
+
 echo "Downloading gl3w_gen.py..."
-curl -fsSL "$GL3W_URL" -o "$TMP_SCRIPT"
+curl -fsSL "$GL3W_GEN_URL" -o "$GENERATOR"
 
-# Run the script, tell it to output next to the shell script
 echo "Running gl3w_gen.py..."
-python3 "$TMP_SCRIPT" "$SCRIPT_DIR"
+python3 "$GENERATOR" --root "$SCRIPT_DIR"
 
-# Clean up
-rm -f "$TMP_SCRIPT"
+echo "Cleaning up..."
+rm -f "$GENERATOR"
+
 echo "Done. Files are in $SCRIPT_DIR"
