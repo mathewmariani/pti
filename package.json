@@ -3,6 +3,7 @@
     "cmake": "cmake --preset Release -B build && cmake --build build --preset Release",
     "emsdk": "git clone https://github.com/emscripten-core/emsdk && cd emsdk && ./emsdk install latest && ./emsdk activate --embedded latest && cd ..",
     "libs:sokol": "./libs/sokol/update.sh",
-    "libs:gl3w": "./libs/gl3w/update.ps1"
+    "libs:gl3w": "./libs/gl3w/update.ps1",
+    "libs:test": "./tests/update.sh"
   }
 }
