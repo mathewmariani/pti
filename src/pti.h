@@ -78,11 +78,16 @@ typedef enum pti_button {
 	PTI_BUTTON_COUNT
 } pti_button;
 
+typedef struct pti_palette_t {
+	uint8_t count;
+	uint32_t *colors;
+} pti_palette_t;
+
 typedef struct pti_bitmap_t {
 	uint32_t frames;
 	uint32_t width;
 	uint32_t height;
-	void *pixels;// (width) x (height x frames)
+	uint8_t *pixels;// (width) x (height x frames)
 } pti_bitmap_t;
 
 typedef struct pti_sound_t {
@@ -98,7 +103,7 @@ typedef struct pti_tileset_t {
 	uint16_t height;
 	uint16_t tile_w;
 	uint16_t tile_h;
-	void *pixels;// (width) x (height x count)
+	uint8_t *pixels;// (width) x (height x count)
 } pti_tileset_t;
 
 typedef struct pti_tilemap_t {
@@ -120,6 +125,7 @@ typedef struct pti_bank_t {
 } pti_bank_t;
 
 typedef struct pti_trace_hooks {
+	void (*set_palette)(pti_palette_t *ptr);
 	void (*set_flags)(pti_flags_t *ptr);
 	void (*set_tilemap)(pti_tilemap_t *ptr);
 	void (*set_tileset)(pti_tileset_t *ptr);
@@ -157,6 +163,7 @@ void *pti_alloc(pti_bank_t *bank, const size_t size);
 void pti_reload(void);
 void pti_memcpy(void *dst, const void *src, size_t len);
 void pti_memset(void *dst, const int value, size_t len);
+void pti_set_palette(pti_palette_t *ptr);
 void pti_set_flags(pti_flags_t *ptr);
 void pti_set_tilemap(pti_tilemap_t *ptr);
 void pti_set_tileset(pti_tileset_t *ptr);
@@ -187,17 +194,17 @@ uint16_t pti_prand(void);
 //>> graphics api
 void pti_camera(int x, int y);
 void pti_get_camera(int *x, int *y);
-void pti_cls(const uint32_t color);
-void pti_color(const uint64_t color);
-void pti_colorkey(const uint32_t color);
+void pti_cls(const uint8_t color);
+void pti_color(const uint16_t color);
+void pti_colorkey(const uint16_t color);
 void pti_dither(const uint16_t bstr);
 void pti_clip(int x0, int y0, int x1, int y1);
-void pti_pset(int x, int y, uint64_t color);
-void pti_circ(int x, int y, int r, uint64_t color);
-void pti_circf(int x, int y, int r, uint64_t color);
-void pti_line(int x0, int y0, int x1, int y1, uint64_t color);
-void pti_rect(int x, int y, int w, int h, uint64_t color);
-void pti_rectf(int x, int y, int w, int h, uint64_t color);
+void pti_pset(int x, int y, uint16_t color);
+void pti_circ(int x, int y, int r, uint16_t color);
+void pti_circf(int x, int y, int r, uint16_t color);
+void pti_line(int x0, int y0, int x1, int y1, uint16_t color);
+void pti_rect(int x, int y, int w, int h, uint16_t color);
+void pti_rectf(int x, int y, int w, int h, uint16_t color);
 void pti_map(int x, int y);
 void pti_spr(const pti_bitmap_t *bitmap, int n, int x, int y, bool flip_x, bool flip_y);
 void pti_print(const char *text, int x, int y);
@@ -212,6 +219,7 @@ void pti_music(pti_sound_t *music);
 #include <string>
 
 // reference-based equivalents for C++
+inline void pti_set_palette(pti_palette_t &palette) { pti_set_palette(&palette); }
 inline void pti_set_flags(pti_flags_t &flags) { pti_set_flags(&flags); }
 inline void pti_set_tilemap(pti_tilemap_t &tilemap) { pti_set_tilemap(&tilemap); }
 inline void pti_set_tileset(pti_tileset_t &tileset) { pti_set_tileset(&tileset); }
@@ -307,16 +315,17 @@ typedef struct {
 	pti_tilemap_t *tilemap;
 
 	struct {
+		pti_palette_t *palette;
 		pti_tileset_t *tileset;
 		pti_bitmap_t *font;
 		int16_t clip_x0, clip_y0;
 		int16_t clip_x1, clip_y1;
 		int16_t cam_x, cam_y;
 		uint16_t dither;
-		uint32_t ckey;
+		uint8_t ckey;
 		struct {
-			uint32_t low;
-			uint32_t high;
+			uint8_t low;
+			uint8_t high;
 		} color;
 	} draw;
 
@@ -557,8 +566,13 @@ void pti_memset(void *dst, const int value, size_t len) {
 	memset(dst, value, len);
 }
 
+void pti_set_palette(pti_palette_t *ptr) {
+	_PTI_TRACE_ARGS(set_palette, ptr);
+	_pti.vm.draw.palette = ptr;
+}
+
 void pti_set_flags(pti_flags_t *ptr) {
-	// _PTI_TRACE_ARGS(set_flags, ptr);
+	_PTI_TRACE_ARGS(set_flags, ptr);
 	_pti.vm.flags = ptr;
 }
 
@@ -707,7 +721,8 @@ _PTI_PRIVATE inline void _pti__transform(int *x, int *y) {
 	*y -= _pti.vm.draw.cam_y;
 }
 
-_PTI_PRIVATE inline void _pti__set_pixel(int x, int y, uint64_t c) {
+// FIXME: heavy functions, offset functionality to the gpu.
+_PTI_PRIVATE inline void _pti__set_pixel(int x, int y, uint16_t color) {
 	const int16_t clip_x0 = _pti.vm.draw.clip_x0;
 	const int16_t clip_y0 = _pti.vm.draw.clip_y0;
 	const int16_t clip_x1 = _pti.vm.draw.clip_x1;
@@ -717,23 +732,30 @@ _PTI_PRIVATE inline void _pti__set_pixel(int x, int y, uint64_t c) {
 		return;
 	}
 
-	*(_pti.screen + (x + y * _pti.vm.screen.width)) = _pti__get_dither_bit(x, y) ? (c >> 32) & 0xffffffff : (c >> 0) & 0xffffffff;
+	// TODO: dither can be an image on the gpu
+	// TODO: palette can be an image on the gpu
+	uint8_t i = _pti__get_dither_bit(x, y) ? (color >> 8) & 0xff : (color >> 0) & 0xff;
+	uint32_t c = _pti.vm.draw.palette->colors[i];
+
+	// TODO: just use the `i` instead of looking for the color itself.
+	// NOTE: this means screen can be `uint8_t` instead of `uint32_t`/
+	*(_pti.screen + (x + y * _pti.vm.screen.width)) = c;
 }
 
-_PTI_PRIVATE void _pti__plot(void *pixels, bool mask, int n, int dst_x, int dst_y, int dst_w, int dst_h, int src_x, int src_y, int src_w, int src_h, bool flip_x, bool flip_y) {
-#define PTI_PLOT_LOOP_BODY(EMIT_PIXEL)                           \
-	do {                                                         \
-		for (int y = dst_y1; y <= dst_y2; y++) {                 \
-			int src_row = src_y + (y - dst_y1) * iy;             \
-			uint32_t *src_pixel = src + src_row * src_w + src_x; \
-			for (int x = dst_x1; x <= dst_x2; x++) {             \
-				uint32_t src_color = *src_pixel;                 \
-				if (src_color != color_key) {                    \
-					EMIT_PIXEL;                                  \
-				}                                                \
-				src_pixel += ix;                                 \
-			}                                                    \
-		}                                                        \
+_PTI_PRIVATE void _pti__plot(uint8_t *pixels, bool mask, int n, int dst_x, int dst_y, int dst_w, int dst_h, int src_x, int src_y, int src_w, int src_h, bool flip_x, bool flip_y) {
+#define PTI_PLOT_LOOP_BODY(EMIT_PIXEL)                          \
+	do {                                                        \
+		for (int y = dst_y1; y <= dst_y2; y++) {                \
+			int src_row = src_y + (y - dst_y1) * iy;            \
+			uint8_t *src_pixel = src + src_row * src_w + src_x; \
+			for (int x = dst_x1; x <= dst_x2; x++) {            \
+				uint8_t src_color = *src_pixel;                 \
+				if (src_color != color_key) {                   \
+					EMIT_PIXEL;                                 \
+				}                                               \
+				src_pixel += ix;                                \
+			}                                                   \
+		}                                                       \
 	} while (0)
 
 	const int16_t clip_x0 = _pti.vm.draw.clip_x0;
@@ -775,44 +797,23 @@ _PTI_PRIVATE void _pti__plot(void *pixels, bool mask, int n, int dst_x, int dst_
 		src_y += (dst_y2 - dst_y1);
 	}
 
-	uint32_t *src = (uint32_t *) pixels + n * (src_w * src_h);
-	uint32_t color_key = _pti.vm.draw.ckey;
+	uint8_t *src = pixels + n * (src_w * src_h);
+	uint16_t color_key = _pti.vm.draw.ckey;
 
 	const int dst_width = _pti.desc.width;
 
 	if (mask) {
 		PTI_PLOT_LOOP_BODY(
 				if (src_color != 0) {
-					uint64_t c = ((uint64_t) _pti.vm.draw.color.high << 32) | _pti.vm.draw.color.low;
-					_pti__set_pixel(x, y, c);
+					uint16_t c = ((uint16_t) _pti.vm.draw.color.high << 8) | _pti.vm.draw.color.low;
+					_pti__set_pixel(x, y, 5);
 				});
 	} else {
 		PTI_PLOT_LOOP_BODY({
-			uint64_t c = ((uint64_t) _pti.vm.draw.color.high << 32) | src_color;
+			uint16_t c = ((uint16_t) _pti.vm.draw.color.high << 8) | src_color;
 			_pti__set_pixel(x, y, c);
 		});
 	}
-
-	// uint32_t *src = (uint32_t *) pixels + n * (src_w * src_h);
-	// uint32_t *dst = _pti.screen;
-	// uint32_t color_key = _pti.vm.draw.ckey;
-	// uint32_t color_cur = _pti.vm.draw.color.low;
-
-	// const int dst_width = _pti.desc.width;
-	// const int clipped_width = dst_x2 - dst_x1 + 1;
-
-	// for (int y = dst_y1; y <= dst_y2; y++) {
-	// 	int src_row = src_y + (y - dst_y1) * iy;
-	// 	uint32_t *src_pixel = src + src_row * src_w + src_x;
-	// 	for (int x = dst_x1; x <= dst_x2; x++) {
-	// 		uint32_t src_color = *src_pixel;
-	// 		if (src_color != color_key) {
-	// 			uint64_t c = ((uint64_t) _pti.vm.draw.color.high << 32) | src_color;
-	// 			_pti__set_pixel(x, y, c);
-	// 		}
-	// 		src_pixel += ix;
-	// 	}
-	// }
 }
 
 void pti_camera(int x, int y) {
@@ -829,25 +830,25 @@ void pti_get_camera(int *x, int *y) {
 	}
 }
 
-void pti_cls(const uint32_t color) {
+void pti_cls(const uint8_t idx) {
 	const int screen_w = _pti.vm.screen.width;
 	const int screen_h = _pti.vm.screen.height;
 	const size_t pixel_count = screen_w * screen_h;
 
-	uint32_t *pixels = (uint32_t *) _pti.screen;
+	uint32_t color = _pti.vm.draw.palette->colors[idx];
 	for (size_t i = 0; i < pixel_count; i++) {
-		pixels[i] = color;
+		*((uint32_t *) _pti.screen + i) = color;
 	}
 }
 
-void pti_color(const uint64_t color) {
+void pti_color(const uint16_t color) {
 	_pti.vm.draw.color = {
-			.low = (uint32_t) (color & 0xFFFFFFFF),
-			.high = (uint32_t) (color >> 32),
+			.low = (uint8_t) (color & 0xFF),
+			.high = (uint8_t) (color >> 8),
 	};
 }
 
-void pti_colorkey(const uint32_t color) {
+void pti_colorkey(const uint16_t color) {
 	_pti.vm.draw.ckey = color;
 }
 
@@ -862,11 +863,11 @@ void pti_clip(int x0, int y0, int x1, int y1) {
 	_pti.vm.draw.clip_y1 = y1;
 }
 
-void pti_pset(int x, int y, uint64_t color) {
+void pti_pset(int x, int y, uint16_t color) {
 	_pti__set_pixel(x, y, color);
 }
 
-void pti_circ(int x, int y, int r, uint64_t color) {
+void pti_circ(int x, int y, int r, uint16_t color) {
 	_pti__transform(&x, &y);
 	int32_t dx = r;
 	int32_t dy = 0;
@@ -891,7 +892,7 @@ void pti_circ(int x, int y, int r, uint64_t color) {
 	}
 }
 
-void pti_circf(int x, int y, int r, uint64_t color) {
+void pti_circf(int x, int y, int r, uint16_t color) {
 	_pti__transform(&x, &y);
 	int32_t dx = r;
 	int32_t dy = 0;
@@ -929,7 +930,7 @@ void pti_circf(int x, int y, int r, uint64_t color) {
 	}
 }
 
-void pti_line(int x0, int y0, int x1, int y1, uint64_t c) {
+void pti_line(int x0, int y0, int x1, int y1, uint16_t c) {
 	bool steep = _pti_abs(x1 - x0) < _pti_abs(y1 - y0);
 	if (steep) {
 		_pti_swap(x0, y0);
@@ -962,14 +963,14 @@ void pti_line(int x0, int y0, int x1, int y1, uint64_t c) {
 	}
 }
 
-void pti_rect(int x, int y, int w, int h, uint64_t color) {
+void pti_rect(int x, int y, int w, int h, uint16_t color) {
 	pti_line(x, y, x + w, y, color);
 	pti_line(x, y + h, x + w, y + h, color);
 	pti_line(x, y, x, y + h, color);
 	pti_line(x + w, y, x + w, y + h, color);
 }
 
-void pti_rectf(int x, int y, int w, int h, uint64_t color) {
+void pti_rectf(int x, int y, int w, int h, uint16_t color) {
 	_pti__transform(&x, &y);
 	int x2 = x + w;
 	int y2 = y + h;
@@ -995,7 +996,7 @@ void pti_map(int x, int y) {
 	const int tiles_per_row = tileset->width / tile_w;
 
 	const int *tiles = (int *) _pti__ptr_to_bank((void *) _pti.vm.tilemap->tiles);
-	void *pixels = (void *) _pti__ptr_to_bank((void *) tileset->pixels);
+	uint8_t *pixels = (uint8_t *) _pti__ptr_to_bank((void *) tileset->pixels);
 
 	_pti__transform(&x, &y);
 
@@ -1025,7 +1026,7 @@ void pti_map(int x, int y) {
 void pti_spr(const pti_bitmap_t *sprite, int n, int x, int y, bool flip_x, bool flip_y) {
 	const int bmp_w = sprite->width;
 	const int bmp_h = sprite->height;
-	void *pixels = (void *) _pti__ptr_to_bank((void *) sprite->pixels);
+	uint8_t *pixels = (uint8_t *) _pti__ptr_to_bank((void *) sprite->pixels);
 	_pti__transform(&x, &y);
 	_pti__plot(pixels, false, n, x, y, bmp_w, bmp_h, 0, 0, bmp_w, bmp_h, flip_x, flip_y);
 }
@@ -1060,7 +1061,7 @@ uint32_t _pti__next_utf8_code_point(const char *data, uint32_t *index, uint32_t 
 #define FONT_TAB_SIZE (3)
 
 void pti_print(const char *text, int x, int y) {
-	void *pixels = (void *) _pti__ptr_to_bank((void *) _pti.vm.draw.font->pixels);
+	uint8_t *pixels = (uint8_t *) _pti__ptr_to_bank((void *) _pti.vm.draw.font->pixels);
 	int cursor_x = x;
 	int cursor_y = y;
 	uint32_t text_length = strlen(text);
