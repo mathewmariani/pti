@@ -15,10 +15,12 @@
 
 // opengl
 #if defined(SOKOL_GLCORE)
-#if defined(__APPLE__)
+#if defined(_PTI_WINDOWS)
+#include "GL/gl3w.h"
+#elif defined(_PTI_APPLE)
 #include <OpenGL/gl3.h>
 #include <OpenGL/gl3ext.h>
-#elif defined(__linux__) || defined(__unix__)
+#elif defined(_PTI_LINUX)
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
 #else
@@ -127,6 +129,18 @@ static GLuint create_program(GLuint vs, GLuint fs) {
 }
 
 static void gl_init(void) {
+#if defined(_PTI_WINDOWS)
+	if (gl3wInit()) {
+		fprintf(stderr, "failed to initialize OpenGL\n");
+		return;
+	}
+	if (!gl3wIsSupported(3, 2)) {
+		fprintf(stderr, "OpenGL 3.2 not supported\n");
+		return;
+	}
+	printf("OpenGL %s, GLSL %s\n", glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
+#endif
+
 	const char *default_vs_src =
 #if defined(SOKOL_GLCORE)
 			"#version 410\n"

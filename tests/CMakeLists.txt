@@ -11,6 +11,9 @@ macro(pti_executable target files)
 
     target_link_libraries(${target} PRIVATE dbgui)
     target_link_libraries(${target} PRIVATE imgui)
+    if (CMAKE_SYSTEM_NAME STREQUAL Windows)
+      target_link_libraries(${target} PRIVATE gl3w)
+    endif()
   endif()
 
   emscripten(${target})
