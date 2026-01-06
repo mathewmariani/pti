@@ -4,7 +4,7 @@
 
 // sweetie16 palette
 // ABGR
-const uint32_t sweetie16[] = {
+static uint32_t sweetie16[] = {
 		0xff2c1c1a,
 		0xff5d275d,
 		0xff533eb1,
