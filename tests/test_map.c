@@ -1,7 +1,7 @@
 // engine
 #include "pti.h"
 
-// tests
+// assets
 #include "assets.h"
 #include "palettes.h"
 
@@ -35,12 +35,7 @@ static void init(void) {
 	tileset = create_tileset("assets/tilemap.ase");
 	bitmap = create_bitmap("assets/font.ase");
 
-	palette = (pti_palette_t) {
-			.count = 16,
-			.colors = &sweetie16[0],
-	};
-
-	pti_set_palette(&palette);
+	pti_set_palette(&sweetie16);
 	pti_set_tilemap(&tilemap);
 	pti_set_tileset(&tileset);
 	pti_set_font(&bitmap);

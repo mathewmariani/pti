@@ -5,8 +5,9 @@
 // engine
 #include "pti.h"
 
-// tests
+// assets
 #include "assets.h"
+#include "palettes.h"
 
 pti_bank_t bank;
 
@@ -38,6 +39,7 @@ static void init(void) {
 	tone = create_sine_tone(440.0f, 0.3f, 0.5f, 44100.0f, 1);
 	track = create_sfx("assets/track-main.ogg");
 
+	pti_set_palette(&sweetie16);
 	pti_set_font(&bitmap);
 	pti_load_bank(&bank);
 }
@@ -54,7 +56,7 @@ char *channel_str[PTI_NUM_CHANNELS] = {
 };
 
 static void frame(void) {
-	pti_cls(0xFF7F00FF);
+	pti_cls(0);
 	if (pti_down(PTI_LEFT) && pti_pressed(PTI_LEFT)) {
 		playing = !playing;
 		if (playing) {
@@ -67,7 +69,7 @@ static void frame(void) {
 		pti_sfx(&tone, -1, 0);
 	}
 
-	pti_color(0xffffffff);
+	pti_color(5);
 	pti_print("PRESS LEFT FOR MUSIC", 4, 4);
 	pti_print("PRESS RIGHT FOR SFX", 4, 12);
 

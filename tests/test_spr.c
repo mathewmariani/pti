@@ -1,8 +1,9 @@
 // engine
 #include "pti.h"
 
-// tests
+// assets
 #include "assets.h"
+#include "palettes.h"
 
 pti_bank_t bank;
 
@@ -31,6 +32,7 @@ static void init(void) {
 
 	pti_load_bank(&bank);
 
+	pti_set_palette(&sweetie16);
 	pti_dither(0x5a5a);
 	// pti_dither(0xeae0);
 }

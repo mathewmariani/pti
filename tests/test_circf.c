@@ -5,13 +5,9 @@
 // engine
 #include "pti.h"
 
-#define PTI_ARGB(a, r, g, b)                                    \
-	(uint32_t) (((uint8_t) (a) << 24) | ((uint8_t) (r) << 16) | \
-				((uint8_t) (g) << 8) | ((uint8_t) (b) << 0))
-
-#define PTI_RGBA(r, g, b, a)                                    \
-	(uint32_t) (((uint8_t) (a) << 24) | ((uint8_t) (r) << 16) | \
-				((uint8_t) (g) << 8) | ((uint8_t) (b) << 0))
+// assets
+#include "assets.h"
+#include "palettes.h"
 
 // forward declarations
 static void init(void);
@@ -29,13 +25,16 @@ pti_desc pti_main(int argc, char *argv[]) {
 	};
 }
 
-static void init(void) {}
+static void init(void) {
+	pti_set_palette(&sweetie16);
+}
+
 static void cleanup(void) {}
 
 static void frame(void) {
 	const int width = 128;
 	const int height = 128;
 
-	unsigned int c = PTI_RGBA(rand() % 0xff, rand() % 0xff, rand() % 0xff, 0xff);
+	uint8_t c = rand() % 0x0f;
 	pti_circf(rand() % width, rand() % height, rand() % width, c);
 }
