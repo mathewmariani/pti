@@ -47,15 +47,34 @@ typedef enum pti_event_type {
 } pti_event_type;
 
 typedef union pti_stat_t {
+	int i;
+	size_t zu;
 	void *ptr;
 } pti_stat_t;
 
 typedef enum pti_stat_type {
 	PTI_STATTYPE_INVALID = -1,
+	PTI_STATTYPE_MEM_CAPACITY,
+	PTI_STATTYPE_MEM_USAGE,
+	PTI_STATTYPE_MEM_REMAINING,
+	PTI_STATTYPE_CART_CAPACITY,
+	PTI_STATTYPE_CART_USAGE,
+	PTI_STATTYPE_CART_REMAINING,
+	PTI_STATTYPE_DISPLAY_WIDTH,
+	PTI_STATTYPE_DISPLAY_HEIGHT,
 	PTI_STATTYPE_SFX_CHANNEL0,
 	PTI_STATTYPE_SFX_CHANNEL1,
 	PTI_STATTYPE_SFX_CHANNEL2,
 	PTI_STATTYPE_SFX_CHANNEL3,
+	PTI_STATTYPE_GFX_TILEMAP,
+	PTI_STATTYPE_GFX_TILESET,
+	PTI_STATTYPE_GFX_FONT,
+	PTI_STATTYPE_LOCAL_SEC,
+	PTI_STATTYPE_LOCAL_MIN,
+	PTI_STATTYPE_LOCAL_HOUR,
+	PTI_STATTYPE_LOCAL_DAY,
+	PTI_STATTYPE_LOCAL_MONTH,
+	PTI_STATTYPE_LOCAL_YEAR,
 	_PTI_STATTYPE_NUM
 } pti_stat_type;
 
@@ -291,11 +310,23 @@ inline void pti_music(pti_sound_t &music) { pti_music(&music); };
 #include <smmintrin.h>
 #endif
 
+#include <time.h>
+
+typedef int (*__pti_tm_getter_fn)(const struct tm *);
+
+static int _pti__tm_sec(const struct tm *t) { return t->tm_sec; }
+static int _pti__tm_min(const struct tm *t) { return t->tm_min; }
+static int _pti__tm_hour(const struct tm *t) { return t->tm_hour; }
+static int _pti__tm_day(const struct tm *t) { return t->tm_mday; }
+static int _pti__tm_mon(const struct tm *t) { return t->tm_mon + 1; }
+static int _pti__tm_year(const struct tm *t) { return t->tm_year + 1900; }
+
+static const __pti_tm_getter_fn _pti__tm_getters[] = {_pti__tm_sec, _pti__tm_min, _pti__tm_hour, _pti__tm_day, _pti__tm_mon, _pti__tm_year};
+
 #define PTI_FRAMERATE (30.0)
 #define PTI_DELTA (1.0 / PTI_FRAMERATE)
 #define TICK_DURATION_NS (PTI_DELTA * 1e9)
 #define TICK_TOLERANCE_NS (1000000)
-
 
 typedef struct {
 	pti_sound_t *sfx;
@@ -594,12 +625,59 @@ void pti_set_font(pti_bitmap_t *ptr) {
 pti_stat_t pti_stat(const pti_stat_type type) {
 	union pti_stat_t ret = {0};
 	switch (type) {
+		case PTI_STATTYPE_MEM_CAPACITY: {
+			ret.zu = (size_t) (_pti.ram.cap - _pti.ram.begin);
+		} break;
+		case PTI_STATTYPE_MEM_USAGE: {
+			ret.zu = (size_t) (_pti.ram.it - _pti.ram.begin);
+		} break;
+		case PTI_STATTYPE_MEM_REMAINING: {
+			ret.zu = (size_t) (_pti.ram.cap - _pti.ram.it);
+		} break;
+		case PTI_STATTYPE_CART_CAPACITY: {
+			ret.zu = (size_t) (_pti.cart.cap - _pti.cart.begin);
+		} break;
+		case PTI_STATTYPE_CART_USAGE: {
+			ret.zu = (size_t) (_pti.cart.it - _pti.cart.begin);
+		} break;
+		case PTI_STATTYPE_CART_REMAINING: {
+			ret.zu = (size_t) (_pti.cart.cap - _pti.cart.it);
+		} break;
+		case PTI_STATTYPE_DISPLAY_WIDTH: {
+			ret.i = _pti.vm.screen.width;
+		} break;
+		case PTI_STATTYPE_DISPLAY_HEIGHT: {
+			ret.i = _pti.vm.screen.height;
+		} break;
 		case PTI_STATTYPE_SFX_CHANNEL0:
 		case PTI_STATTYPE_SFX_CHANNEL1:
 		case PTI_STATTYPE_SFX_CHANNEL2:
 		case PTI_STATTYPE_SFX_CHANNEL3: {
 			int ch = type - PTI_STATTYPE_SFX_CHANNEL0;
 			ret.ptr = _pti.vm.audio.channel[ch].sfx;
+		} break;
+
+		case PTI_STATTYPE_GFX_TILEMAP: {
+			ret.ptr = _pti.vm.tilemap;
+		} break;
+
+		case PTI_STATTYPE_GFX_TILESET: {
+			ret.ptr = _pti.vm.draw.tileset;
+		} break;
+
+		case PTI_STATTYPE_GFX_FONT: {
+			ret.ptr = _pti.vm.draw.font;
+		} break;
+
+		case PTI_STATTYPE_LOCAL_SEC:
+		case PTI_STATTYPE_LOCAL_MIN:
+		case PTI_STATTYPE_LOCAL_HOUR:
+		case PTI_STATTYPE_LOCAL_DAY:
+		case PTI_STATTYPE_LOCAL_MONTH:
+		case PTI_STATTYPE_LOCAL_YEAR: {
+			time_t t = time(NULL);
+			struct tm *lt = localtime(&t);
+			ret.i = _pti__tm_getters[type - PTI_STATTYPE_LOCAL_SEC](lt);
 		} break;
 
 		case PTI_STATTYPE_INVALID:

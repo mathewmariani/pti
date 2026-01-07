@@ -35,6 +35,7 @@ pti_executable(test_spr test_spr.c)
 pti_executable(test_map test_map.c)
 pti_executable(test_quit test_quit.c)
 pti_executable(test_btn test_btn.c)
+pti_executable(test_stat test_stat.c)
 
 # Make sure the tests build dir always has assets/
 add_custom_target(tests_assets_symlink ALL
