@@ -1,8 +1,9 @@
 // engine
 #include "pti.h"
 
-// tests
+// assets
 #include "assets.h"
+#include "palettes.h"
 
 // forward declarations
 static void init(void);
@@ -20,11 +21,14 @@ pti_desc pti_main(int argc, char *argv[]) {
 	};
 }
 
-static void init(void) {}
+static void init(void) {
+	pti_set_palette(&sweetie16);
+}
+
 static void cleanup(void) {}
 
 static void frame(void) {
-	pti_cls(0x00000000);
+	pti_cls(0);
 	if (pti_down(PTI_LEFT)) {
 		pti_quit();
 	}

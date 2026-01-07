@@ -4,7 +4,7 @@
 
 // sweetie16 palette
 // ABGR
-const uint32_t sweetie16[] = {
+static uint32_t __sweetie16[] = {
 		0xff2c1c1a,
 		0xff5d275d,
 		0xff533eb1,
@@ -21,4 +21,9 @@ const uint32_t sweetie16[] = {
 		0xffc2b094,
 		0xff866c56,
 		0xff573c33,
+};
+
+static pti_palette_t sweetie16 = (pti_palette_t) {
+		.count = 16,
+		.colors = &__sweetie16[0],
 };

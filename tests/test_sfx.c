@@ -5,8 +5,9 @@
 // engine
 #include "pti.h"
 
-// tests
+// assets
 #include "assets.h"
+#include "palettes.h"
 
 pti_bank_t bank;
 
@@ -38,6 +39,7 @@ static void init(void) {
 	tone = create_sine_tone(440.0f, 0.3f, 0.5f, 44100.0f, 1);
 	track = create_sfx("assets/death.ogg");
 
+	pti_set_palette(&sweetie16);
 	pti_set_font(&bitmap);
 	pti_load_bank(&bank);
 }

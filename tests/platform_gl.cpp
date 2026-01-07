@@ -533,6 +533,8 @@ static void init(void) {
 	hooks.set_font = _pti_set_font;
 	hooks.set_tilemap = _pti_set_tilemap;
 	hooks.set_tileset = _pti_set_tileset;
+	hooks.set_flags = nullptr;
+	hooks.set_palette = nullptr;
 	pti_install_trace_hooks(&hooks);
 #endif
 

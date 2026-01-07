@@ -1,7 +1,7 @@
 // engine
 #include "pti.h"
 
-// tests
+// assets
 #include "assets.h"
 #include "palettes.h"
 
@@ -30,6 +30,7 @@ static void init(void) {
 	init_assets(&bank);
 	bitmap = create_bitmap("assets/font.ase");
 
+	pti_set_palette(&sweetie16);
 	pti_set_font(&bitmap);
 	pti_load_bank(&bank);
 }
@@ -40,13 +41,13 @@ char *btn_str[5] = {
 		"0123456789",
 		"HelloWorld",
 		"Quick brown fox",
-		"jumps over the",
-		"lazy dog",
+		"jumps over",
+		"the lazy dog",
 };
 
 static void frame(void) {
 	for (int i = 0; i < 5; i++) {
-		pti_color(sweetie16[i]);
+		pti_color(i);
 		pti_print(btn_str[i], 4, (i * 8) + 4);
 	}
 }

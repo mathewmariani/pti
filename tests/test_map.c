@@ -1,8 +1,9 @@
 // engine
 #include "pti.h"
 
-// tests
+// assets
 #include "assets.h"
+#include "palettes.h"
 
 pti_bank_t bank;
 
@@ -25,6 +26,7 @@ pti_desc pti_main(int argc, char *argv[]) {
 static pti_tileset_t tileset;
 static pti_tilemap_t tilemap;
 static pti_bitmap_t bitmap;
+static pti_palette_t palette;
 
 static void init(void) {
 	pti_bank_init(&bank, _pti_kilobytes(256));
@@ -33,6 +35,7 @@ static void init(void) {
 	tileset = create_tileset("assets/tilemap.ase");
 	bitmap = create_bitmap("assets/font.ase");
 
+	pti_set_palette(&sweetie16);
 	pti_set_tilemap(&tilemap);
 	pti_set_tileset(&tileset);
 	pti_set_font(&bitmap);
@@ -47,6 +50,6 @@ float t = 0.0f;
 static void frame(void) {
 	t += (1 / 60.0f);
 	pti_camera((int) (100.0f * sinf(t)), 0);
-	pti_cls(0x00000000);
+	pti_cls(0);
 	pti_map(0, 0);
 }
