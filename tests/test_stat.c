@@ -8,6 +8,7 @@
 
 // tests
 #include "assets.h"
+#include "palettes.h"
 
 pti_bank_t bank;
 
@@ -34,6 +35,7 @@ static void init(void) {
 	init_assets(&bank);
 	bitmap = create_bitmap("assets/font.ase");
 
+	pti_set_palette(&sweetie16);
 	pti_set_font(&bitmap);
 	pti_load_bank(&bank);
 }
