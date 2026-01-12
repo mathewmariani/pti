@@ -351,7 +351,7 @@ typedef struct {
 	pti_bank_t ram;
 	pti_bank_t cart;
 	_pti__vm_t vm;
-	uint32_t *screen;
+	uint8_t *screen;
 	void *data;
 #if defined(PTI_TRACE_HOOKS)
 	pti_trace_hooks hooks;
@@ -463,7 +463,7 @@ void pti_init(const pti_desc *desc) {
 	pti_bank_init(&_pti.ram, capacity);
 
 	// allocate virtual machine
-	_pti.screen = (uint32_t *) pti_alloc(&_pti.ram, vram_size);
+	_pti.screen = (uint8_t *) pti_alloc(&_pti.ram, vram_size);
 	_pti.data = pti_alloc(&_pti.ram, desc->memory_size);
 
 	// init random
@@ -721,7 +721,6 @@ _PTI_PRIVATE inline void _pti__transform(int *x, int *y) {
 	*y -= _pti.vm.draw.cam_y;
 }
 
-// FIXME: heavy functions, offset functionality to the gpu.
 _PTI_PRIVATE inline void _pti__set_pixel(int x, int y, uint16_t color) {
 	const int16_t clip_x0 = _pti.vm.draw.clip_x0;
 	const int16_t clip_y0 = _pti.vm.draw.clip_y0;
@@ -732,14 +731,8 @@ _PTI_PRIVATE inline void _pti__set_pixel(int x, int y, uint16_t color) {
 		return;
 	}
 
-	// TODO: dither can be an image on the gpu
-	// TODO: palette can be an image on the gpu
 	uint8_t i = _pti__get_dither_bit(x, y) ? (color >> 8) & 0xff : (color >> 0) & 0xff;
-	uint32_t c = _pti.vm.draw.palette->colors[i];
-
-	// TODO: just use the `i` instead of looking for the color itself.
-	// NOTE: this means screen can be `uint8_t` instead of `uint32_t`/
-	*(_pti.screen + (x + y * _pti.vm.screen.width)) = c;
+	*(_pti.screen + (x + y * _pti.vm.screen.width)) = i;
 }
 
 _PTI_PRIVATE void _pti__plot(uint8_t *pixels, bool mask, int n, int dst_x, int dst_y, int dst_w, int dst_h, int src_x, int src_y, int src_w, int src_h, bool flip_x, bool flip_y) {
