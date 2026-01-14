@@ -3,7 +3,6 @@
 #include <stdint.h>
 
 // sweetie16 palette
-// ABGR
 static uint32_t __sweetie16[] = {
 		0x1a1c2cff,
 		0x5d275dff,

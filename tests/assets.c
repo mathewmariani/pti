@@ -18,6 +18,36 @@ void init_assets(pti_bank_t *bank) {
 	_bank = bank;
 }
 
+pti_palette_t create_palette(const char *path) {
+	ase_t *ase = cute_aseprite_load_from_file(path, NULL);
+
+	/* allocate palette data */
+	size_t size = ase->palette.entry_count * sizeof(uint32_t);
+	uint32_t *data = (uint32_t *) pti_alloc(_bank, size);
+
+	/* initialize */
+	pti_palette_t palette;
+	palette.count = ase->palette.entry_count;
+	palette.colors = data;
+
+	for (int i = 0; i < palette.count; ++i) {
+		const ase_color_t col = ase->palette.entries[i].color;
+
+		palette.colors[i] =
+				(((uint32_t) (col.r) << 24) |
+				 ((uint32_t) (col.g) << 16) |
+				 ((uint32_t) (col.b) << 8) |
+				 ((uint32_t) (col.a)));
+
+		printf("0x%08X\n", palette.colors[i]);
+	}
+
+	/* release cute resources. */
+	cute_aseprite_free(ase);
+
+	return palette;
+}
+
 pti_bitmap_t create_bitmap(const char *path) {
 	ase_t *ase = cute_aseprite_load_from_file(path, NULL);
 
@@ -91,13 +121,14 @@ pti_tilemap_t create_tilemap(const char *path) {
 		ase_frame_t *frame = ase->frames + i;
 		for (int j = 0; j < frame->cel_count; ++j) {
 			ase_cel_t *cel = frame->cels + j;
-			if (cel->is_tilemap) {
-				const size_t size = cel->w * cel->h * sizeof(int);
-				tilemap.width = (int16_t) cel->w;
-				tilemap.height = (int16_t) cel->h;
-				tilemap.tiles = (int *) pti_alloc(_bank, size);
-				memcpy(tilemap.tiles, cel->tiles, size);
+			if (!cel->is_tilemap) {
+				continue;
 			}
+			const size_t size = cel->w * cel->h * sizeof(int);
+			tilemap.width = (int16_t) cel->w;
+			tilemap.height = (int16_t) cel->h;
+			tilemap.tiles = (int *) pti_alloc(_bank, size);
+			memcpy(tilemap.tiles, cel->tiles, size);
 		}
 	}
 
@@ -106,6 +137,7 @@ pti_tilemap_t create_tilemap(const char *path) {
 
 	return tilemap;
 }
+
 
 pti_sound_t create_sfx(const char *path) {
 	pti_sound_t sound = {0};
