@@ -796,11 +796,12 @@ _PTI_PRIVATE void _pti__plot(uint8_t *pixels, bool mask, int n, int dst_x, int d
 	const int dst_width = _pti.desc.width;
 
 	if (mask) {
-		PTI_PLOT_LOOP_BODY(
-				if (src_color != 0) {
-					uint16_t c = ((uint16_t) _pti.vm.draw.color.high << 8) | _pti.vm.draw.color.low;
-					_pti__set_pixel(x, y, 5);
-				});
+		PTI_PLOT_LOOP_BODY({
+			if (src_color != 0) {
+				uint16_t c = ((uint16_t) _pti.vm.draw.color.high << 8) | _pti.vm.draw.color.low;
+				_pti__set_pixel(x, y, 5);
+			}
+		});
 	} else {
 		PTI_PLOT_LOOP_BODY({
 			uint16_t c = ((uint16_t) _pti.vm.draw.color.high << 8) | src_color;
@@ -823,15 +824,9 @@ void pti_get_camera(int *x, int *y) {
 	}
 }
 
-void pti_cls(const uint8_t idx) {
-	const int screen_w = _pti.vm.screen.width;
-	const int screen_h = _pti.vm.screen.height;
-	const size_t pixel_count = screen_w * screen_h;
-
-	uint32_t color = _pti.vm.draw.palette->colors[idx];
-	for (size_t i = 0; i < pixel_count; i++) {
-		*((uint32_t *) _pti.screen + i) = color;
-	}
+void pti_cls(uint8_t c) {
+	const int count = _pti.vm.screen.width * _pti.vm.screen.height;
+	memset(_pti.screen, c, count);
 }
 
 void pti_color(const uint16_t color) {
