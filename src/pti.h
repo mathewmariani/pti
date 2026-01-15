@@ -78,9 +78,13 @@ typedef enum pti_button {
 	PTI_BUTTON_COUNT
 } pti_button;
 
+typedef struct pti_color_t {
+	uint8_t r, g, b, a;
+} pti_color_t;
+
 typedef struct pti_palette_t {
 	uint8_t count;
-	uint32_t *colors;
+	pti_color_t *colors;
 } pti_palette_t;
 
 typedef struct pti_bitmap_t {
