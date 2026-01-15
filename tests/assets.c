@@ -22,8 +22,8 @@ pti_palette_t create_palette(const char *path) {
 	ase_t *ase = cute_aseprite_load_from_file(path, NULL);
 
 	/* allocate palette data */
-	size_t size = ase->palette.entry_count * sizeof(uint32_t);
-	uint32_t *data = (uint32_t *) pti_alloc(_bank, size);
+	size_t size = ase->palette.entry_count * sizeof(pti_color_t);
+	pti_color_t *data = (pti_color_t *) pti_alloc(_bank, size);
 
 	/* initialize */
 	pti_palette_t palette;
@@ -33,13 +33,10 @@ pti_palette_t create_palette(const char *path) {
 	for (int i = 0; i < palette.count; ++i) {
 		const ase_color_t col = ase->palette.entries[i].color;
 
-		palette.colors[i] =
-				(((uint32_t) (col.r) << 24) |
-				 ((uint32_t) (col.g) << 16) |
-				 ((uint32_t) (col.b) << 8) |
-				 ((uint32_t) (col.a)));
-
-		printf("0x%08X\n", palette.colors[i]);
+		palette.colors[i].r = col.r;
+		palette.colors[i].g = col.g;
+		palette.colors[i].b = col.b;
+		palette.colors[i].a = col.a;
 	}
 
 	/* release cute resources. */
