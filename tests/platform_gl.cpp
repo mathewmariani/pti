@@ -162,6 +162,7 @@ static void gl_init(void) {
 #elif defined(SOKOL_GLES3)
 			"#version 300 es\n"
 			"precision mediump float;\n"
+			"precision mediump usampler2D;\n"
 #endif
 			"uniform usampler2D screen;\n"
 			"uniform sampler2D palette;\n"
@@ -169,7 +170,7 @@ static void gl_init(void) {
 			"in vec2 vs_texcoord;\n"
 			"out vec4 frag_color;\n"
 			"void main() {\n"
-			"  float index = float(texture(screen, vs_texcoord).r) / palette_size;\n"
+			"  float index = float(texture(screen, vs_texcoord).r) / float(palette_size);\n"
 			"  vec3 color = texture(palette, vec2(index, 0.5)).rgb;\n"
 			"  frag_color = vec4(color, 1.0);\n"
 			"}\n";
@@ -270,7 +271,7 @@ static void gl_init(void) {
 	// create texture
 	glGenTextures(1, &state.gl.color1);
 	glBindTexture(GL_TEXTURE_2D, state.gl.color1);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 16, 1, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 16, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -299,7 +300,7 @@ void gl_draw() {
 	// upload pixel data
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, state.gl.color1);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 16, 1, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, _pti.vm.draw.palette->colors);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 16, 1, GL_RGBA, GL_UNSIGNED_BYTE, _pti.vm.draw.palette->colors);
 
 	// Indices (color0)
 	glActiveTexture(GL_TEXTURE0);
