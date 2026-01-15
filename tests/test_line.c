@@ -19,7 +19,7 @@ pti_desc pti_main(int argc, char *argv[]) {
 			.init_cb = init,
 			.frame_cb = frame,
 			.cleanup_cb = cleanup,
-			.memory_size = _pti_kilobytes(256),
+			.memory_size = _pti_kilobytes(5),
 			.width = 128,
 			.height = 128,
 	};

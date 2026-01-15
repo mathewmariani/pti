@@ -78,9 +78,13 @@ typedef enum pti_button {
 	PTI_BUTTON_COUNT
 } pti_button;
 
+typedef struct pti_color_t {
+	uint8_t r, g, b, a;
+} pti_color_t;
+
 typedef struct pti_palette_t {
 	uint8_t count;
-	uint32_t *colors;
+	pti_color_t *colors;
 } pti_palette_t;
 
 typedef struct pti_bitmap_t {
@@ -351,7 +355,7 @@ typedef struct {
 	pti_bank_t ram;
 	pti_bank_t cart;
 	_pti__vm_t vm;
-	uint32_t *screen;
+	uint8_t *screen;
 	void *data;
 #if defined(PTI_TRACE_HOOKS)
 	pti_trace_hooks hooks;
@@ -463,7 +467,7 @@ void pti_init(const pti_desc *desc) {
 	pti_bank_init(&_pti.ram, capacity);
 
 	// allocate virtual machine
-	_pti.screen = (uint32_t *) pti_alloc(&_pti.ram, vram_size);
+	_pti.screen = (uint8_t *) pti_alloc(&_pti.ram, vram_size);
 	_pti.data = pti_alloc(&_pti.ram, desc->memory_size);
 
 	// init random
@@ -721,7 +725,6 @@ _PTI_PRIVATE inline void _pti__transform(int *x, int *y) {
 	*y -= _pti.vm.draw.cam_y;
 }
 
-// FIXME: heavy functions, offset functionality to the gpu.
 _PTI_PRIVATE inline void _pti__set_pixel(int x, int y, uint16_t color) {
 	const int16_t clip_x0 = _pti.vm.draw.clip_x0;
 	const int16_t clip_y0 = _pti.vm.draw.clip_y0;
@@ -732,14 +735,8 @@ _PTI_PRIVATE inline void _pti__set_pixel(int x, int y, uint16_t color) {
 		return;
 	}
 
-	// TODO: dither can be an image on the gpu
-	// TODO: palette can be an image on the gpu
 	uint8_t i = _pti__get_dither_bit(x, y) ? (color >> 8) & 0xff : (color >> 0) & 0xff;
-	uint32_t c = _pti.vm.draw.palette->colors[i];
-
-	// TODO: just use the `i` instead of looking for the color itself.
-	// NOTE: this means screen can be `uint8_t` instead of `uint32_t`/
-	*(_pti.screen + (x + y * _pti.vm.screen.width)) = c;
+	*(_pti.screen + (x + y * _pti.vm.screen.width)) = i;
 }
 
 _PTI_PRIVATE void _pti__plot(uint8_t *pixels, bool mask, int n, int dst_x, int dst_y, int dst_w, int dst_h, int src_x, int src_y, int src_w, int src_h, bool flip_x, bool flip_y) {
@@ -803,11 +800,12 @@ _PTI_PRIVATE void _pti__plot(uint8_t *pixels, bool mask, int n, int dst_x, int d
 	const int dst_width = _pti.desc.width;
 
 	if (mask) {
-		PTI_PLOT_LOOP_BODY(
-				if (src_color != 0) {
-					uint16_t c = ((uint16_t) _pti.vm.draw.color.high << 8) | _pti.vm.draw.color.low;
-					_pti__set_pixel(x, y, 5);
-				});
+		PTI_PLOT_LOOP_BODY({
+			if (src_color != 0) {
+				uint16_t c = ((uint16_t) _pti.vm.draw.color.high << 8) | _pti.vm.draw.color.low;
+				_pti__set_pixel(x, y, 5);
+			}
+		});
 	} else {
 		PTI_PLOT_LOOP_BODY({
 			uint16_t c = ((uint16_t) _pti.vm.draw.color.high << 8) | src_color;
@@ -830,15 +828,9 @@ void pti_get_camera(int *x, int *y) {
 	}
 }
 
-void pti_cls(const uint8_t idx) {
-	const int screen_w = _pti.vm.screen.width;
-	const int screen_h = _pti.vm.screen.height;
-	const size_t pixel_count = screen_w * screen_h;
-
-	uint32_t color = _pti.vm.draw.palette->colors[idx];
-	for (size_t i = 0; i < pixel_count; i++) {
-		*((uint32_t *) _pti.screen + i) = color;
-	}
+void pti_cls(uint8_t c) {
+	const int count = _pti.vm.screen.width * _pti.vm.screen.height;
+	memset(_pti.screen, c, count);
 }
 
 void pti_color(const uint16_t color) {

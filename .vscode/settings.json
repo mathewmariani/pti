@@ -19,6 +19,14 @@
 		"**/node_modules": true,
 		"**/website": true,
 	},
+	"files.watcherExclude": {
+		"**/build/**": true,
+		"**/dist/**": true,
+		"**/out/**": true,
+		"**/emsdk/**": true,
+		"**/node_modules/**": true,
+		"**/data/**": true
+	},
 	"debug.showInStatusBar": "always",
 	"editor.formatOnSave": true,
 	"editor.tabSize": 2,

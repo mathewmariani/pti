@@ -80,7 +80,8 @@ static struct {
 	struct {
 		GLuint vao;
 		GLuint vbo;
-		GLuint color0;
+		GLuint color0;// screen texture
+		GLuint color1;// palette texture;
 		GLuint program;
 		GLuint crt;
 		GLuint tileset;
@@ -161,13 +162,17 @@ static void gl_init(void) {
 #elif defined(SOKOL_GLES3)
 			"#version 300 es\n"
 			"precision mediump float;\n"
+			"precision mediump usampler2D;\n"
 #endif
-			"uniform sampler2D screen;\n"
+			"uniform usampler2D screen;\n"
+			"uniform sampler2D palette;\n"
+			"uniform int palette_size;\n"
 			"in vec2 vs_texcoord;\n"
 			"out vec4 frag_color;\n"
 			"void main() {\n"
-			"  vec4 texel = texture(screen, vs_texcoord);\n"
-			"  frag_color = texel;\n"
+			"  float index = float(texture(screen, vs_texcoord).r) / float(palette_size);\n"
+			"  vec3 color = texture(palette, vec2(index, 0.5)).rgb;\n"
+			"  frag_color = vec4(color, 1.0);\n"
 			"}\n";
 
 	const char *crt_fs_src =
@@ -256,7 +261,17 @@ static void gl_init(void) {
 	// create texture
 	glGenTextures(1, &state.gl.color0);
 	glBindTexture(GL_TEXTURE_2D, state.gl.color0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	// create texture
+	glGenTextures(1, &state.gl.color1);
+	glBindTexture(GL_TEXTURE_2D, state.gl.color1);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 16, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -283,19 +298,30 @@ void gl_draw() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// upload pixel data
-	glBindTexture(GL_TEXTURE_2D, state.gl.color0);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, state.gl.color1);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 16, 1, GL_RGBA, GL_UNSIGNED_BYTE, _pti.vm.draw.palette->colors);
+
+	// Indices (color0)
 	glActiveTexture(GL_TEXTURE0);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, _pti.screen);
+	glBindTexture(GL_TEXTURE_2D, state.gl.color0);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);// Required for 1-channel data
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RED_INTEGER, GL_UNSIGNED_BYTE, _pti.screen);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);// Reset to default
 
 	// bind shader
 	GLuint program = state.crt ? state.gl.crt : state.gl.program;
 	glUseProgram(program);
 	glUniform1i(glGetUniformLocation(state.gl.program, "screen"), 0);
+	glUniform1i(glGetUniformLocation(state.gl.program, "palette"), 1);
+	glUniform1i(glGetUniformLocation(state.gl.program, "palette_size"), _pti.vm.draw.palette->count);
 
 	// draw fullscreen quad
 	glBindVertexArray(state.gl.vao);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, state.gl.color0);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, state.gl.color1);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
