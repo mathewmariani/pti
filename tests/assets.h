@@ -1,10 +1,10 @@
 #pragma once
 
-typedef struct pti_bitmap_t pti_bitmap_t;
-typedef struct pti_tileset_t pti_tileset_t;
-typedef struct pti_tilemap_t pti_tilemap_t;
-typedef struct pti_sound_t pti_sound_t;
-typedef struct pti_bank_t pti_bank_t;
+// typedef struct pti_bitmap_t pti_bitmap_t;
+// typedef struct pti_tileset_t pti_tileset_t;
+// typedef struct pti_tilemap_t pti_tilemap_t;
+// typedef struct pti_sound_t pti_sound_t;
+// typedef struct pti_bank_t pti_bank_t;
 
 void init_assets(pti_bank_t *bank);
 

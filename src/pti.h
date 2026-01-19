@@ -834,10 +834,8 @@ void pti_cls(uint8_t c) {
 }
 
 void pti_color(const uint16_t color) {
-	_pti.vm.draw.color = {
-			.low = (uint8_t) (color & 0xFF),
-			.high = (uint8_t) (color >> 8),
-	};
+	_pti.vm.draw.color.low = (uint8_t) (color & 0xFF);
+	_pti.vm.draw.color.high = (uint8_t) (color >> 8);
 }
 
 void pti_colorkey(const uint16_t color) {
