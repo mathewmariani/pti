@@ -1,16 +1,21 @@
 #define PTI_IMPL
 #include "pti.h"
 
+#include <stdio.h>
+
 // sokol
 #include "sokol/sokol_app.h"
+#include "sokol/sokol_audio.h"
 #include "sokol/sokol_log.h"
 
 // opengl
 #if defined(SOKOL_GLCORE)
-#if defined(__APPLE__)
+#if defined(_PTI_WINDOWS)
+#include <GL/gl3w.h>
+#elif defined(_PTI_APPLE)
 #include <OpenGL/gl3.h>
 #include <OpenGL/gl3ext.h>
-#elif defined(__linux__) || defined(__unix__)
+#elif defined(_PTI_LINUX)
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
 #else
@@ -22,15 +27,13 @@
 #error ("opengl.h: unknown 3D API selected; must be SOKOL_GLCORE or SOKOL_GLES3")
 #endif
 
-#include <stdio.h>
-
-/* forward declarations */
+// forward declarations
 static void init(void);
 static void frame(void);
 static void cleanup(void);
 static void event(const sapp_event *);
 
-/* main entry point */
+// main entry point
 sapp_desc sokol_main(int argc, char *argv[]) {
 	(void) argc;
 	(void) argv;
@@ -48,7 +51,7 @@ sapp_desc sokol_main(int argc, char *argv[]) {
 			.event_cb = event,
 			.width = width,
 			.height = height,
-			.window_title = "pti (opengl)",
+			.window_title = "pti (debug)",
 			.logger = {
 					.func = slog_func,
 			},
@@ -70,34 +73,74 @@ sapp_desc sokol_main(int argc, char *argv[]) {
 
 static struct {
 	struct {
-		unsigned int tick;
-		int tick_accum;
-	} timing;
-
-	struct {
 		GLuint vao;
 		GLuint vbo;
-		GLuint color0;
+		GLuint color0;// screen texture
+		GLuint color1;// palette texture;
 		GLuint program;
+		GLuint crt;
+		GLuint tileset;
+		GLuint font;
 	} gl;
-} state;
 
-static inline GLuint gl_create_shader(GLenum type, const char *src) {
-	GLuint shader = glCreateShader(type);
-	glShaderSource(shader, 1, &src, NULL);
+	bool crt;
+
+#if defined(PTI_TRACE_HOOKS)
+	pti_trace_hooks hooks;
+#endif
+} state = {
+		.crt = false,
+};
+
+static GLuint create_shader(GLenum stage, const char *sourceCode) {
+	unsigned int shader = glCreateShader(stage);
+	glShaderSource(shader, 1, &sourceCode, NULL);
 	glCompileShader(shader);
 	int success;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
 	if (!success) {
 		char infoLog[512];
 		glGetShaderInfoLog(shader, 512, NULL, infoLog);
-		printf("Failed to compile shader: %s\n", infoLog);
+		printf("Failed to compile shader: %s", infoLog);
 	}
 	return shader;
-};
+}
 
-static void gl_init_gfx(void) {
-	const char *display_vs_src =
+static GLuint create_program(GLuint vs, GLuint fs) {
+	GLuint program = glCreateProgram();
+	//Attach each stage
+	glAttachShader(program, vs);
+	glAttachShader(program, fs);
+	//Link all the stages together
+	glLinkProgram(program);
+	int success;
+	glGetProgramiv(program, GL_LINK_STATUS, &success);
+	if (!success) {
+		char infoLog[512];
+		glGetProgramInfoLog(program, 512, NULL, infoLog);
+		printf("Failed to link shader program: %s", infoLog);
+	}
+	return program;
+}
+
+static void gl_init(void) {
+#if defined(_PTI_WINDOWS)
+	if (gl3wInit()) {
+		fprintf(stderr, "failed to initialize OpenGL\n");
+		return;
+	}
+	if (!gl3wIsSupported(3, 2)) {
+		fprintf(stderr, "OpenGL 3.2 not supported\n");
+		return;
+	}
+#endif
+
+	printf("OpenGL %s, GLSL %s\n", glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
+
+#if defined(PTI_DEBUG)
+	TracyGpuContext;
+#endif
+	const char *default_vs_src =
 #if defined(SOKOL_GLCORE)
 			"#version 410\n"
 #elif defined(SOKOL_GLES3)
@@ -111,7 +154,26 @@ static void gl_init_gfx(void) {
 			"  vs_texcoord = vec2(pos.x, 1.0 - pos.y);\n"
 			"}\n";
 
-	const char *display_fs_src =
+	const char *default_fs_src =
+#if defined(SOKOL_GLCORE)
+			"#version 410\n"
+#elif defined(SOKOL_GLES3)
+			"#version 300 es\n"
+			"precision mediump float;\n"
+			"precision mediump usampler2D;\n"
+#endif
+			"uniform usampler2D screen;\n"
+			"uniform sampler2D palette;\n"
+			"uniform int palette_size;\n"
+			"in vec2 vs_texcoord;\n"
+			"out vec4 frag_color;\n"
+			"void main() {\n"
+			"  float index = float(texture(screen, vs_texcoord).r) / float(palette_size);\n"
+			"  vec3 color = texture(palette, vec2(index, 0.5)).rgb;\n"
+			"  frag_color = vec4(color, 1.0);\n"
+			"}\n";
+
+	const char *crt_fs_src =
 #if defined(SOKOL_GLCORE)
 			"#version 410\n"
 #elif defined(SOKOL_GLES3)
@@ -161,6 +223,7 @@ static void gl_init_gfx(void) {
 
 	// clang-format off
 	float vertices[] = {
+		// pos (x, y) texcoord (u, v)
 		-1.0f,  1.0f, 0.0f, 1.0f,
 		-1.0f, -1.0f, 0.0f, 0.0f,
 		1.0f, -1.0f, 1.0f, 0.0f,
@@ -171,18 +234,18 @@ static void gl_init_gfx(void) {
 	};
 	// clang-format on
 
-	/* initialize fullscreen quad, buffer object */
+	// initialize fullscreen quad, buffer object
 	glGenVertexArrays(1, &state.gl.vao);
 	glGenBuffers(1, &state.gl.vbo);
 
-	/* bind vao, and vbo */
+	// bind vao, and vbo
 	glBindVertexArray(state.gl.vao);
 	glBindBuffer(GL_ARRAY_BUFFER, state.gl.vbo);
 
-	/* buffer data to vbo */
+	// buffer data to vbo
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_STATIC_DRAW);
 
-	/* positions and texcoords */
+	// positions and texcoords
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *) 0);
 	glEnableVertexAttribArray(1);
@@ -193,63 +256,308 @@ static void gl_init_gfx(void) {
 	const int width = _pti.vm.screen.width;
 	const int height = _pti.vm.screen.height;
 
-	/* create texture */
+	// create texture
 	glGenTextures(1, &state.gl.color0);
 	glBindTexture(GL_TEXTURE_2D, state.gl.color0);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	/* create shader */
-	GLuint vert_stage = gl_create_shader(GL_VERTEX_SHADER, display_vs_src);
-	GLuint frag_stage = gl_create_shader(GL_FRAGMENT_SHADER, display_fs_src);
+	// create texture
+	glGenTextures(1, &state.gl.color1);
+	glBindTexture(GL_TEXTURE_2D, state.gl.color1);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 16, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
 
-	state.gl.program = glCreateProgram();
-	glAttachShader(state.gl.program, vert_stage);
-	glAttachShader(state.gl.program, frag_stage);
-	glLinkProgram(state.gl.program);
-	int success;
-	glGetProgramiv(state.gl.program, GL_LINK_STATUS, &success);
-	if (!success) {
-		char infoLog[512];
-		glGetProgramInfoLog(state.gl.program, 512, NULL, infoLog);
-		printf("Failed to link shader program: %s\n", infoLog);
-	}
+	GLuint default_vs_stage = create_shader(GL_VERTEX_SHADER, default_vs_src);
+	GLuint default_fs_stage = create_shader(GL_FRAGMENT_SHADER, default_fs_src);
+	GLuint crt_fs_stage = create_shader(GL_FRAGMENT_SHADER, crt_fs_src);
 
-	glDeleteShader(vert_stage);
-	glDeleteShader(frag_stage);
+	state.gl.program = create_program(default_vs_stage, default_fs_stage);
+	state.gl.crt = create_program(default_vs_stage, crt_fs_stage);
+
+	glDeleteShader(default_vs_stage);
+	glDeleteShader(default_fs_stage);
 }
 
-void gl_gfx_draw() {
+void gl_draw() {
 	const int width = _pti.vm.screen.width;
 	const int height = _pti.vm.screen.height;
 
-	/* clear default buffer */
+	// clear default buffer
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	/* upload pixel data */
-	glBindTexture(GL_TEXTURE_2D, state.gl.color0);
+	// upload pixel data
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, state.gl.color1);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 16, 1, GL_RGBA, GL_UNSIGNED_BYTE, _pti.vm.draw.palette->colors);
+
+	// Indices (color0)
 	glActiveTexture(GL_TEXTURE0);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, _pti.screen);
+	glBindTexture(GL_TEXTURE_2D, state.gl.color0);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);// Required for 1-channel data
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RED_INTEGER, GL_UNSIGNED_BYTE, _pti.screen);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);// Reset to default
 
-	/* bind shader */
-	glUseProgram(state.gl.program);
+	// bind shader
+	GLuint program = state.crt ? state.gl.crt : state.gl.program;
+	glUseProgram(program);
 	glUniform1i(glGetUniformLocation(state.gl.program, "screen"), 0);
+	glUniform1i(glGetUniformLocation(state.gl.program, "palette"), 1);
+	glUniform1i(glGetUniformLocation(state.gl.program, "palette_size"), _pti.vm.draw.palette->count);
 
-	/* draw fullscreen quad */
+	// draw fullscreen quad
 	glBindVertexArray(state.gl.vao);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, state.gl.color0);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, state.gl.color1);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
+}
+
+static void sokol_audio_cb(float *buffer, int num_frames, int num_channels) {
+	// always clear buffer
+	// memset(buffer, 0, num_frames * num_channels * sizeof(float));
+
+	for (int i = 0; i < num_frames; i++) {
+		int16_t mixed = _pti__audio_mix_sample();
+
+		float f = mixed / 32768.0f;
+		for (int c = 0; c < num_channels; c++) {
+			buffer[i * num_channels + c] = f;
+		}
+	}
+}
+
+#if defined(PTI_DEBUG)
+void imgui_debug_draw() {
+	static const ImVec2 uv_min(0.0f, 0.0f);
+	static const ImVec2 uv_max(1.0f, 1.0f);
+
+	static bool show_display_window = false;
+	static bool show_graphics_window = false;
+	static bool show_hardware_window = false;
+	static bool show_memory_window = false;
+	static bool show_cart_window = false;
+	static bool show_tileset_window = false;
+	static bool show_font_window = false;
+	static bool show_tilemap_window = false;
+
+	if (ImGui::BeginMainMenuBar()) {
+		if (ImGui::BeginMenu("pti")) {
+			if (ImGui::MenuItem("Display")) {
+				show_display_window = true;
+			}
+			if (ImGui::MenuItem("Graphics")) {
+				show_graphics_window = true;
+			}
+			if (ImGui::MenuItem("Hardware")) {
+				show_hardware_window = true;
+			}
+			if (ImGui::MenuItem("Memory")) {
+				show_memory_window = true;
+			}
+			if (ImGui::MenuItem("Cart")) {
+				show_cart_window = true;
+			}
+			if (ImGui::MenuItem("Tileset")) {
+				show_tileset_window = true;
+			}
+			if (ImGui::MenuItem("Font")) {
+				show_font_window = true;
+			}
+			if (ImGui::MenuItem("Tilemap")) {
+				show_tilemap_window = true;
+			}
+			ImGui::EndMenu();
+		}
+		ImGui::EndMainMenuBar();
+	}
+
+	if (show_display_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Display", &show_display_window)) {
+			ImGui::Text("Dimensions: (%d, %d)", _pti.vm.screen.width, _pti.vm.screen.height);
+			ImGui::Text("Location: %p", _pti.screen);
+			ImGui::Checkbox("CRT: ", &state.crt);
+
+			const ImVec2 color0_vec2{(float) _pti.vm.screen.width, (float) _pti.vm.screen.height};
+			ImGui::Image((ImTextureID) (intptr_t) state.gl.color0, color0_vec2, uv_min, uv_max);
+		}
+		ImGui::End();
+	}
+
+	if (show_graphics_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Graphics", &show_graphics_window)) {
+			ImGui::Text("Camera: (%d, %d)", _pti.vm.draw.cam_x, _pti.vm.draw.cam_y);
+			ImGui::Text("Clip: ((%d, %d), (%d, %d))", _pti.vm.draw.clip_x0, _pti.vm.draw.clip_y0, _pti.vm.draw.clip_x1, _pti.vm.draw.clip_y1);
+			ImGui::Text("Color Key: %d", _pti.vm.draw.ckey);
+			ImGui::Text("Dither: %d", _pti.vm.draw.dither);
+		}
+		ImGui::End();
+	}
+
+	if (show_hardware_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Hardware", &show_hardware_window)) {
+			// buttons
+			ImGui::Text("Botton [Left]: %d", _pti.vm.hardware.btn_state[0]);
+			ImGui::Text("Botton [Right]: %d", _pti.vm.hardware.btn_state[1]);
+			ImGui::Text("Botton [Up]: %d", _pti.vm.hardware.btn_state[2]);
+			ImGui::Text("Botton [Down]: %d", _pti.vm.hardware.btn_state[3]);
+			ImGui::Text("Botton [D]: %d", _pti.vm.hardware.btn_state[4]);
+			ImGui::Text("Botton [S]: %d", _pti.vm.hardware.btn_state[5]);
+			ImGui::Text("Botton [W]: %d", _pti.vm.hardware.btn_state[6]);
+			ImGui::Text("Botton [A]: %d", _pti.vm.hardware.btn_state[7]);
+			ImGui::Text("Botton [8]: %d", _pti.vm.hardware.btn_state[8]);
+
+			// random
+			ImGui::Text("Random [0]: %d", _pti.vm.hardware.rnd_reg[0]);
+			ImGui::Text("Random [1]: %d", _pti.vm.hardware.rnd_reg[1]);
+			ImGui::Text("Random [2]: %d", _pti.vm.hardware.rnd_reg[2]);
+			ImGui::Text("Random [3]: %d", _pti.vm.hardware.rnd_reg[3]);
+		}
+		ImGui::End();
+	}
+
+	if (show_memory_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Memory", &show_memory_window)) {
+			const size_t used_bytes = (size_t) (_pti.ram.it - _pti.ram.begin);
+			const size_t capacity_bytes = (size_t) (_pti.ram.cap - _pti.ram.begin);
+
+			const float used_kb = used_bytes / 1024.0f;
+			const float capacity_kb = capacity_bytes / 1024.0f;
+
+			ImGui::Text("Usage: %.2f KB / %.2f KB (%.2f%%)\n", used_kb, capacity_kb, (used_kb / capacity_kb) * 100.0);
+			ImGui::Text("begin: %p", _pti.ram.begin);
+			ImGui::Text("cap: %p", _pti.ram.cap);
+			ImGui::Text("end: %p", _pti.ram.end);
+			ImGui::Text("it: %p", _pti.ram.it);
+		}
+		ImGui::End();
+	}
+
+	if (show_cart_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Cart", &show_cart_window)) {
+			const size_t used_bytes = (size_t) (_pti.cart.it - _pti.cart.begin);
+			const size_t capacity_bytes = (size_t) (_pti.cart.cap - _pti.cart.begin);
+
+			const float used_kb = used_bytes / 1024.0f;
+			const float capacity_kb = capacity_bytes / 1024.0f;
+
+			ImGui::Text("Usage: %.2f KB / %.2f KB (%.2f%%)\n", used_kb, capacity_kb, (used_kb / capacity_kb) * 100.0);
+			ImGui::Text("begin: %p", _pti.cart.begin);
+			ImGui::Text("cap: %p", _pti.cart.cap);
+			ImGui::Text("end: %p", _pti.cart.end);
+			ImGui::Text("it: %p", _pti.cart.it);
+		}
+		ImGui::End();
+	}
+
+	if (show_tileset_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Tileset", &show_tileset_window)) {
+			ImGui::Text("Width: %d", _pti.vm.draw.tileset->width);
+			ImGui::Text("Height: %d", _pti.vm.draw.tileset->height);
+			ImGui::Text("Tile Width: %d", _pti.vm.draw.tileset->tile_w);
+			ImGui::Text("Tile Height: %d", _pti.vm.draw.tileset->tile_h);
+			ImGui::Text("Pixels: %p", _pti.vm.draw.tileset->pixels);
+
+			const ImVec2 tileset_vec2{(float) _pti.vm.draw.tileset->width, (float) _pti.vm.draw.tileset->height};
+			ImGui::Image((ImTextureID) (intptr_t) state.gl.tileset, tileset_vec2, uv_min, uv_max);
+		}
+		ImGui::End();
+	}
+
+	if (show_font_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Font", &show_font_window)) {
+			ImGui::Text("Width: %d", _pti.vm.draw.font->width);
+			ImGui::Text("Height: %d", _pti.vm.draw.font->height);
+			ImGui::Text("Pixels: %p", _pti.vm.draw.font->pixels);
+
+			const ImVec2 font_vec2{(float) _pti.vm.draw.font->width, (float) _pti.vm.draw.font->height};
+			ImGui::Image((ImTextureID) (intptr_t) state.gl.font, font_vec2, uv_min, uv_max);
+		}
+		ImGui::End();
+	}
+
+	if (show_tilemap_window) {
+		ImGui::SetNextWindowSize(ImVec2(440, 400), ImGuiCond_Once);
+		if (ImGui::Begin("Tilemap", &show_tilemap_window)) {
+			ImGui::Text("Width: %d", _pti.vm.tilemap->width);
+			ImGui::Text("Height: %d", _pti.vm.tilemap->height);
+			ImGui::Text("Tiles: %p", _pti.vm.tilemap->tiles);
+		}
+		ImGui::End();
+	}
+}
+#endif
+
+static void _pti_set_font(pti_bitmap_t *ptr) {
+	glGenTextures(1, &state.gl.font);
+	glBindTexture(GL_TEXTURE_2D, state.gl.font);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, ptr->width, ptr->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, ptr->pixels);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+static void _pti_set_tilemap(pti_tilemap_t *ptr) {
+	// create texture (tileset)
+}
+
+static void _pti_set_tileset(pti_tileset_t *ptr) {
+	const uint16_t width = ptr->width;
+	const uint16_t height = ptr->height;
+	glGenTextures(1, &state.gl.tileset);
+	glBindTexture(GL_TEXTURE_2D, state.gl.tileset);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, ptr->pixels);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 static void init(void) {
 	/* initialize graphics */
-	gl_init_gfx();
+	gl_init();
+
+	/* initialize audio */
+	saudio_setup(&(saudio_desc) {
+			.num_channels = 2,
+			.stream_cb = sokol_audio_cb,
+			.logger = {
+					.func = slog_func,
+			},
+	});
+
+	/* install tracehooks */
+
+#if defined(PTI_TRACE_HOOKS)
+	/* install tracehooks */
+	pti_trace_hooks hooks;
+	hooks.set_font = _pti_set_font;
+	hooks.set_tilemap = _pti_set_tilemap;
+	hooks.set_tileset = _pti_set_tileset;
+	hooks.set_flags = nullptr;
+	hooks.set_palette = nullptr;
+	pti_install_trace_hooks(&hooks);
+#endif
 
 	/* initialize game */
 	if (_pti.desc.init_cb != NULL) {
@@ -258,16 +566,13 @@ static void init(void) {
 }
 
 static void cleanup(void) {
+	saudio_shutdown();
 	glDeleteVertexArrays(1, &state.gl.vao);
 	glDeleteBuffers(1, &state.gl.vbo);
 	glDeleteTextures(1, &state.gl.color0);
 	glDeleteProgram(state.gl.program);
+	glDeleteProgram(state.gl.crt);
 }
-
-#define PTI_FRAMERATE (30.0)
-#define PTI_DELTA (1.0 / PTI_FRAMERATE)
-#define TICK_DURATION_NS (PTI_DELTA * 1e9)
-#define TICK_TOLERANCE_NS (1000000)
 
 static void frame(void) {
 	if (_pti.vm.interrupts == PTI_REQUEST_SHUTDOWN) {
@@ -277,9 +582,7 @@ static void frame(void) {
 
 	double frame_time_ns = sapp_frame_duration() * 1000000000.0;
 	pti_tick(frame_time_ns);
-
-	/* draw graphics */
-	gl_gfx_draw();
+	gl_draw();
 }
 
 static inline void btn_down(int pti_key, int sapp_key, int sapp_alt, const sapp_event *ev) {
